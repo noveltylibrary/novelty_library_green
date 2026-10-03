@@ -1325,3 +1325,91 @@ a.nl-an-handle:hover { text-decoration: underline; }
 @keyframes nl-pc-twinkle { 0%, 100% { opacity: .15; transform: scale(.6); } 50% { opacity: .95; transform: scale(1.5); } }
 @keyframes nl-pc-float { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-6px) rotate(-3deg); } }
 @media (prefers-reduced-motion: reduce) { .nl-pc-a, .nl-pc-loop { animation: none !important; } }
+
+
+/* ================= v2.7 polish: 4-column shelf, compact poster chips, footer, profile card ================= */
+
+/* Wider container for the shelf so 4 posters breathe on desktop */
+.container-wide { max-width: 1440px; }
+
+/* Review shelf: 2 cols on phones, 3 on tablets, 4 on laptops and up */
+.nl-review-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+@media (min-width: 700px)  { .nl-review-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.1rem; } }
+@media (min-width: 1024px) { .nl-review-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem; } }
+@media (min-width: 1536px) { .nl-review-grid { gap: 1.5rem; } }
+
+/* Staggered rise-in + a soft glow lift on hover */
+@keyframes nlCardRise { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+.nl-review-grid .community-review-card { animation: nlCardRise .6s cubic-bezier(.2,.8,.2,1) both; border-radius: 20px; }
+.nl-review-grid .community-review-card:hover { transform: translateY(-6px); box-shadow: 0 24px 50px rgba(0,95,110,.2), 0 0 0 1px rgba(0,151,178,.22); }
+.nl-review-grid .community-review-poster > img { transition: transform .6s cubic-bezier(.2,.8,.2,1); }
+.nl-review-grid .community-review-card:hover .community-review-poster > img { transform: scale(1.035); }
+
+/* Poster overlays: smaller NL / R/W chips so they never crowd the artwork or its title */
+.community-review-card .community-rw-badge { padding: .22rem .5rem; border-radius: 999px; }
+.community-review-card .engagement-nl-logo, .engagement-nl-logo { width: 14px; height: 14px; }
+.community-review-card .engagement-nl-rating { padding: .26rem .55rem; gap: .28rem; font-size: .74rem; }
+.community-review-card .engagement-bar { min-height: 46px; padding: .4rem .5rem; }
+.community-review-card .engagement-btn { padding: .3rem .45rem; font-size: .78rem; }
+@media (max-width: 520px) {
+  .community-review-card .community-rw-badge { transform: none; padding: .18rem .4rem; }
+  .community-review-card .engagement-btn svg { width: 16px; height: 16px; }
+}
+
+/* Profile card preview: compact and centred */
+.nl-pc-preview { transition: box-shadow .4s ease, transform .4s ease; }
+.nl-pc-preview:hover { transform: translateY(-3px); box-shadow: 0 32px 70px rgba(0,80,95,.34) !important; }
+
+/* ---------- Footer ---------- */
+.nl-footer { position: relative; border-top: 1px solid var(--color-border); background: linear-gradient(180deg, transparent, rgba(53,211,217,.08)); }
+.nl-footer-cta {
+  position: relative; overflow: hidden; margin-top: -3.5rem; margin-bottom: 3rem;
+  display: grid; gap: 1.5rem; align-items: center; grid-template-columns: 1fr;
+  padding: 1.6rem 1.4rem; border-radius: 28px; color: #fff;
+  background: linear-gradient(135deg, #013a46 0%, #00687f 55%, #0097b2 100%);
+  box-shadow: 0 28px 60px rgba(0,80,95,.3), inset 0 1px 0 rgba(255,255,255,.18);
+}
+@media (min-width: 820px) { .nl-footer-cta { grid-template-columns: 1fr auto; padding: 2.2rem 2.6rem; } }
+.nl-footer-orb { position: absolute; border-radius: 50%; pointer-events: none; }
+.nl-footer-orb-a { width: 340px; height: 340px; right: -90px; top: -150px; background: radial-gradient(circle, rgba(92,225,230,.5), transparent 65%); animation: nlFooterDrift 9s ease-in-out infinite; }
+.nl-footer-orb-b { width: 260px; height: 260px; left: -90px; bottom: -150px; background: radial-gradient(circle, rgba(255,255,255,.28), transparent 65%); animation: nlFooterDrift 12s ease-in-out infinite reverse; }
+@keyframes nlFooterDrift { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-22px,14px) scale(1.12); } }
+.nl-footer-cta-copy { position: relative; z-index: 1; }
+.nl-footer-kicker { display: inline-flex; align-items: center; gap: .4rem; font-size: .68rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: #9ff3f5; }
+.nl-footer-cta h3 { font-size: clamp(1.45rem, 3.4vw, 2.1rem); line-height: 1.12; font-weight: 700; margin: .5rem 0 .5rem; }
+.nl-footer-cta p { font-size: .92rem; line-height: 1.6; color: rgba(255,255,255,.82); max-width: 34rem; }
+.nl-footer-perks { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; padding: 0; list-style: none; }
+.nl-footer-perks li { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .75rem; border-radius: 999px; font-size: .74rem; font-weight: 600; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); }
+.nl-footer-cta-action { position: relative; z-index: 1; display: flex; flex-direction: column; gap: .75rem; align-items: stretch; min-width: 0; }
+@media (min-width: 820px) { .nl-footer-cta-action { min-width: 260px; } }
+.nl-footer-install {
+  display: inline-flex; align-items: center; justify-content: center; gap: .6rem; min-height: 54px; padding: .9rem 1.6rem;
+  border-radius: 999px; font-weight: 800; font-size: 1rem; color: #013a46; background: #fff; cursor: pointer;
+  box-shadow: 0 14px 34px rgba(0,30,40,.35); transition: transform .25s ease, box-shadow .25s ease; animation: nlInstallPulse 2.6s ease-in-out infinite;
+}
+.nl-footer-install:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 20px 44px rgba(0,30,40,.42); animation-play-state: paused; }
+.nl-footer-install:active { transform: scale(.97); }
+@keyframes nlInstallPulse { 0%,100% { box-shadow: 0 14px 34px rgba(0,30,40,.35), 0 0 0 0 rgba(255,255,255,.5); } 50% { box-shadow: 0 14px 34px rgba(0,30,40,.35), 0 0 0 12px rgba(255,255,255,0); } }
+.nl-footer-help { font-size: .78rem; line-height: 1.5; padding: .8rem 1rem; border-radius: 16px; background: rgba(1,43,54,.55); border: 1px solid rgba(255,255,255,.18); }
+.nl-footer-help p { display: flex; gap: .5rem; align-items: flex-start; margin: 0; max-width: none; font-size: .78rem; }
+.nl-footer-help p + p { margin-top: .45rem; }
+.nl-footer-help svg { flex: 0 0 auto; margin-top: .15rem; }
+
+.nl-footer-grid { display: grid; gap: 2rem; grid-template-columns: 1fr; padding-bottom: 2rem; }
+@media (min-width: 640px) { .nl-footer-grid { grid-template-columns: 1fr 1fr; } .nl-footer-brand { grid-column: 1 / -1; } }
+@media (min-width: 900px) { .nl-footer-grid { grid-template-columns: 1.6fr 1fr 1.2fr; } .nl-footer-brand { grid-column: auto; } }
+.nl-footer-logo { width: 40px; height: 40px; object-fit: contain; border-radius: 12px; }
+.nl-footer-h { font-size: .7rem; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; margin-bottom: .9rem; color: var(--color-teal-dark); }
+.nl-footer-link { text-align: left; font-size: .92rem; padding: .35rem 0; color: var(--color-text); position: relative; width: fit-content; transition: color .2s ease, transform .2s ease; }
+.nl-footer-link::after { content: ''; position: absolute; left: 0; bottom: .1rem; height: 2px; width: 0; background: var(--color-cyan-dark); transition: width .25s ease; }
+.nl-footer-link:hover { color: var(--color-teal-dark); transform: translateX(3px); }
+.nl-footer-link:hover::after { width: 100%; }
+.nl-footer-pill { display: flex; align-items: center; gap: .6rem; min-width: 0; padding: .7rem 1rem; border-radius: 16px; font-size: .86rem; font-weight: 600; color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease; }
+.nl-footer-pill:hover { transform: translateY(-2px); border-color: rgba(0,151,178,.35); box-shadow: 0 10px 24px rgba(0,95,110,.12); }
+.nl-footer-pill-ig:hover { border-color: rgba(214,41,118,.4); }
+.nl-footer-bottom { display: flex; flex-direction: column; align-items: center; gap: .6rem; padding-top: 1.4rem; border-top: 1px solid var(--color-border); font-size: .75rem; color: var(--color-text-muted); }
+@media (min-width: 640px) { .nl-footer-bottom { flex-direction: row; justify-content: space-between; } }
+.nl-footer-note { margin-top: .9rem; text-align: center; font-size: .7rem; color: var(--color-text-muted); }
+@media (prefers-reduced-motion: reduce) {
+  .nl-footer-install, .nl-footer-orb, .nl-review-grid .community-review-card { animation: none !important; }
+}

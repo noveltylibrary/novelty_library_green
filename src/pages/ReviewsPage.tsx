@@ -100,7 +100,7 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
   };
 
   return (
-    <div className="pt-24 pb-20 container-prose animate-fade-in">
+    <div className="pt-24 pb-20 container-prose container-wide animate-fade-in">
       <header className="mb-8">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
           <div>
@@ -131,7 +131,7 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
       </div>
 
       {loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
+        <div className="nl-review-grid">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="rounded-2xl overflow-hidden surface-card animate-pulse">
               <div className="aspect-square" style={{ background: 'var(--color-paper)' }} />
@@ -149,7 +149,7 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
 
       {!loading && filteredCommunity.length > 0 && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 items-start">
+          <div className="nl-review-grid items-start">
             {filteredCommunity.map((item, i) => (
               <Fragment key={item.id}>
                 <CommunityReviewCard

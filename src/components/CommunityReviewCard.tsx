@@ -39,9 +39,9 @@ export function CommunityReviewCard({ item, onClick, index = 0, stats, liked, on
         <PosterImage src={item.coverImage} alt={item.title} />
 
         {item.rwRating !== null && (
-          <div className="absolute top-3 right-3" title="R/W Rating">
-            <span className="nl-chip community-rw-badge px-3.5 py-1.5" title={`R/W ${item.rwRating.toFixed(1)}/10`}>
-              <RwStarRating value={item.rwRating} size={16} className="text-current" />
+          <div className="absolute top-2 right-2 z-[2]" title="R/W Rating">
+            <span className="nl-chip community-rw-badge" title={`R/W ${item.rwRating.toFixed(1)}/10`}>
+              <RwStarRating value={item.rwRating} size={12} className="text-current" />
             </span>
           </div>
         )}

@@ -11,6 +11,8 @@ export type ProfileCardData = {
   avatarUrl: string | null;
   headerImageUrl: string | null;
   socialLinks: { platform: string; url: string }[];
+  /** Instagram handle (with or without @ / URL). Shown at the bottom of the card. */
+  instagram?: string | null;
   booksThisMonth: number | null;
   totalBooksRead: number | null;
   publishedBooks: number;
@@ -75,6 +77,15 @@ const FIT_STEPS = [
   { m: 0.58, reviews: 1, qs: 0 },
 ];
 
+/** Reduces '@name', 'instagram.com/name/' or a full URL to a bare handle. */
+export function cleanInstagram(value: string | null | undefined): string {
+  return (value || '').trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/^(www\.)?instagram\.com\//i, '').split(/[/?#]/)[0].replace(/^@+/, '').slice(0, 30);
+}
+/** Name size steps down with length so long names stay readable and never run off the card. */
+function nameScale(name: string): number {
+  const n = name.trim().length;
+  return n <= 9 ? 1 : n <= 14 ? 0.82 : n <= 20 ? 0.66 : n <= 28 ? 0.54 : 0.46;
+}
 function normalizeUrl(value: string) { return /^https?:\/\//i.test(value) ? value : `https://${value}`; }
 function platformLabel(platform: string) { return platform === 'x' ? 'X' : platform.charAt(0).toUpperCase() + platform.slice(1); }
 function platformIcon(platform: string, size: number) {
@@ -163,7 +174,7 @@ export function ProfileCard({ data, download = false }: { data: ProfileCardData;
     </div>}
 
     {/* The preview is the exact export canvas, scaled down to fit the page. What you see is what you download. */}
-    <div ref={wrapRef} className="relative w-full overflow-hidden rounded-[28px]" style={{ height: selected.height * scale, boxShadow: '0 26px 60px rgba(0,80,95,.28)', border: '1px solid rgba(8,145,178,.3)' }}>
+    <div ref={wrapRef} className="relative w-full mx-auto overflow-hidden rounded-[24px] nl-pc-preview" style={{ height: selected.height * scale, maxWidth: selected.width > selected.height ? 560 : 380, boxShadow: '0 26px 60px rgba(0,80,95,.28)', border: '1px solid rgba(8,145,178,.3)' }}>
       <CardCanvas key={`${format}-${replay}`} canvasRef={canvasRef} data={data} width={selected.width} height={selected.height} scale={scale} play={inView} still={downloading} />
     </div>
   </div>;
@@ -235,8 +246,8 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
   const u = Math.min(w / 1080, h / 1000) * fit.m;
   const s = (n: number) => n * u;
   const pad = w * 0.055;
-  const bannerH = Math.round(cols === 2 ? h * 0.27 : Math.min(h * 0.21, w * 0.42));
-  const avatar = Math.round(cols === 2 ? h * 0.22 : w * 0.21);
+  const bannerH = Math.round(cols === 2 ? h * 0.25 : Math.min(h * 0.17, w * 0.34));
+  const avatar = Math.round(cols === 2 ? h * 0.2 : w * 0.17);
 
   const questions = data.questions.filter((q) => {
     const value = data.answers[q.key];
@@ -252,21 +263,21 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
   const tName = cue(0.12);
   const tHandle = cue(0.12);
   const stats: { value: string; label: string; icon: ReactNode }[] = [];
-  if (data.booksThisMonth != null) stats.push({ value: String(data.booksThisMonth), label: 'read this month', icon: <BookOpen width={s(22)} height={s(22)} /> });
-  if (data.totalBooksRead != null) stats.push({ value: String(data.totalBooksRead), label: 'books read', icon: <BookOpen width={s(22)} height={s(22)} /> });
-  stats.push({ value: String(data.publishedBooks), label: 'published', icon: <BookOpen width={s(22)} height={s(22)} /> });
-  if (data.avgRating != null) stats.push({ value: data.avgRating.toFixed(1), label: 'avg rating given', icon: <span style={{ fontSize: s(22), lineHeight: 1 }}>★</span> });
+  if (data.booksThisMonth != null) stats.push({ value: String(data.booksThisMonth), label: 'read this month', icon: <BookOpen width={s(18)} height={s(18)} /> });
+  if (data.totalBooksRead != null) stats.push({ value: String(data.totalBooksRead), label: 'books read', icon: <BookOpen width={s(18)} height={s(18)} /> });
+  stats.push({ value: String(data.publishedBooks), label: 'published', icon: <BookOpen width={s(18)} height={s(18)} /> });
+  if (data.avgRating != null) stats.push({ value: data.avgRating.toFixed(1), label: 'avg rating given', icon: <span style={{ fontSize: s(18), lineHeight: 1 }}>★</span> });
   const statCues = stats.map(() => cue(0.12));
 
-  const metrics = <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: s(14) }}>
+  const metrics = <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: s(10) }}>
     {stats.map((st, i) => {
       const m = mv('pop', statCues[i]);
-      return <div key={st.label} className={m.className} style={{ ...m.style, position: 'relative', overflow: 'hidden', borderRadius: s(24), padding: `${s(18)}px ${s(20)}px`, background: `linear-gradient(150deg,${C.glassStrong},${C.glass})`, border: `1px solid ${C.line}`, boxShadow: '0 10px 26px rgba(0,25,35,.25), inset 0 1px 0 rgba(255,255,255,.22)' }}>
+      return <div key={st.label} className={m.className} style={{ ...m.style, position: 'relative', overflow: 'hidden', borderRadius: s(20), padding: `${s(12)}px ${s(16)}px`, background: `linear-gradient(150deg,${C.glassStrong},${C.glass})`, border: `1px solid ${C.line}`, boxShadow: '0 10px 26px rgba(0,25,35,.25), inset 0 1px 0 rgba(255,255,255,.22)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: s(10), color: C.mint }}>
           {st.icon}
-          <span style={{ fontSize: s(15), letterSpacing: '.2em', textTransform: 'uppercase', fontWeight: 700, color: C.soft }}>{st.label}</span>
+          <span style={{ fontSize: s(13), letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 700, color: C.soft }}>{st.label}</span>
         </div>
-        <p className="font-serif" style={{ fontSize: s(64), fontWeight: 700, lineHeight: 1.05, marginTop: s(4), color: C.ink, textShadow: '0 3px 14px rgba(0,25,35,.35)' }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
+        <p className="font-serif" style={{ fontSize: s(46), fontWeight: 700, lineHeight: 1.05, marginTop: s(2), color: C.ink, textShadow: '0 3px 14px rgba(0,25,35,.35)' }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
       </div>;
     })}
   </div>;
@@ -285,7 +296,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
     <div style={{ display: 'grid', gap: s(10) }}>
       {journeyItems.map(([label, value], i) => { const mi = mv('slide', journeyCues[i]); return <div key={label} className={mi.className} style={{ ...mi.style, borderRadius: s(16), padding: `${s(12)}px ${s(16)}px`, background: C.glass, border: `1px solid ${C.line}`, borderLeft: `${s(5)}px solid ${C.cyan}` }}>
         <p style={{ fontSize: s(14), letterSpacing: '.14em', textTransform: 'uppercase', fontWeight: 800, color: C.faint }}>{label}</p>
-        <p className="font-serif" style={{ fontSize: s(30), fontWeight: 600, marginTop: s(2), color: C.ink, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{value}</p>
+        <p className="font-serif" style={{ fontSize: s(24), fontWeight: 600, marginTop: s(2), color: C.ink, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{value}</p>
       </div>; })}
     </div>
   </div>; })() : null;
@@ -294,14 +305,14 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
   const reviewCues = reviews.map(() => cue(0.12));
   const shelf = reviews.length > 0 ? (() => { const m = mv('drop', tShelf); return <div className={m.className} style={{ ...m.style, borderRadius: s(26), padding: s(20), background: 'linear-gradient(150deg,rgba(255,255,255,.17),rgba(255,255,255,.07))', border: `1px solid ${C.line}`, boxShadow: '0 14px 32px rgba(0,25,35,.28), inset 0 1px 0 rgba(255,255,255,.2)' }}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(12), marginBottom: s(14) }}>
-      <div><p style={{ fontSize: s(15), letterSpacing: '.22em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Published shelf</p><p className="font-serif" style={{ fontSize: s(34), fontWeight: 700, lineHeight: 1.1, color: C.ink, marginTop: s(2) }}>Reviews on Novelty Library</p></div>
+      <div><p style={{ fontSize: s(15), letterSpacing: '.22em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Published shelf</p><p className="font-serif" style={{ fontSize: s(28), fontWeight: 700, lineHeight: 1.1, color: C.ink, marginTop: s(2) }}>Reviews on Novelty Library</p></div>
       <span className="font-serif" style={{ fontSize: s(30), fontWeight: 700, minWidth: s(56), textAlign: 'center', borderRadius: 999, padding: `${s(4)}px ${s(16)}px`, background: C.ink, color: C.deep2 }}>{data.publishedReviews.length}</span>
     </div>
     <div style={{ display: 'grid', gap: s(10) }}>{reviews.map((review, i) => { const mr = mv('slide', reviewCues[i]); const stars = review.rating && review.rating > 0 ? rwRatingToStars(review.rating) : null; return <div key={review.id} className={mr.className} style={{ ...mr.style, display: 'flex', alignItems: 'center', gap: s(16), borderRadius: s(18), padding: s(10), background: 'rgba(1,43,54,.38)', border: `1px solid ${C.line}` }}>
       <Cover url={review.coverUrl} w={s(62)} h={s(86)} radius={s(10)} iconSize={s(26)} />
       <div style={{ minWidth: 0, flex: 1 }}>
-        <p className="font-serif" style={{ fontSize: s(28), fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{review.title}</p>
-        <p style={{ fontSize: s(20), color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{review.author}{review.reviewNo ? ` · #${review.reviewNo}` : ''}</p>
+        <p className="font-serif" style={{ fontSize: s(24), fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{review.title}</p>
+        <p style={{ fontSize: s(18), color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{review.author}{review.reviewNo ? ` · #${review.reviewNo}` : ''}</p>
       </div>
       {stars != null && <span style={{ fontSize: s(20), fontWeight: 800, borderRadius: 999, padding: `${s(5)}px ${s(14)}px`, background: 'rgba(255,255,255,.16)', border: `1px solid ${C.line}`, color: C.ink, whiteSpace: 'nowrap', flexShrink: 0 }}><span style={{ color: '#ffd66b' }}>★</span> {stars.toFixed(1)}</span>}
     </div>; })}</div>
@@ -314,6 +325,8 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
     <p style={{ fontSize: s(24), fontWeight: 600, marginTop: s(4), color: C.ink, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{String(data.answers[q.key])}</p>
   </div>; })}</div> : null;
 
+  const ig = cleanInstagram(data.instagram);
+  const otherSocials = data.socialLinks.filter((l) => !(ig && l.platform === 'instagram')).slice(0, ig ? 2 : 3);
   const tFooter = cue(0.2);
   const tBrand = cue(0.2);
   const colStyle: CSSProperties = { position: 'relative', minHeight: 0, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(14) };
@@ -360,7 +373,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
 
     <div style={{ position: 'absolute', left: pad, right: pad, top: bannerH - avatar / 2, bottom: pad * 0.7, display: 'flex', flexDirection: 'column', gap: s(18) }}>
       {/* Identity */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: s(28), flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: s(24), flexShrink: 0 }}>
         <div className={avatarMv.className} style={{ ...avatarMv.style, position: 'relative', width: avatar, height: avatar, flexShrink: 0 }}>
           {!still && <div className="nl-pc-a nl-pc-ring" style={{ ['--d' as string]: `${(tAvatar + 0.5).toFixed(2)}s`, position: 'absolute', inset: 0, borderRadius: '50%' } as CSSProperties} />}
           <div style={{ width: '100%', height: '100%', borderRadius: '50%', padding: s(7), background: `conic-gradient(from 210deg, ${C.cyan}, #ffffff, ${C.teal}, ${C.mint}, ${C.cyan})`, boxShadow: '0 14px 34px rgba(0,25,35,.45)' }}>
@@ -371,10 +384,10 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
             </div>
           </div>
         </div>
-        <div style={{ minWidth: 0, paddingTop: avatar / 2 + s(6) }}>
-          <p className={eyebrow.className} style={{ ...eyebrow.style, fontSize: s(17), letterSpacing: '.26em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: s(6) }}>Novelty Library · Reader</p>
-          <h2 className={`font-serif ${nameMv.className}`} style={{ ...nameMv.style, fontSize: s(cols === 2 ? 62 : 72), fontWeight: 700, lineHeight: 1.02, color: C.ink, textShadow: '0 4px 22px rgba(0,25,35,.5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.name || 'Novelty Reader'}</h2>
-          <p className={handleMv.className} style={{ ...handleMv.style, display: 'inline-block', fontSize: s(26), fontWeight: 700, marginTop: s(10), padding: `${s(4)}px ${s(18)}px`, borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{data.username || 'reader'}</p>
+        <div style={{ minWidth: 0, flex: 1, paddingTop: avatar / 2 + s(6) }}>
+          <p className={eyebrow.className} style={{ ...eyebrow.style, fontSize: s(15), letterSpacing: '.22em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: s(6) }}>Novelty Library · Reader</p>
+          <h2 className={`font-serif ${nameMv.className}`} style={{ ...nameMv.style, fontSize: s((cols === 2 ? 56 : 62) * nameScale(data.name || 'Novelty Reader')), fontWeight: 700, lineHeight: 1.08, color: C.ink, textShadow: '0 4px 22px rgba(0,25,35,.5)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' }}>{data.name || 'Novelty Reader'}</h2>
+          <p className={handleMv.className} style={{ ...handleMv.style, display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: s(24), fontWeight: 700, marginTop: s(8), padding: `${s(4)}px ${s(18)}px`, borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{data.username || 'reader'}</p>
         </div>
       </div>
 
@@ -389,11 +402,17 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
       </div>
 
       {/* Footer: socials on the left, brand lockup (wordmark, then logo) on the right, vertically centred */}
-      <div className={footerMv.className} style={{ ...footerMv.style, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(16), flexShrink: 0, minHeight: s(96) }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(10) }}>{data.socialLinks.slice(0, 3).map((link) => <a key={link.platform} href={normalizeUrl(link.url)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(8), borderRadius: 999, padding: `${s(9)}px ${s(20)}px`, fontSize: s(21), fontWeight: 700, background: C.glassStrong, color: '#fff', border: `1px solid ${C.line}`, textDecoration: 'none' }}>{platformIcon(link.platform, s(20))} {platformLabel(link.platform)}</a>)}</div>
+      <div className={footerMv.className} style={{ ...footerMv.style, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(16), flexShrink: 0, minHeight: s(84) }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: s(10), minWidth: 0 }}>
+          {ig && <a href={`https://instagram.com/${ig}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(10), maxWidth: '100%', borderRadius: 999, padding: `${s(9)}px ${s(22)}px ${s(9)}px ${s(10)}px`, background: 'linear-gradient(135deg,#feda75 0%,#fa7e1e 28%,#d62976 58%,#962fbf 82%,#4f5bd5 100%)', color: '#fff', fontWeight: 800, fontSize: s(22), boxShadow: '0 10px 24px rgba(0,25,35,.35)', textDecoration: 'none' }}>
+            <span style={{ display: 'grid', placeItems: 'center', width: s(34), height: s(34), borderRadius: '50%', background: 'rgba(255,255,255,.24)', flexShrink: 0 }}><Instagram width={s(20)} height={s(20)} /></span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{ig}</span>
+          </a>}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(10) }}>{otherSocials.map((link) => <a key={link.platform} href={normalizeUrl(link.url)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(8), borderRadius: 999, padding: `${s(9)}px ${s(20)}px`, fontSize: s(21), fontWeight: 700, background: C.glassStrong, color: '#fff', border: `1px solid ${C.line}`, textDecoration: 'none' }}>{platformIcon(link.platform, s(20))} {platformLabel(link.platform)}</a>)}</div>
+        </div>
         <div className={brandMv.className} style={{ ...brandMv.style, display: 'flex', alignItems: 'center', gap: s(16), flexShrink: 0, borderRadius: 999, padding: `${s(10)}px ${s(14)}px ${s(10)}px ${s(30)}px`, background: '#fff', boxShadow: '0 16px 36px rgba(0,40,50,.35)' }}>
-          <div style={{ textAlign: 'right' }}><p className="font-serif" style={{ fontSize: s(32), fontWeight: 700, lineHeight: 1, color: C.deep2 }}>Novelty Library</p><p style={{ fontSize: s(14), letterSpacing: '.18em', textTransform: 'uppercase', marginTop: s(6), color: C.teal, fontWeight: 800 }}>Read · Review · Discover</p></div>
-          <img src={LOGO} alt="Novelty Library" style={{ width: s(78), height: s(78), objectFit: 'contain', display: 'block' }} />
+          <div style={{ textAlign: 'right' }}><p className="font-serif" style={{ fontSize: s(26), fontWeight: 700, lineHeight: 1, color: C.deep2 }}>Novelty Library</p><p style={{ fontSize: s(14), letterSpacing: '.18em', textTransform: 'uppercase', marginTop: s(6), color: C.teal, fontWeight: 800 }}>Read · Review · Discover</p></div>
+          <img src={LOGO} alt="Novelty Library" style={{ width: s(60), height: s(60), objectFit: 'contain', display: 'block' }} />
         </div>
       </div>
     </div>

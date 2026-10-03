@@ -58,7 +58,7 @@ const EMPTY_FORM: FormState = {
   title: '', author: '', genre: '', traits: '', language: '', review_text: '',
   rw_rating: 7, goodreads_rating: '', amazon_rating: '', cover_image_url: '',
   cover_storage_path: '', buy_link: '', series_name: '', series_number: '',
-  translated_from: '', review_date: '', heard_from: '', form_feedback: '', rating_integer: 7,
+  translated_from: '', review_date: '', heard_from: '', form_feedback: '', rating_integer: 9,
   undertaking_accepted: false,
 };
 
