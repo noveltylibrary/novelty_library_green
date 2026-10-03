@@ -31,6 +31,7 @@ return {
       injectRegister: 'auto',
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       manifest: {
+        id: base,
         name: 'Novelty Library',
         short_name: 'Novelty',
         description: 'What book broke your brain this month? A community archive of book reviews.',
@@ -38,11 +39,14 @@ return {
         background_color: '#020617',
         display: 'standalone',
         orientation: 'portrait',
+        lang: 'en',
+        categories: ['books', 'education', 'lifestyle'],
         start_url: base,
         scope: base,
         icons: [
-          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {

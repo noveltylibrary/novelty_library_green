@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect, useMemo } from 'react';
 import { Search, ArrowUp, Sparkles } from 'lucide-react';
 import type { Review } from '@/types/review';
-import { fetchReviews } from '@/lib/reviews';
+import { loadReviewCached, fetchReviews } from '@/lib/reviews';
 import { CommunityReviewCard, type CommunityReviewCardData } from '@/components/CommunityReviewCard';
 import { EthicalAdSlot } from '@/components/EthicalAdSlot';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -96,6 +96,7 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
   }, [communityItems]);
 
   const openCommunityReview = (item: CommunityReviewCardData) => {
+    if (item.slug) void loadReviewCached(item.slug).catch(() => undefined);
     if (item.slug) navigate(`/review/${encodeURIComponent(item.slug)}`);
   };
 
@@ -156,13 +157,14 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
                   item={item}
                   index={i}
                   onClick={() => openCommunityReview(item)}
+                  onPrefetch={() => { if (item.slug) void loadReviewCached(item.slug).catch(() => undefined); }}
                   stats={engagement.statsFor(item.id)}
                   liked={engagement.liked.has(item.id)}
                   onLike={() => { if (requireAuth()) void engagement.toggleLike(item.id); }}
                   onRate={() => void openFeedback(item)}
                   onReview={() => void openFeedback(item)}
                 />
-                {i === 2 && <div className="col-span-2 sm:col-span-2 lg:col-span-3"><EthicalAdSlot /></div>}
+                {i === 11 && <div className="col-span-full"><EthicalAdSlot /></div>}
               </Fragment>
             ))}
           </div>

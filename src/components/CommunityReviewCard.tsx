@@ -21,6 +21,8 @@ export interface CommunityReviewCardData {
 interface CommunityReviewCardProps {
   item: CommunityReviewCardData;
   onClick: () => void;
+  /** Fired on hover / touch-start so the review page can load before the click lands. */
+  onPrefetch?: () => void;
   index?: number;
   stats: EngagementStats;
   liked: boolean;
@@ -30,11 +32,11 @@ interface CommunityReviewCardProps {
 }
 
 /** Community review card. The poster stays square; R/W is the primary card rating and NL rating lives in the engagement row. */
-export function CommunityReviewCard({ item, onClick, index = 0, stats, liked, onLike, onRate, onReview }: CommunityReviewCardProps) {
+export function CommunityReviewCard({ item, onClick, onPrefetch, index = 0, stats, liked, onLike, onRate, onReview }: CommunityReviewCardProps) {
   const nl = computeNlRating(item.rwRating, stats);
 
   return (
-    <article className="community-review-card group" style={{ animationDelay: `${index * 45}ms` }}>
+    <article className="community-review-card group" style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }} onPointerEnter={onPrefetch} onTouchStart={onPrefetch} onFocus={onPrefetch}>
       <div className="community-review-poster" onClick={onClick} role="link" aria-label={`Open review of ${item.title}`}>
         <PosterImage src={item.coverImage} alt={item.title} />
 

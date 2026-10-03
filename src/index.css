@@ -1413,3 +1413,27 @@ a.nl-an-handle:hover { text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) {
   .nl-footer-install, .nl-footer-orb, .nl-review-grid .community-review-card { animation: none !important; }
 }
+
+/* Review-shelf score chip uses a star instead of the logo (the single-review page keeps the logo) */
+.engagement-nl-star { color: #ffe08a !important; width: 13px; height: 13px; }
+.community-review-card .engagement-nl-rating svg.engagement-nl-star { color: #ffe08a; }
+
+/* ---- Fast review-page entrance (was 0.6s) ---- */
+@keyframes nlFastIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes nlFastUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.nl-fast-in { animation: nlFastIn .15s ease-out both; }
+.nl-fast-up { animation: nlFastUp .2s cubic-bezier(.2,.8,.2,1) both; }
+@media (prefers-reduced-motion: reduce) { .nl-fast-in, .nl-fast-up { animation: none; } }
+
+/* "NL" tag that sits beside the Instagram icon: same size and tone as the neighbouring line icon */
+.nl-handle-box {
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  width: 16px; height: 16px; border-radius: 4px; box-sizing: border-box;
+  border: 1.5px solid currentColor; color: var(--color-text-muted);
+  font-size: 7.5px; font-weight: 800; letter-spacing: -.02em; line-height: 1;
+}
+
+/* Replies under reader reviews */
+.nl-reply-thread { margin-top: .6rem; padding-left: .85rem; border-left: 2px solid rgba(0,151,178,.22); display: grid; gap: .7rem; }
+.nl-reply { min-width: 0; }
+.nl-reply-form { padding: .2rem 0; }

@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, ExternalLink, Instagram, Calendar, Globe, Tag } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Instagram, Calendar, Globe, Tag, Star } from 'lucide-react';
 import type { Review } from '@/types/review';
-import { fetchReviewBySlug } from '@/lib/reviews';
+import { loadReviewCached, peekReview, storeReviewInCache } from '@/lib/reviews';
 import { fetchBlogPosts, blogPostDate, htmlToText } from '@/lib/blog';
 import { formatDate } from '@/lib/format';
 import { RatingBadge } from '@/components/RatingBadge';
 import { EthicalAdSlot } from '@/components/EthicalAdSlot';
 import { PosterImage } from '@/components/PosterImage';
 import { EngagementBar } from '@/components/EngagementBar';
-import { NlLogo } from '@/components/NlLogo';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { FeedbackList } from '@/components/FeedbackList';
 import { ReviewComments } from '@/components/ReviewComments';
@@ -21,8 +20,8 @@ interface ReviewPageProps {
 }
 
 export function ReviewPage({ slug, navigate }: ReviewPageProps) {
-  const [review, setReview] = useState<Review | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [review, setReview] = useState<Review | null>(() => peekReview(slug));
+  const [loading, setLoading] = useState(() => !peekReview(slug));
   const [error, setError] = useState<string | null>(null);
 
   const { user, profile } = useAuth();
@@ -54,32 +53,39 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
   };
 
   useEffect(() => {
-    setLoading(true);
+    let alive = true;
+    const cached = peekReview(slug);
     setError(null);
-    Promise.all([fetchReviewBySlug(slug), fetchBlogPosts().catch(() => [])])
-      .then(([data, posts]) => {
-        const blogPost = posts.find((post) => post.title.trim().toLowerCase() === data.title.trim().toLowerCase());
-        if (blogPost) {
-          const blogTime = new Date(blogPostDate(blogPost)).getTime();
-          const appTime = new Date(data.updated_at || data.published_at).getTime();
-          if (Number.isFinite(blogTime) && Number.isFinite(appTime) && blogTime > appTime) {
-            setReview({
-              ...data,
-              review_text: htmlToText(blogPost.content || blogPost.summary) || data.review_text,
-              cover_image_url: data.cover_image_url || blogPost.thumbnail,
-              published_at: blogPostDate(blogPost),
-            });
-            setLoading(false);
-            return;
-          }
-        }
-        setReview(data);
+    if (cached) { setReview(cached); setLoading(false); } else { setLoading(true); }
+
+    // Paint the review as soon as the database answers; the slower blog archive only refines it afterwards.
+    loadReviewCached(slug)
+      .then((data) => {
+        if (!alive) return;
+        if (!data) { setReview(null); setLoading(false); return; }
+        setReview((prev) => prev && prev.id === data.id ? prev : data);
         setLoading(false);
+        fetchBlogPosts().catch(() => [])
+          .then((posts) => {
+            if (!alive) return;
+            const blogPost = posts.find((post) => post.title.trim().toLowerCase() === data.title.trim().toLowerCase());
+            if (!blogPost) return;
+            const blogTime = new Date(blogPostDate(blogPost)).getTime();
+            const appTime = new Date(data.updated_at || data.published_at).getTime();
+            if (Number.isFinite(blogTime) && Number.isFinite(appTime) && blogTime > appTime) {
+              const merged = {
+                ...data,
+                review_text: htmlToText(blogPost.content || blogPost.summary) || data.review_text,
+                cover_image_url: data.cover_image_url || blogPost.thumbnail,
+                published_at: blogPostDate(blogPost),
+              };
+              storeReviewInCache(slug, merged);
+              setReview(merged);
+            }
+          });
       })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
+      .catch((err) => { if (!alive) return; setError(err.message); setLoading(false); });
+    return () => { alive = false; };
   }, [slug]);
 
   if (loading) {
@@ -114,7 +120,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
   }
 
   return (
-    <div className="pt-24 pb-12 animate-fade-in">
+    <div className="pt-24 pb-12 nl-fast-in">
       <div className="container-prose">
         <button
           onClick={() => navigate('/reviews')}
@@ -126,7 +132,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 lg:gap-12 max-w-5xl mx-auto">
           {/* Cover */}
-          <div className="md:col-span-2 animate-fade-up">
+          <div className="md:col-span-2 nl-fast-up">
             {review.poster_url ? (
               // Community poster: always 1:1, never cropped.
               <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-square" style={{ background: 'var(--color-paper)' }}>
@@ -167,7 +173,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
           </div>
 
           {/* Content */}
-          <div className="md:col-span-3 animate-fade-up" style={{ animationDelay: '100ms' }}>
+          <div className="md:col-span-3 nl-fast-up" style={{ animationDelay: '40ms' }}>
             <div className="flex flex-wrap gap-2 mb-4">
               <span className="nl-chip px-4 py-1.5 text-[13px] font-semibold">{review.genre}</span>
               {review.traits?.split(',').map((trait) => (
@@ -195,7 +201,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
                 const nl = computeNlRating(review.rw_rating, engagement.statsFor(review.id));
                 return nl !== null ? (
                   <span className="nl-chip gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold" title="NL Rating: the R/W rating averaged with every reader rating">
-                    <NlLogo className="nl-chip-logo" />{nl.toFixed(1)}<span className="opacity-70">/10</span>
+                    <Star className="w-3 h-3 fill-current" />{nl.toFixed(1)}<span className="opacity-70">/10</span>
                     <span className="opacity-70 text-[10px] tracking-wider">NL</span>
                   </span>
                 ) : null;
@@ -228,7 +234,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
                   {review.reviewer_handle && <span style={{ color: 'var(--color-cyan-dark)' }}>{review.reviewer_handle}</span>}
                   {review.novelty_username && (
                     <button type="button" onClick={() => navigate(`/profile/@${encodeURIComponent(review.novelty_username!.replace(/^@/, ''))}`)} className="inline-flex items-center gap-1.5 font-semibold hover:underline" style={{ color: 'var(--color-teal-dark)' }}>
-                      <span className="nl-review-brand-badge" aria-hidden="true"><NlLogo /></span>
+                      <span className="nl-handle-box" aria-hidden="true">NL</span>
                       @{review.novelty_username.replace(/^@/, '')}
                     </button>
                   )}
@@ -266,7 +272,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
                 <h2 className="font-serif text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Reader reviews ({feedback.length})</h2>
                 <button type="button" onClick={openModal} className="btn-primary text-sm" style={{ padding: '8px 18px' }}>{myFeedback ? 'Edit yours' : 'Rate & Review'}</button>
               </div>
-              <FeedbackList entries={feedback} currentUserId={user?.id} onEdit={openModal} onDelete={() => void removeFeedback()} />
+              <FeedbackList entries={feedback} currentUserId={user?.id} user={user} profile={profile} navigate={navigate} onEdit={openModal} onDelete={() => void removeFeedback()} />
             </section>
 
             <ReviewComments reviewId={review.id} navigate={navigate} />

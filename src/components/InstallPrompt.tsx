@@ -1,13 +1,30 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Download, X } from 'lucide-react';
+import { Check, Copy, Download, ExternalLink, PlusSquare, Share, X } from 'lucide-react';
 import { dismissInstallBanner, isInstallBannerDismissed, usePwaInstall } from '@/lib/pwa';
 
-/** Dismissible install banner. Fixed to the viewport, so it never shifts page layout. */
+/**
+ * Dismissible install banner, fixed to the viewport so it never shifts layout.
+ * - Chrome / Edge / Samsung (Android + desktop): one-tap native install.
+ * - iPhone / iPad: those browsers have no install API, so we show the Share -> Add to Home Screen steps.
+ * - In-app browsers (Instagram, Facebook...): installing is impossible there, so we ask to open the real browser.
+ */
 export function InstallPrompt() {
-  const { canInstall, install } = usePwaInstall();
+  const { canInstall, isInstalled, platform, install } = usePwaInstall();
   const [dismissed, setDismissed] = useState(isInstallBannerDismissed);
-  const show = canInstall && !dismissed;
+  const [ready, setReady] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Manual-instruction banners wait a few seconds so they don't cover the page the moment it opens.
+  useEffect(() => { const t = window.setTimeout(() => setReady(true), 3500); return () => window.clearTimeout(t); }, []);
+
+  const mode: 'native' | 'ios' | 'in-app' | null = isInstalled ? null : canInstall ? 'native' : ready && platform === 'ios' ? 'ios' : ready && platform === 'in-app' ? 'in-app' : null;
+  const show = mode !== null && !dismissed;
+  const close = () => { dismissInstallBanner(); setDismissed(true); };
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText(window.location.href); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }
+    catch { window.prompt('Copy this link and open it in Chrome or Safari:', window.location.href); }
+  };
 
   return (
     <AnimatePresence>
@@ -23,13 +40,32 @@ export function InstallPrompt() {
           aria-label="Install Novelty Library"
         >
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-teal-400 text-slate-950"><Download className="h-5 w-5" /></span>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-teal-400 text-slate-950">
+              {mode === 'in-app' ? <ExternalLink className="h-5 w-5" /> : <Download className="h-5 w-5" />}
+            </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-white">Install Web App</p>
-              <p className="truncate text-xs text-slate-400">Add Novelty Library to your home screen.</p>
+              {mode === 'native' && (<>
+                <p className="text-sm font-semibold text-white">Install Web App</p>
+                <p className="truncate text-xs text-slate-400">Add Novelty Library to your home screen.</p>
+              </>)}
+              {mode === 'ios' && (<>
+                <p className="text-sm font-semibold text-white">Install on your iPhone</p>
+                <p className="text-xs leading-snug text-slate-300">Tap <Share className="mx-0.5 inline h-3.5 w-3.5 -translate-y-px" /> Share, then <PlusSquare className="mx-0.5 inline h-3.5 w-3.5 -translate-y-px" /> <b>Add to Home Screen</b>.</p>
+              </>)}
+              {mode === 'in-app' && (<>
+                <p className="text-sm font-semibold text-white">Open in your browser to install</p>
+                <p className="text-xs leading-snug text-slate-300">This in-app browser can't install apps. Copy the link and open it in Chrome or Safari.</p>
+              </>)}
             </div>
-            <button onClick={() => void install()} className="rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:from-cyan-300 hover:to-teal-300">Install</button>
-            <button onClick={() => { dismissInstallBanner(); setDismissed(true); }} className="rounded-full p-1.5 text-slate-400 transition hover:text-white" aria-label="Dismiss"><X className="h-4 w-4" /></button>
+            {mode === 'native' && (
+              <button onClick={() => void install()} className="rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:from-cyan-300 hover:to-teal-300">Install</button>
+            )}
+            {mode === 'in-app' && (
+              <button onClick={() => void copyLink()} className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 px-3.5 py-2 text-xs font-semibold text-slate-950">
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied ? 'Copied' : 'Copy link'}
+              </button>
+            )}
+            <button onClick={close} className="rounded-full p-1.5 text-slate-400 transition hover:text-white" aria-label="Dismiss"><X className="h-4 w-4" /></button>
           </div>
         </motion.div>
       )}

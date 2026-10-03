@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowUpRight, Download, Instagram, Mail, Share, Smartphone, Sparkles, Zap } from 'lucide-react';
+import { ArrowUpRight, Download, ExternalLink, Instagram, Mail, Share, Smartphone, Sparkles, Zap } from 'lucide-react';
 import { useSupportEmail } from '@/lib/siteSettings';
 import { usePwaInstall } from '@/lib/pwa';
 
@@ -16,9 +16,9 @@ const LINKS: [string, string][] = [
 
 export function Footer({ navigate }: FooterProps) {
   const supportEmail = useSupportEmail();
-  const { canInstall, install } = usePwaInstall();
+  const { canInstall, isInstalled, platform, install } = usePwaInstall();
   const [showHelp, setShowHelp] = useState(false);
-  const isStandalone = typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
+  const isStandalone = isInstalled;
 
   return (
     <footer className="nl-footer mt-24">
@@ -48,8 +48,16 @@ export function Footer({ navigate }: FooterProps) {
               </button>
               {showHelp && !canInstall && (
                 <div className="nl-footer-help animate-fade-in" role="note">
-                  <p><Share className="w-3.5 h-3.5" /> <b>iPhone / iPad:</b> tap Share, then “Add to Home Screen”.</p>
-                  <p><Download className="w-3.5 h-3.5" /> <b>Android / desktop:</b> open the browser menu and choose “Install app”.</p>
+                  {platform === 'in-app' ? (
+                    <p><ExternalLink className="w-3.5 h-3.5" /> <span>You're inside another app's browser. Open this page in <b>Chrome</b> or <b>Safari</b> (menu, then “Open in browser”) and tap Install again.</span></p>
+                  ) : platform === 'ios' ? (
+                    <p><Share className="w-3.5 h-3.5" /> <span>Tap the <b>Share</b> button in Safari, then choose <b>“Add to Home Screen”</b>.</span></p>
+                  ) : (
+                    <>
+                      <p><Download className="w-3.5 h-3.5" /> <span><b>Android:</b> open the browser menu (⋮) and choose <b>“Install app”</b> or “Add to Home screen”.</span></p>
+                      <p><Share className="w-3.5 h-3.5" /> <span><b>iPhone / iPad:</b> tap Share, then “Add to Home Screen”.</span></p>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -88,7 +96,7 @@ export function Footer({ navigate }: FooterProps) {
         </div>
 
         <div className="nl-footer-bottom">
-          <p>© {new Date().getFullYear()} Novelty Library. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Novelty Library. All rights reserved. <span style={{ opacity: .6 }}>· v1.4</span></p>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => navigate('/privacy')} className="hover:underline underline-offset-2">Privacy Policy</button>
             <span aria-hidden="true">·</span>

@@ -105,7 +105,7 @@ export function EngagementBar({ stats, liked, onLike, onRate, onReview, variant 
       )}
       {nlRating !== null && (
         <span className="engagement-nl-rating" title="Novelty Library rating">
-          <NlLogo className="engagement-nl-logo" />
+          {big ? <NlLogo className="engagement-nl-logo" /> : <Star className="engagement-nl-logo engagement-nl-star" fill="currentColor" strokeWidth={1.5} aria-hidden />}
           <b>NL</b> {nlRating.toFixed(1)}
         </span>
       )}

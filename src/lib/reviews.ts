@@ -95,6 +95,29 @@ export async function fetchReviewBySlug(slug: string): Promise<Review | null> {
   return data ? mapCommunityRowToReview(data as CommunityReviewRow) : null;
 }
 
+const reviewValueCache = new Map<string, Review>();
+const reviewPromiseCache = new Map<string, Promise<Review | null>>();
+
+/** Synchronous read of a review that was already loaded or prefetched (lets the page paint instantly). */
+const slugKey = (slug: string) => { try { return decodeURIComponent(slug); } catch { return slug; } };
+export function peekReview(slug: string): Review | null {
+  return reviewValueCache.get(slugKey(slug)) ?? null;
+}
+
+/** Cached fetch. Also used to prefetch while the pointer is still hovering a card. */
+export function loadReviewCached(slug: string): Promise<Review | null> {
+  const key = slugKey(slug);
+  const hit = reviewPromiseCache.get(key);
+  if (hit) return hit;
+  const promise = fetchReviewBySlug(slug).then((review) => {
+    if (review) reviewValueCache.set(key, review);
+    return review;
+  }).catch((err) => { reviewPromiseCache.delete(key); throw err; });
+  reviewPromiseCache.set(key, promise);
+  return promise;
+}
+export function storeReviewInCache(slug: string, review: Review): void { reviewValueCache.set(slugKey(slug), review); }
+
 export async function fetchGenres(): Promise<string[]> {
   const reviews = await fetchReviews();
   const genres = new Set(reviews.map((r) => r.genre));

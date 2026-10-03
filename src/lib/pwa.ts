@@ -40,9 +40,28 @@ export async function promptInstall(): Promise<void> {
   emit();
 }
 
+const getInstalled = () => installed;
+
+export type InstallPlatform = 'ios' | 'in-app' | 'other';
+
+/**
+ * Only Chrome / Edge / Samsung Internet on Android (and desktop Chromium) ever fire
+ * `beforeinstallprompt`. iPhones and in-app browsers (Instagram, Facebook, WhatsApp links...)
+ * never do, so those visitors need manual instructions instead of a one-tap button.
+ */
+export function detectPlatform(): InstallPlatform {
+  if (typeof navigator === 'undefined') return 'other';
+  const ua = navigator.userAgent || '';
+  if (/Instagram|FBAN|FBAV|FB_IAB|Line\/|Snapchat|Twitter|LinkedInApp|MicroMessenger|Pinterest|GSA\/|; wv\)/i.test(ua)) return 'in-app';
+  const iPadOs = navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1;
+  if (/iPhone|iPad|iPod/i.test(ua) || iPadOs) return 'ios';
+  return 'other';
+}
+
 export function usePwaInstall() {
   const canInstall = useSyncExternalStore(subscribe, getCanInstall, () => false);
-  return { canInstall, install: promptInstall };
+  const isInstalled = useSyncExternalStore(subscribe, getInstalled, () => false);
+  return { canInstall, isInstalled, platform: detectPlatform(), install: promptInstall };
 }
 
 const DISMISS_KEY = 'nl-install-dismissed-at';
