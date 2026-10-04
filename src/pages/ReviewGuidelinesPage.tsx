@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BookOpen, ChevronDown, FileText, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronDown, X, ZoomIn } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { fetchReviewGuidelineSections, type ReviewGuidelineSection } from '@/lib/reviewGuidelines';
 import { GUIDE_CSS } from '@/components/ReviewGuidelinesModal';
@@ -17,10 +17,67 @@ const FALLBACK_SECTIONS: ReviewGuidelineSection[] = [
   { id: 'fallback-contact', slug: 'contact', title: 'CONTACT & NEWSLETTER', sort_order: 60, active: true, content_html: `<p><strong>How can you contact us?</strong></p><p>You can connect with us via our official channels below.</p><div style="margin: 15px 0; display: flex; flex-wrap: wrap; gap: 8px;"><a href="https://noveltylibrary.blogspot.com/p/contact-us.html" target="_blank" rel="noreferrer" class="novelty-btn novelty-btn-sm">Contacts Page</a><a href="https://www.instagram.com/novelty.co.in" target="_blank" rel="noreferrer" class="novelty-btn novelty-btn-sm">Instagram</a><a href="https://www.linktr.ee/novelty.lib" target="_blank" rel="noreferrer" class="novelty-btn novelty-btn-sm">Linktree Hub</a></div><div style="background: var(--novelty-subcard-bg); padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px; border: 1px solid var(--novelty-border);"><p style="margin: 0;"><strong>SUBSCRIBE</strong> to the <strong>Novelty Library Newsletter</strong> via the Contacts Page.</p></div>` },
 ];
 
+const ASSET = (name: string) => `${import.meta.env.BASE_URL}guide/${name}.webp`;
+
+interface GuideImage { file: string; alt: string; caption: string }
+
+// Poster images shown at the end of the matching guide section (matched on slug + title,
+// so they still land correctly when an admin renames or re-orders sections).
+const SECTION_IMAGES: { match: RegExp; images: GuideImage[] }[] = [
+  { match: /introduction|vision/i, images: [
+    { file: 'guide-v4-update', alt: 'V4.0 new update: Smart Auto-Fill replaces the V3.0 Smart Form, with Search & Auto-fill, Light/Dark Mode and IG Story Poster', caption: 'From V3.0 Smart Form to V4.0 Smart Auto-Fill' },
+  ] },
+  { match: /form[\s-]*guide|step[\s-]*by[\s-]*step/i, images: [
+    { file: 'guide-picture-guide', alt: 'Picture Addition Guide: upload a clear cover picture, background-removed preferred, and use Quick Search & Add', caption: 'Picture Addition Guide' },
+    { file: 'guide-autofill', alt: 'V4.0 Smart Auto-Fill: type a title and genre, cover and Goodreads rating are filled in one click, with Already Added detection', caption: 'Smart Auto-Fill in action' },
+  ] },
+  { match: /additionals|features/i, images: [
+    { file: 'guide-minor-update', alt: 'V4.0 minor update: Preview Mode before final posting and Smart Lock that locks the form on Submit', caption: 'V4.0 minor update: Preview Mode & Smart Lock' },
+  ] },
+];
+
+const PAGE_CSS = `
+  .ng-header { margin: 0 0 22px; display: flex; justify-content: center; }
+  .ng-header-frame { position: relative; width: 100%; max-width: 600px; border-radius: 26px; overflow: hidden; box-shadow: 0 26px 60px rgba(2,6,23,.26); border: 1px solid rgba(103,232,249,.28); background: #04141c; line-height: 0; }
+  .ng-header-frame img { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; }
+  /* Transparent link sitting exactly on the "SUBMIT NOW" pill baked into the header image */
+  .ng-submit-cta { position: absolute; left: 35.3%; top: 87.1%; width: 30.4%; height: 6.4%; border-radius: 999px; overflow: hidden; display: block; cursor: pointer; text-decoration: none; -webkit-tap-highlight-color: transparent; animation: ng-cta-pulse 2.2s ease-out infinite; transition: transform .2s ease, filter .2s ease; }
+  .ng-submit-cta::after { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 45%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.65), transparent); transform: skewX(-18deg); animation: ng-cta-shine 3s ease-in-out infinite; }
+  .ng-submit-cta:hover, .ng-submit-cta:focus-visible { transform: scale(1.06); filter: brightness(1.12); animation-play-state: paused; outline: none; }
+  .ng-submit-cta:focus-visible { box-shadow: 0 0 0 3px #fff, 0 0 0 6px #0e7490; }
+  .ng-submit-cta:active { transform: scale(.97); }
+  @keyframes ng-cta-pulse { 0% { box-shadow: 0 0 0 0 rgba(34,211,238,.65), 0 0 14px rgba(34,211,238,.35); } 70% { box-shadow: 0 0 0 16px rgba(34,211,238,0), 0 0 22px rgba(34,211,238,.45); } 100% { box-shadow: 0 0 0 0 rgba(34,211,238,0), 0 0 14px rgba(34,211,238,.35); } }
+  @keyframes ng-cta-shine { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+  @media (prefers-reduced-motion: reduce) { .ng-submit-cta, .ng-submit-cta::after { animation: none !important; } .ng-submit-cta { transition: none; } }
+  .ng-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  .ng-figures { padding: 0 22px 22px; background: rgba(255,255,255,.66); display: grid; grid-template-columns: 1fr; gap: 14px; justify-items: center; }
+  .dark .novelty-guide-outer-wrapper .ng-figures { background: rgba(3,20,27,.44); }
+  @media (min-width: 900px) { .ng-figures.ng-multi { grid-template-columns: 1fr 1fr; align-items: start; } }
+  .ng-figure { margin: 0; width: 100%; max-width: 520px; }
+  .ng-figure .novelty-img-container { margin: 0; }
+  .ng-zoom { position: relative; display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; line-height: 0; }
+  .ng-zoom img { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; background: rgba(8,145,178,.08); }
+  .ng-zoom-badge { position: absolute; right: 10px; top: 10px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: rgba(2,20,26,.7); color: #cffafe; opacity: .85; }
+  .ng-figure figcaption { margin-top: 8px; text-align: center; font-size: .74rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--novelty-teal-dark); opacity: .8; line-height: 1.4; }
+
+  .ng-lightbox { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 16px; background: rgba(2,10,14,.88); backdrop-filter: blur(6px); animation: fadeIn .2s ease-out; }
+  .ng-lightbox img { max-width: min(96vw, 92vh); max-height: 92vh; width: auto; height: auto; border-radius: 16px; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+  .ng-lightbox button { position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.14); color: #fff; border: 0; cursor: pointer; }
+`;
+
+function sectionImages(section: ReviewGuidelineSection): GuideImage[] {
+  const hay = `${section.slug} ${section.title}`;
+  // First matching rule wins (form guide is checked before the generic "features" rule).
+  const rule = SECTION_IMAGES.find(r => r.match.test(hay));
+  return rule ? rule.images : [];
+}
+
 export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
   const [sections, setSections] = useState<ReviewGuidelineSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [zoom, setZoom] = useState<GuideImage | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -35,23 +92,27 @@ export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (!zoom) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setZoom(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [zoom]);
+
   const safeSections = useMemo(() => sections.filter(s => s.active).sort((a,b) => a.sort_order - b.sort_order), [sections]);
 
   return <div className="pt-20 sm:pt-24 pb-20 px-3 sm:px-5 animate-fade-in">
-    <style dangerouslySetInnerHTML={{ __html: GUIDE_CSS }} />
+    <style dangerouslySetInnerHTML={{ __html: GUIDE_CSS + PAGE_CSS }} />
     <div className="max-w-6xl mx-auto">
       <button type="button" onClick={() => navigate('/submit')} className="inline-flex items-center gap-1.5 text-sm mb-5" style={{ color: 'var(--color-text-muted)' }}><ArrowLeft className="w-4 h-4" /> Back to Submit Reviews</button>
       <div className="novelty-guide-outer-wrapper">
         <div className="novelty-guide-wrapper">
-          <section className="novelty-hero">
-            <div className="flex items-center gap-2 mb-4 text-cyan-100/75 text-xs uppercase tracking-[.18em] font-bold"><BookOpen className="w-4 h-4" /> Novelty Library · Reader guide</div>
-            <h2>“Got a book that broke your brain?”</h2>
-            <p>Everything you need to know before submitting a Novelty Library book review — rebuilt as a native web-app reading page.</p>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="novelty-btn" onClick={() => navigate('/submit')}><Sparkles className="w-4 h-4" /> Submit Your Review</button>
-              <a className="novelty-btn novelty-btn-sm" href="#guide-sections"><FileText className="w-4 h-4" /> Browse the guide</a>
+          <header className="ng-header">
+            <div className="ng-header-frame">
+              <img src={ASSET('guide-header')} width={1200} height={1200} alt="Novelty Library review guidelines: free, unlimited, no deadline" fetchPriority="high" decoding="async" />
+              <a className="ng-submit-cta" href="#/submit" aria-label="Submit now: open the Submit Reviews page" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); navigate('/submit'); }}><span className="ng-sr-only">Submit now</span></a>
             </div>
-          </section>
+          </header>
 
           {error && <div className="mb-4 rounded-2xl px-4 py-3 text-xs" style={{ background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.16)', color: '#b91c1c' }}>The saved guide could not be loaded, so the built-in guide is being shown.</div>}
 
@@ -66,9 +127,19 @@ export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
           {safeSections.map((section, index) => <details className="novelty-section" key={section.id} id={`guide-section-${section.id}`} open={index === 0}>
             <summary><span style={{ display:'flex', alignItems:'center', gap:10 }}><span>{section.title}</span></span><svg className="arrow-icon" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg></summary>
             <div className="novelty-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(section.content_html, { ADD_ATTR: ['target', 'rel'], FORBID_TAGS: ['script','iframe','object','embed'] }) }} />
+            {(() => { const imgs = sectionImages(section); return imgs.length ? <div className={`ng-figures${imgs.length > 1 ? ' ng-multi' : ''}`}>
+              {imgs.map(img => <figure className="ng-figure" key={img.file}>
+                <div className="novelty-img-container"><button type="button" className="ng-zoom" onClick={() => setZoom(img)} aria-label={`Enlarge image: ${img.caption}`}><img src={ASSET(img.file)} width={1200} height={1200} alt={img.alt} loading="lazy" decoding="async" /><span className="ng-zoom-badge" aria-hidden="true"><ZoomIn className="w-4 h-4" /></span></button></div>
+                <figcaption>{img.caption}</figcaption>
+              </figure>)}
+            </div> : null; })()}
           </details>)}
         </div>
       </div>
     </div>
+    {zoom && <div className="ng-lightbox" role="dialog" aria-modal="true" aria-label={zoom.caption} onClick={() => setZoom(null)}>
+      <img src={ASSET(zoom.file)} alt={zoom.alt} onClick={(e) => e.stopPropagation()} />
+      <button type="button" aria-label="Close enlarged image" onClick={() => setZoom(null)}><X className="w-5 h-5" /></button>
+    </div>}
   </div>;
 }
