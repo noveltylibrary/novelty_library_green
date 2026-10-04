@@ -5,6 +5,7 @@ import { fetchPublicProfile, fetchPublicPublishedReviews, type AcceptedReviewCar
 import { fetchFollowStats, followUsername, unfollowUsername, fetchConnections, fetchFollowPrivacy, type FollowStats, type ConnectionProfile, type FollowPrivacy } from '@/lib/social';
 import { fetchProfileQuestions, type ProfileQuestion } from '@/lib/profileQuestions';
 import { ProfileCard, type ProfileCardData } from '@/components/ProfileCard';
+import { answerText, answerImageUrls } from '@/components/ProfileQuestionAnswer';
 import { RwStarRating } from '@/components/RwStarRating';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
 
@@ -28,7 +29,7 @@ export function PublicProfilePage({ username, navigate }: Props) {
   const cardData:ProfileCardData|undefined=useMemo(()=>{
     if(!profile)return undefined;
     const avg=published.filter(r=>Number(r.reviewers_rating)>0);
-    const answers=Object.fromEntries(Object.entries(profile.profile_answers||{}).map(([key,value])=>[sanitizeUserText(key,120),sanitizeUserText(typeof value==='string'?value:String(value??''),1200)]));
+    const answers=Object.fromEntries(questions.map(q=>{ const raw=(profile.profile_answers||{})[q.key]; if(q.type==='image_upload') return [sanitizeUserText(q.key,120), answerImageUrls(raw).map(url=>safeExternalUrl(url)).filter((url): url is string=>!!url)]; if(q.type==='select_multiple' && Array.isArray(raw)) return [sanitizeUserText(q.key,120), raw.map(v=>sanitizeUserText(answerText(v),180)).filter(Boolean)]; return [sanitizeUserText(q.key,120),sanitizeUserText(answerText(raw),1200)]; }));
     const safeQuestions=questions.map(q=>({...q,key:sanitizeUserText(q.key,120),question:sanitizeUserText(q.question,300)}));
     const socialLinks=(profile.social_links||[]).map(l=>({platform:sanitizeUserText(l.platform,40).toLowerCase(),url:safeExternalUrl(l.url)||''})).filter(l=>l.url);
     return {

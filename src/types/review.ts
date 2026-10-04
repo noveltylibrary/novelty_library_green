@@ -73,6 +73,7 @@ export interface Profile {
 export interface ReviewDraft {
   id: string;
   user_id: string;
+  name: string;
   draft_data: Record<string, unknown>;
   created_at: string;
   updated_at: string;

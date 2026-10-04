@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ArrowLeft, Send, Star, PenTool, Search, Upload,
-  Save, FolderOpen, Lock, Eye, Edit3, Download, AlertCircle, X,
-  Clock, BookOpen, Sparkles, Heart, Plus, Trash2
+  Save, Lock, Eye, Edit3, Download, AlertCircle, X,
+  Clock, BookOpen, Sparkles, Heart, Plus, Trash2, FileText, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import { submitReview, searchOpenLibrary, uploadCoverImage, saveDraft, loadDraft, type OpenLibraryResult } from '@/lib/reviews';
+import { submitReview, searchOpenLibrary, uploadCoverImage, saveDraft, loadDrafts, checkBookAvailability, createBookReservation, type OpenLibraryResult, type SavedReviewDraft } from '@/lib/reviews';
 import { getErrorMessage } from '@/lib/format';
 import type { Review } from '@/types/review';
 
@@ -185,6 +185,15 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draftMsg, setDraftMsg] = useState<string | null>(null);
+  const [savedDrafts, setSavedDrafts] = useState<SavedReviewDraft[]>([]);
+  const [selectedDraftId, setSelectedDraftId] = useState('');
+  const [draftModalOpen, setDraftModalOpen] = useState(false);
+  const [draftName, setDraftName] = useState('');
+  const [reservationModalOpen, setReservationModalOpen] = useState(false);
+  const [loadDraftModalOpen, setLoadDraftModalOpen] = useState(false);
+  const [reservationBook, setReservationBook] = useState('');
+  const [reservationAuthor, setReservationAuthor] = useState('');
+  const [reservationSubmitting, setReservationSubmitting] = useState(false);
 
   // Honeypot spam field. Deliberately kept out of FormState/drafts — a real
   // visitor never sees or fills this in; if it has a value on submit, the
@@ -313,6 +322,13 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
 
   const getDraftPayload = () => ({ ...form, coverPreview, coverSource });
 
+  const refreshSavedDrafts = useCallback(async () => {
+    if (!user) { setSavedDrafts([]); return; }
+    try { setSavedDrafts(await loadDrafts()); } catch { setSavedDrafts([]); }
+  }, [user?.id]);
+
+  useEffect(() => { void refreshSavedDrafts(); }, [refreshSavedDrafts]);
+
   const writeLocalDraft = (payload = getDraftPayload()) => {
     try {
       localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(payload));
@@ -340,48 +356,72 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
   };
 
 
-  const handleSaveDraft = async () => {
-    const payload = { ...getDraftPayload(), __savedAt: new Date().toISOString() };
-    writeLocalDraft(payload);
+  const openDraftSaveModal = () => {
+    if (!user) { setDraftMsg('Sign in to save drafts to your account.'); return; }
+    setDraftName('');
+    setDraftModalOpen(true);
+  };
+
+  const confirmSaveDraft = async () => {
+    if (!user) return;
+    const nextNumber = Math.min(savedDrafts.length + 1, 5);
+    const effectiveName = draftName.trim() || form.title.trim() || `Draft [${nextNumber}]`;
     try {
-      if (user) await saveDraft(payload as unknown as Record<string, unknown>);
-      setDraftMsg(user ? 'Draft saved! It is stored to your account and this device.' : 'Draft saved on this device. Sign in to sync it to your account.');
+      const saved = await saveDraft(getDraftPayload() as Record<string, unknown>, effectiveName, selectedDraftId || undefined);
+      writeLocalDraft(saved.draft_data);
+      setSelectedDraftId(saved.id);
+      setDraftModalOpen(false);
+      setDraftMsg(`“${saved.name}” saved.`);
+      await refreshSavedDrafts();
     } catch (err) {
-      setDraftMsg('Draft saved on this device. Account sync was unavailable.');
-      console.warn('Account draft save failed:', err);
+      setDraftMsg(getErrorMessage(err, 'Could not save draft.'));
     }
     setTimeout(() => setDraftMsg(null), 3500);
   };
 
-  const handleLoadDraft = async () => {
-    const localRaw = localStorage.getItem(LOCAL_DRAFT_KEY);
-    const localTime = Number(localStorage.getItem(LOCAL_DRAFT_TIME_KEY) || 0);
-    let localDraft: Record<string, unknown> | null = null;
-    if (localRaw && localTime && Date.now() - localTime < DRAFT_MAX_AGE_MS) {
-      try { localDraft = JSON.parse(localRaw); } catch { localDraft = null; }
-    }
-
-    try {
-      const remoteDraft = user ? await loadDraft() : null;
-      const remoteUpdated = Number((remoteDraft as { __savedAt?: string } | null)?.__savedAt ? Date.parse((remoteDraft as { __savedAt: string }).__savedAt) : 0);
-      const chosen = remoteDraft && (!localDraft || remoteUpdated >= localTime) ? remoteDraft : localDraft;
-      if (!chosen) {
-        setDraftMsg('No saved draft found.');
-      } else {
-        applyDraft(chosen);
-        setDraftMsg('Draft loaded!');
-        setRecoveryAvailable(false);
-        setTimeout(() => document.querySelector<HTMLInputElement>('input[name="title"]')?.focus(), 50);
-      }
-    } catch (err) {
-      if (localDraft) {
-        applyDraft(localDraft);
-        setDraftMsg('Local draft loaded. Account draft could not be reached.');
-      } else {
-        setDraftMsg(getErrorMessage(err, 'Failed to load draft.'));
-      }
+  const handleLoadSelectedDraft = async (id: string) => {
+    setSelectedDraftId(id);
+    if (!id) return;
+    const selected = savedDrafts.find((d) => d.id === id);
+    if (selected) {
+      applyDraft(selected.draft_data);
+      setLoadDraftModalOpen(false);
+      setDraftMsg(`“${selected.name}” loaded.`);
+      setRecoveryAvailable(false);
+      setTimeout(() => document.querySelector<HTMLInputElement>('input[name="title"]')?.focus(), 50);
     }
     setTimeout(() => setDraftMsg(null), 3500);
+  };
+
+  const openLoadDraftModal = async () => {
+    if (!user) {
+      setDraftMsg('Sign in to load drafts saved to your account.');
+      setTimeout(() => setDraftMsg(null), 3500);
+      return;
+    }
+    await refreshSavedDrafts();
+    setLoadDraftModalOpen(true);
+  };
+
+  const orderedDrafts = [...savedDrafts].sort((a, b) => {
+    const aTime = Date.parse(a.created_at || a.updated_at || '');
+    const bTime = Date.parse(b.created_at || b.updated_at || '');
+    return aTime - bTime;
+  });
+
+  const submitReservation = async () => {
+    if (!reservationBook.trim()) { setDraftMsg('Enter a book name to reserve.'); return; }
+    setReservationSubmitting(true);
+    setError(null);
+    try {
+      await createBookReservation(reservationBook, reservationAuthor);
+      setReservationModalOpen(false);
+      setReservationBook(''); setReservationAuthor('');
+      setDraftMsg(`Reservation request filled for “${reservationBook.trim()}”. Waiting for admin acceptance.`);
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not submit reservation request.'));
+    } finally { setReservationSubmitting(false); }
+    setTimeout(() => setDraftMsg(null), 5000);
   };
 
   // Local recovery runs quietly while the user types. It never replaces the
@@ -409,22 +449,16 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
 
   useEffect(() => {
     const title = form.title.trim();
-    if (title.length < 3) {
-      setDuplicateWarning(null);
-      return;
-    }
+    if (title.length < 2) { setDuplicateWarning(null); return; }
     const timer = window.setTimeout(async () => {
       try {
-        const { data } = await supabase.from('reviews').select('id,title,status').ilike('title', title).limit(5);
-        const matches = (data ?? []).filter((row: { title: string; id: string }) => normaliseTitle(row.title) === normaliseTitle(title));
-        setDuplicateWarning(matches.length ? `A review for “${title}” may already exist. You can still submit if this is a different edition or perspective.` : null);
-      } catch {
-        // Duplicate checking is advisory; RLS or network restrictions should
-        // never prevent someone from filling or submitting the form.
-        setDuplicateWarning(null);
-      } finally {
-      }
-    }, 500);
+        const result = await checkBookAvailability(title);
+        if (!result.unavailable) setDuplicateWarning(null);
+        else setDuplicateWarning(result.reason === 'reserved'
+          ? `“${title}” is already reserved. Please pick another book.`
+          : `“${title}” is already reviewed. Please pick another book.`);
+      } catch { setDuplicateWarning(null); }
+    }, 400);
     return () => window.clearTimeout(timer);
   }, [form.title]);
 
@@ -511,6 +545,19 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
 
     if (form.goodreads_rating && Number(form.goodreads_rating) > 5) {
       setError('Goodreads rating must be 5 or less.');
+      return;
+    }
+
+    try {
+      const availability = await checkBookAvailability(form.title.trim());
+      if (availability.unavailable) {
+        setError(availability.reason === 'reserved'
+          ? 'This book is already reserved. Please pick another book.'
+          : 'This book is already reviewed. Please pick another book.');
+        return;
+      }
+    } catch (availabilityError) {
+      setError(getErrorMessage(availabilityError, 'Could not check whether this book is already reviewed or reserved.'));
       return;
     }
 
@@ -941,8 +988,11 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
       <div className="pt-32 container-prose text-center max-w-md mx-auto">
         <PenTool className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--color-text-muted)', opacity: 0.3 }} />
         <h1 className="font-serif text-2xl font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Sign In Required</h1>
-        <p className="text-sm mb-6" style={{ color: 'var(--color-text-muted)' }}>You need an account to submit a review.</p>
-        <button onClick={() => navigate('/auth')} className="btn-primary">Sign In / Sign Up</button>
+        <p className="text-sm mb-6" style={{ color: 'var(--color-text-muted)' }}>You need an account to submit a review, but you can read the submission guide without signing in.</p>
+        <div className="flex flex-wrap justify-center gap-3">
+          <button type="button" onClick={() => navigate('/review-guidelines')} className="btn-ghost inline-flex items-center gap-2"><FileText className="w-4 h-4" /> Read Review Submission Guide</button>
+          <button type="button" onClick={() => navigate('/auth')} className="btn-primary">Sign In / Sign Up</button>
+        </div>
       </div>
     );
   }
@@ -990,6 +1040,18 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
           <p className="leading-relaxed text-base md:text-lg max-w-xl mx-auto" style={{ color: 'var(--color-text-muted)' }}>
             Skip the essay. Drop your review below. We'll turn your submission into a Novelty Review poster.
           </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+            <button type="button" onClick={() => navigate('/review-guidelines')} className="btn-ghost inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm">
+              <FileText className="w-4 h-4" /> Review Guidelines
+            </button>
+            <button type="button" onClick={() => setReservationModalOpen(true)} className="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5" style={{ background: 'var(--color-teal-dark)' }}>
+              <BookOpen className="w-4 h-4" /> Reserve a Book
+            </button>
+            <button type="button" onClick={() => void openLoadDraftModal()} className="btn-ghost inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm">
+              <Save className="w-4 h-4" /> Load Draft
+            </button>
+          </div>
+          <p className="text-[11px] mt-3" style={{ color: 'var(--color-text-muted)' }}>Read the submission guidelines, reserve a book without writing a review, or load one of your saved drafts.</p>
         </div>
 
         {/* Open Library Search */}
@@ -1250,14 +1312,9 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
           </button>
         </form>
 
-        {/* Draft controls — kept at the bottom so they don't get mistaken
-            for the main call to action above the form. */}
-        <div className="draft-actions flex gap-2 mt-6">
-          <button type="button" onClick={handleSaveDraft} className="btn-ghost text-sm flex-1">
+        <div className="draft-actions flex mt-6">
+          <button type="button" onClick={openDraftSaveModal} className="btn-ghost text-sm w-full">
             <Save className="w-4 h-4" /> Save Draft
-          </button>
-          <button type="button" onClick={handleLoadDraft} className="btn-ghost text-sm flex-1">
-            <FolderOpen className="w-4 h-4" /> Load Draft
           </button>
         </div>
 
@@ -1265,6 +1322,58 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
           <p className="text-center text-sm mt-4" style={{ color: 'var(--color-teal-dark)' }}>{draftMsg}</p>
         )}
       </div>
+
+
+      {loadDraftModalOpen && <div className="fixed inset-0 z-[125] grid place-items-center p-4 bg-black/45 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="load-draft-title" onClick={() => setLoadDraftModalOpen(false)}>
+        <div className="w-full max-w-lg rounded-3xl p-6 shadow-2xl" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }} onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h2 id="load-draft-title" className="font-serif text-2xl font-semibold" style={{ color: 'var(--color-text)' }}>Load Draft</h2>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Select one of your saved drafts to bring it back into this form. Up to 5 drafts per account.</p>
+            </div>
+            <button type="button" onClick={() => setLoadDraftModalOpen(false)} className="p-2 rounded-xl shrink-0" aria-label="Close load draft"><X className="w-5 h-5" /></button>
+          </div>
+          {orderedDrafts.length === 0 ? (
+            <div className="rounded-2xl p-6 text-center" style={{ background: 'rgba(0,151,178,.06)', border: '1px solid var(--color-border)' }}>
+              <Save className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--color-teal-dark)', opacity: .7 }} />
+              <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>No saved drafts yet</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Use the Save Draft button at the bottom of this form to create one.</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
+              {orderedDrafts.map((draft, index) => (
+                <button key={draft.id} type="button" onClick={() => void handleLoadSelectedDraft(draft.id)} className="w-full text-left rounded-2xl p-4 transition-all hover:-translate-y-0.5" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl grid place-items-center shrink-0 font-semibold text-sm" style={{ background: 'rgba(0,151,178,.1)', color: 'var(--color-teal-dark)' }}>{index + 1}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold truncate" style={{ color: 'var(--color-text)' }}>{draft.name}</div>
+                      <div className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Saved {new Date(draft.updated_at || draft.created_at).toLocaleString()}</div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} />
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>}
+
+      {draftModalOpen && <div className="fixed inset-0 z-[120] grid place-items-center p-4 bg-black/45 backdrop-blur-sm" role="dialog" aria-modal="true" onClick={() => setDraftModalOpen(false)}>
+        <div className="w-full max-w-md rounded-3xl p-6" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }} onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-4"><div><h2 className="font-serif text-2xl font-semibold" style={{ color: 'var(--color-text)' }}>Save Draft</h2><p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Up to 5 drafts per account.</p></div><button type="button" onClick={() => setDraftModalOpen(false)}><X className="w-5 h-5" /></button></div>
+          <input value={draftName} onChange={(e) => setDraftName(e.target.value)} placeholder={form.title.trim() || `Draft [${Math.min(savedDrafts.length + 1, 5)}]`} className="input-field w-full" autoFocus />
+          <div className="flex gap-2 mt-4"><button type="button" onClick={() => setDraftModalOpen(false)} className="btn-ghost flex-1">Cancel</button><button type="button" onClick={() => void confirmSaveDraft()} className="btn-primary flex-1">Save Draft</button></div>
+        </div>
+      </div>}
+
+      {reservationModalOpen && <div className="fixed inset-0 z-[120] grid place-items-center p-4 bg-black/45 backdrop-blur-sm" role="dialog" aria-modal="true" onClick={() => setReservationModalOpen(false)}>
+        <div className="w-full max-w-md rounded-3xl p-6" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }} onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-4"><div><h2 className="font-serif text-2xl font-semibold" style={{ color: 'var(--color-text)' }}>Reserve a Book</h2><p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>No review is required right now.</p></div><button type="button" onClick={() => setReservationModalOpen(false)}><X className="w-5 h-5" /></button></div>
+          <div className="space-y-3"><input value={reservationBook} onChange={(e) => setReservationBook(e.target.value)} placeholder="Book name" className="input-field w-full" autoFocus required /><input value={reservationAuthor} onChange={(e) => setReservationAuthor(e.target.value)} placeholder="Author name (optional)" className="input-field w-full" /></div>
+          <div className="mt-4 rounded-2xl p-3 text-xs leading-relaxed" style={{ background: 'rgba(0,151,178,.08)', color: 'var(--color-text)' }}><b>Important:</b> An admin must accept your reservation request before the book is reserved. Filling out this window alone does not reserve the book.</div>
+          <div className="flex gap-2 mt-4"><button type="button" onClick={() => setReservationModalOpen(false)} className="btn-ghost flex-1">Cancel</button><button type="button" disabled={reservationSubmitting} onClick={() => void submitReservation()} className="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50" style={{ background: 'var(--color-teal-dark)' }}>{reservationSubmitting ? 'Sending...' : 'Request Reservation'}</button></div>
+        </div>
+      </div>}
     </div>
   );
 }

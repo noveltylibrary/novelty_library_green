@@ -5,6 +5,7 @@ import type { ProfileQuestion } from '@/lib/profileQuestions';
 import { NlLogo } from '@/components/NlLogo';
 import { rwRatingToStars } from '@/components/RwStarRating';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
+import { answerImageUrls, answerText, decodeOtherAnswer } from '@/components/ProfileQuestionAnswer';
 
 export type ProfileCardData = {
   name: string | null;
@@ -103,6 +104,8 @@ function columnOverflows(root: HTMLElement): boolean {
   });
 }
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
+function imageAnswerGrid(urls: string[], cols: number): string { return urls.length <= 1 ? '1fr' : cols === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)'; }
 
 export function ProfileCard({ data, download = false }: { data: ProfileCardData; download?: boolean }) {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -252,7 +255,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
 
   const questions = data.questions.filter((q) => {
     const value = data.answers[q.key];
-    return q.show_in_profile_card !== false && value !== undefined && value !== null && String(value).trim() !== '';
+    return q.show_in_profile_card !== false && value !== undefined && value !== null && (q.type === 'image_upload' ? answerImageUrls(value).length > 0 : answerText(value).trim() !== '');
   }).slice(0, fit.qs);
   const reviews = data.publishedReviews.slice(0, fit.reviews);
   const hasJourney = !!(data.favoriteBook || data.favoriteAuthor || data.favoriteGenre || data.readingSince);
@@ -323,7 +326,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
   const qaCues = questions.map(() => cue(0.1));
   const qa = questions.length > 0 ? <div style={{ display: 'grid', gridTemplateColumns: cols === 2 ? '1fr' : '1fr 1fr', gap: s(10) }}>{questions.map((q, i) => { const mq = mv('pop', qaCues[i]); return <div key={q.id} className={mq.className} style={{ ...mq.style, borderRadius: s(20), padding: `${s(14)}px ${s(18)}px`, background: 'rgba(1,43,54,.5)', border: `1px solid ${C.line}` }}>
     <p style={{ fontSize: s(14), letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>{sanitizeUserText(q.question, 300)}</p>
-    <p style={{ fontSize: s(24), fontWeight: 600, marginTop: s(4), color: C.ink, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sanitizeUserText(String(data.answers[q.key]), 1200)}</p>
+    {q.type === 'image_upload' ? <div style={{ display: 'grid', gridTemplateColumns: imageAnswerGrid(answerImageUrls(data.answers[q.key]), cols), gap: s(6), marginTop: s(6) }}>{answerImageUrls(data.answers[q.key]).slice(0, Math.max(1, q.image_count || 1)).map((url, idx) => <img key={`${q.id}-${idx}`} src={safeExternalUrl(url) || undefined} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: s(12), border: `1px solid ${C.line}` }} />)}</div> : q.type === 'select_multiple' && Array.isArray(data.answers[q.key]) ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6), marginTop: s(6) }}>{(data.answers[q.key] as unknown[]).map((v, idx) => { const raw = String(v); const value = decodeOtherAnswer(raw).value || raw; return <span key={`${q.id}-${idx}`} style={{ borderRadius: 999, padding: `${s(6)}px ${s(10)}px`, background: 'rgba(34,211,238,.12)', border: `1px solid ${C.line}`, color: C.ink, fontSize: s(14), fontWeight: 700 }}>{sanitizeUserText(value, 180)}</span>; })}</div> : <p style={{ fontSize: s(24), fontWeight: 600, marginTop: s(4), color: C.ink, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sanitizeUserText(answerText(data.answers[q.key]), 1200)}</p>}
   </div>; })}</div> : null;
 
   const ig = cleanInstagram(data.instagram);

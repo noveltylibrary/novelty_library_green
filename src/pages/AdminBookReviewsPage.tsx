@@ -5,8 +5,9 @@ import { AdminMasterListPage } from '@/pages/AdminMasterListPage';
 import { AdminPostersPage } from '@/pages/AdminPostersPage';
 import { AdminPublishedReviewsPage } from '@/pages/AdminPublishedReviewsPage';
 import { AdminCommunityReviewsPage } from '@/pages/AdminCommunityReviewsPage';
+import { AdminReservedBookReviewsPage } from '@/pages/AdminReservedBookReviewsPage';
 
-export type BookReviewsTab = 'submitted' | 'accepted' | 'published' | 'community' | 'posters';
+export type BookReviewsTab = 'submitted' | 'accepted' | 'published' | 'reserved' | 'posters' | 'community';
 
 interface AdminBookReviewsPageProps {
   navigate: (path: string) => void;
@@ -19,8 +20,9 @@ const TABS: { key: BookReviewsTab; label: string; icon: typeof Send }[] = [
   { key: 'submitted', label: 'Submitted Reviews List', icon: Send },
   { key: 'accepted', label: 'Accepted Reviews List', icon: CheckCircle2 },
   { key: 'published', label: 'Publishing Queue', icon: Globe2 },
-  { key: 'community', label: 'Community Reviews', icon: Globe2 },
+  { key: 'reserved', label: 'Reserved Book Reviews List', icon: BookMarked },
   { key: 'posters', label: 'Posters', icon: FolderOpen },
+  { key: 'community', label: 'Community Reviews', icon: Globe2 },
 ];
 
 export function AdminBookReviewsPage({ navigate, tab }: AdminBookReviewsPageProps) {
@@ -93,8 +95,9 @@ export function AdminBookReviewsPage({ navigate, tab }: AdminBookReviewsPageProp
       {tab === 'submitted' && <AdminReviewsPage navigate={navigate} embedded />}
       {tab === 'accepted' && <AdminMasterListPage navigate={navigate} embedded />}
       {tab === 'published' && <AdminPublishedReviewsPage navigate={navigate} embedded />}
-      {tab === 'community' && <AdminCommunityReviewsPage navigate={navigate} embedded />}
+      {tab === 'reserved' && <AdminReservedBookReviewsPage navigate={navigate} embedded />}
       {tab === 'posters' && <AdminPostersPage navigate={navigate} embedded />}
+      {tab === 'community' && <AdminCommunityReviewsPage navigate={navigate} embedded />}
     </div>
   );
 }

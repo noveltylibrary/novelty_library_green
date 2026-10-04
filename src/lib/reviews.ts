@@ -695,52 +695,205 @@ export async function deleteReview(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function saveDraft(draftData: Record<string, unknown>): Promise<void> {
+export interface SavedReviewDraft {
+  id: string;
+  name: string;
+  draft_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function saveDraft(
+  draftData: Record<string, unknown>,
+  name: string,
+  draftId?: string,
+): Promise<SavedReviewDraft> {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData.user;
   if (!user) throw new Error('Must be signed in to save drafts');
 
+  const cleanedName = name.trim().slice(0, 120);
+  if (!cleanedName) throw new Error('Please enter a draft name.');
   const payload = { ...draftData, __savedAt: new Date().toISOString() };
-  const { data: existing, error: lookupError } = await supabase
-    .from('review_drafts')
-    .select('id')
-    .eq('user_id', user.id)
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (lookupError) throw lookupError;
+  const now = new Date().toISOString();
 
-  if (existing) {
-    const { error } = await supabase
+  if (draftId) {
+    const { data, error } = await supabase
       .from('review_drafts')
-      .update({ draft_data: payload, updated_at: new Date().toISOString() })
-      .eq('id', existing.id)
-      .eq('user_id', user.id);
+      .update({ name: cleanedName, draft_data: payload, updated_at: now })
+      .eq('id', draftId)
+      .eq('user_id', user.id)
+      .select('id,name,draft_data,created_at,updated_at')
+      .single();
     if (error) throw error;
-    return;
+    return data as SavedReviewDraft;
   }
 
-  const { error } = await supabase
+  const { count, error: countError } = await supabase
     .from('review_drafts')
-    .insert({ draft_data: payload, user_id: user.id, updated_at: new Date().toISOString() });
-  if (error) throw error;
-}
-
-export async function loadDraft(): Promise<Record<string, unknown> | null> {
-  const { data: userData } = await supabase.auth.getUser();
-  const user = userData.user;
-  if (!user) return null;
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id);
+  if (countError) throw countError;
+  if ((count ?? 0) >= 5) throw new Error('You can save up to 5 drafts per account. Load an existing draft and save it again to update it.');
 
   const { data, error } = await supabase
     .from('review_drafts')
-    .select('draft_data')
+    .insert({ name: cleanedName, draft_data: payload, user_id: user.id, updated_at: now })
+    .select('id,name,draft_data,created_at,updated_at')
+    .single();
+  if (error) throw error;
+  return data as SavedReviewDraft;
+}
+
+export async function loadDrafts(): Promise<SavedReviewDraft[]> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('review_drafts')
+    .select('id,name,draft_data,created_at,updated_at')
     .eq('user_id', user.id)
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as SavedReviewDraft[];
+}
+
+export async function loadDraft(id?: string): Promise<Record<string, unknown> | null> {
+  const drafts = await loadDrafts();
+  const chosen = id ? drafts.find((d) => d.id === id) : drafts[0];
+  return chosen?.draft_data ?? null;
+}
+
+export interface BookReservation {
+  id: string;
+  user_id: string | null;
+  book_name: string;
+  author_name: string | null;
+  status: 'pending' | 'accepted' | 'rejected';
+  admin_note: string | null;
+  admin_id: string | null;
+  created_at: string;
+  updated_at: string;
+  requester_name?: string | null;
+  requester_email?: string | null;
+}
+
+export async function checkBookAvailability(title: string): Promise<{ unavailable: boolean; reason: 'reviewed' | 'reserved' | 'available' }> {
+  const cleaned = title.trim();
+  if (!cleaned) return { unavailable: false, reason: 'available' };
+  const { data, error } = await supabase.rpc('check_book_availability', { p_title: cleaned });
+  if (error) throw error;
+  return (data ?? { unavailable: false, reason: 'available' }) as { unavailable: boolean; reason: 'reviewed' | 'reserved' | 'available' };
+}
+
+export async function createBookReservation(bookName: string, authorName?: string): Promise<BookReservation> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+  if (!user) throw new Error('You must be signed in to reserve a book.');
+  const title = bookName.trim();
+  if (!title) throw new Error('Book name is required.');
+  const availability = await checkBookAvailability(title);
+  if (availability.unavailable) throw new Error(availability.reason === 'reserved' ? 'This book is already reserved. Please pick another book.' : 'This book is already reviewed. Please pick another book.');
+
+  const { data, error } = await supabase
+    .from('book_reservations')
+    .insert({ user_id: user.id, book_name: title, author_name: authorName?.trim() || null, status: 'pending' })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as BookReservation;
+}
+
+export async function fetchBookReservationsForAdmin(): Promise<BookReservation[]> {
+  // book_reservations.user_id references auth.users(id), not public.profiles(id),
+  // so PostgREST cannot use profiles:user_id as a foreign-key relationship.
+  // Fetch the reservations first, then hydrate requester details from profiles
+  // using the authenticated user's UUID. This avoids PGRST200 while preserving
+  // the existing database relationship.
+  const { data: reservations, error: reservationError } = await supabase
+    .from('book_reservations')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (reservationError) throw reservationError;
+
+  const rows = (reservations ?? []) as BookReservation[];
+  const userIds = Array.from(
+    new Set(rows.map((row) => row.user_id).filter((id): id is string => Boolean(id)))
+  );
+
+  if (!userIds.length) {
+    return rows.map((row) => ({
+      ...row,
+      requester_name: null,
+      requester_email: null,
+    }));
+  }
+
+  const { data: profiles, error: profileError } = await supabase
+    .from('profiles')
+    .select('id,name,email')
+    .in('id', userIds);
+
+  // A missing profile should not prevent admins from seeing the reservation.
+  // Keep the reservation itself visible and simply omit requester details.
+  if (profileError) {
+    return rows.map((row) => ({
+      ...row,
+      requester_name: null,
+      requester_email: null,
+    }));
+  }
+
+  const profileMap = new Map(
+    (profiles ?? []).map((profile) => [profile.id, profile as { id: string; name?: string | null; email?: string | null }])
+  );
+
+  return rows.map((row) => {
+    const profile = row.user_id ? profileMap.get(row.user_id) : undefined;
+    return {
+      ...row,
+      requester_name: profile?.name ?? null,
+      requester_email: profile?.email ?? null,
+    };
+  });
+}
+
+export async function updateBookReservationStatus(id: string, status: 'accepted' | 'rejected', adminNote?: string): Promise<void> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new Error('You must be signed in.');
+  const { error } = await supabase
+    .from('book_reservations')
+    .update({ status, admin_note: adminNote?.trim() || null, admin_id: userData.user.id, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteBookReservation(id: string): Promise<void> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new Error('You must be signed in.');
+
+  const { error } = await supabase
+    .from('book_reservations')
+    .delete()
+    .eq('id', id);
 
   if (error) throw error;
-  return (data as { draft_data: Record<string, unknown> } | null)?.draft_data ?? null;
+}
+
+export async function adminCreateBookReservation(bookName: string, authorName?: string): Promise<BookReservation> {
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) throw new Error('You must be signed in.');
+  const availability = await checkBookAvailability(bookName);
+  if (availability.unavailable) throw new Error(availability.reason === 'reserved' ? 'This book is already reserved.' : 'This book is already reviewed.');
+  const { data, error } = await supabase
+    .from('book_reservations')
+    .insert({ user_id: null, book_name: bookName.trim(), author_name: authorName?.trim() || null, status: 'accepted', admin_id: authData.user.id })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as BookReservation;
 }
 
 export async function getProfile(uid: string): Promise<Profile | null> {

@@ -1,3 +1,4 @@
+import { lazy, Suspense, useState, Component, type ReactNode } from 'react';
 import { useRouter } from '@/lib/router';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { ThemeProvider } from '@/lib/theme';
@@ -10,6 +11,7 @@ import { ReviewsPage } from '@/pages/ReviewsPage';
 import { ReviewPage } from '@/pages/ReviewPage';
 import { BlogReviewPage } from '@/pages/BlogReviewPage';
 import { SubmitPage } from '@/pages/SubmitPage';
+import { ReviewGuidelinesPage } from '@/pages/ReviewGuidelinesPage';
 import { AboutPage } from '@/pages/AboutPage';
 import { PrivacyPage } from '@/pages/PrivacyPage';
 import { TermsPage } from '@/pages/TermsPage';
@@ -28,10 +30,24 @@ import { NotificationsPage } from '@/pages/NotificationsPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { AdminFinancesPage } from '@/pages/AdminFinancesPage';
 import { AdminPagesModerationPage } from '@/pages/AdminPagesModerationPage';
+import { AdminReservedBookReviewsPage } from '@/pages/AdminReservedBookReviewsPage';
+
+
+const OnboardingModal = lazy(() => import('@/components/OnboardingModal').then((module) => ({ default: module.OnboardingModal })));
+
+class OnboardingErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch() {
+    try { localStorage.setItem('nl_onboarding_dismissed', 'true'); } catch { /* ignore */ }
+  }
+  render() { return this.state.failed ? null : this.props.children; }
+}
 
 function AppContent() {
   const { route, navigate } = useRouter();
   const { user, isAdmin } = useAuth();
+  const [splashComplete, setSplashComplete] = useState(false);
 
   const currentRouteName = route.name;
 
@@ -45,6 +61,7 @@ function AppContent() {
         {route.name === 'review' && <ReviewPage slug={route.slug} navigate={navigate} />}
         {route.name === 'blog-review' && <BlogReviewPage id={route.id} navigate={navigate} />}
         {route.name === 'submit' && <SubmitPage navigate={navigate} />}
+        {route.name === 'review-guidelines' && <ReviewGuidelinesPage navigate={navigate} />}
         {route.name === 'about' && <AboutPage navigate={navigate} />}
         {route.name === 'privacy' && <PrivacyPage navigate={navigate} />}
         {route.name === 'terms' && <TermsPage navigate={navigate} />}
@@ -65,7 +82,8 @@ function AppContent() {
       </main>
       <Footer navigate={navigate} />
       <InstallPrompt />
-      <SplashIntro />
+      <SplashIntro onComplete={() => setSplashComplete(true)} />
+      <OnboardingErrorBoundary><Suspense fallback={null}><OnboardingModal splashComplete={splashComplete} navigate={navigate} suppressOnPublicRoute={currentRouteName === 'review-guidelines'} /></Suspense></OnboardingErrorBoundary>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabase';
 /**
  * Client-side image gate for Storage uploads (v3.1).
  *
@@ -28,14 +29,23 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number):
   return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
 }
 
-export async function prepareImageForUpload(file: File): Promise<File> {
+export async function prepareImageForUpload(file: File, maxWidth = 3000, maxHeight = 3000): Promise<File> {
   const lowerName = file.name.toLowerCase();
   if (file.type === 'image/svg+xml' || lowerName.endsWith('.svg') || !file.type.startsWith('image/')) {
     throw new Error('Please choose a JPEG, PNG or WebP image.');
   }
 
-  // Already compliant -> upload untouched.
-  if (isAllowed(file.type) && file.size <= MAX_UPLOAD_BYTES) return file;
+  // Keep compliant files untouched only when they already fit the configured resolution.
+  if (isAllowed(file.type) && file.size <= MAX_UPLOAD_BYTES) {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const fitsResolution = bitmap.width <= maxWidth && bitmap.height <= maxHeight;
+      bitmap.close();
+      if (fitsResolution) return file;
+    } catch {
+      // Fall through to the normal conversion path.
+    }
+  }
 
   // Otherwise re-encode as WebP, shrinking until it fits.
   let bitmap: ImageBitmap;
@@ -45,10 +55,11 @@ export async function prepareImageForUpload(file: File): Promise<File> {
     throw new Error('That image format is not supported. Please use JPEG, PNG or WebP.');
   }
 
-  let maxSide = 3000;
+  let maxW = Math.max(320, maxWidth);
+  let maxH = Math.max(320, maxHeight);
   try {
     for (let attempt = 0; attempt < 5; attempt++) {
-      const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+      const scale = Math.min(1, maxW / bitmap.width, maxH / bitmap.height);
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(bitmap.width * scale));
       canvas.height = Math.max(1, Math.round(bitmap.height * scale));
@@ -63,10 +74,27 @@ export async function prepareImageForUpload(file: File): Promise<File> {
           return new File([blob], `${base}.webp`, { type: 'image/webp' });
         }
       }
-      maxSide = Math.round(maxSide * 0.75);
+      maxW = Math.round(maxW * 0.75);
+      maxH = Math.round(maxH * 0.75);
     }
   } finally {
     bitmap.close();
   }
   throw new Error('That image is larger than 5 MB and could not be compressed. Please pick a smaller one.');
+}
+
+
+export async function uploadProfileQuestionImage(rawFile: File, userId: string, questionKey: string, limits?: { maxWidth?: number; maxHeight?: number }): Promise<{ path: string; publicUrl: string }> {
+  const file = await prepareImageForUpload(rawFile, limits?.maxWidth ?? 3000, limits?.maxHeight ?? 3000);
+  const safeQuestionKey = questionKey.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'question';
+  const ext = extForImageType(file.type);
+  const path = `${userId}/${safeQuestionKey}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from('profile-question-images').upload(path, file, {
+    contentType: file.type,
+    cacheControl: '31536000',
+    upsert: false,
+  });
+  if (error) throw error;
+  const { data: urlData } = supabase.storage.from('profile-question-images').getPublicUrl(path);
+  return { path, publicUrl: urlData.publicUrl };
 }
