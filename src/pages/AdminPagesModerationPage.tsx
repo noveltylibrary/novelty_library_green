@@ -15,7 +15,7 @@ import {
   type ProfileQuestionSection,
 } from '@/lib/profileQuestions';
 
-const PAGE_KEYS = ['review-guidelines', 'about', 'privacy', 'terms'] as const;
+const PAGE_KEYS = ['review-guidelines', 'about', 'privacy', 'terms', 'cookies', 'cookie-banner'] as const;
 const QUESTION_TYPES: { value: ProfileQuestionType; label: string }[] = [
   { value: 'short_text', label: 'Short answer' },
   { value: 'long_text', label: 'Paragraph' },
@@ -273,7 +273,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
             <strong className="block">{PAGE_DEFAULTS[key].title}</strong><span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>/{key}</span>
           </button>)}
           <div className="pt-2 border-t" style={{ borderColor: 'var(--color-border)' }}>
-            <button className="w-full btn-ghost text-xs" onClick={() => navigate(`/${active}`)}><ExternalLink className="w-3.5 h-3.5" /> Preview page</button>
+            <button className="w-full btn-ghost text-xs" onClick={() => navigate(active === 'cookie-banner' ? '/cookies' : `/${active}`)}><ExternalLink className="w-3.5 h-3.5" /> Preview page</button>
           </div>
         </aside>
 
@@ -284,7 +284,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
           </div>
           <div className="space-y-4">
             <div><label className="label">Page title</label><input value={title} onChange={e => setTitle(e.target.value)} className="input-field" /></div>
-            <div><label className="label">Page copy</label><textarea value={content} onChange={e => setContent(e.target.value)} className="input-field min-h-[520px] resize-y font-mono text-sm leading-6" /></div>
+            <div><label className="label">{active === 'cookie-banner' ? 'Banner message (shown in the accept-cookies bar)' : 'Page copy'}</label><textarea value={content} onChange={e => setContent(e.target.value)} className="input-field min-h-[520px] resize-y font-mono text-sm leading-6" /></div>
           </div>
         </section>}
       </div>

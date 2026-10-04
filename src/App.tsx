@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, Component, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, Component, type ReactNode } from 'react';
 import { useRouter } from '@/lib/router';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { ThemeProvider } from '@/lib/theme';
@@ -15,6 +15,8 @@ import { ReviewGuidelinesPage } from '@/pages/ReviewGuidelinesPage';
 import { AboutPage } from '@/pages/AboutPage';
 import { PrivacyPage } from '@/pages/PrivacyPage';
 import { TermsPage } from '@/pages/TermsPage';
+import { CookiesPage } from '@/pages/CookiesPage';
+import { CookieBanner } from '@/components/CookieBanner';
 import { AuthPage } from '@/pages/AuthPage';
 import { AdminHubPage } from '@/pages/AdminHubPage';
 import { AdminReviewsPage } from '@/pages/AdminReviewsPage';
@@ -51,6 +53,17 @@ function AppContent() {
 
   const currentRouteName = route.name;
 
+  // After re-verifying with Google from the Account page, return there.
+  useEffect(() => {
+    if (!user) return;
+    try {
+      if (sessionStorage.getItem('nl_return_to') === '/account') {
+        sessionStorage.removeItem('nl_return_to');
+        navigate('/account');
+      }
+    } catch { /* ignore */ }
+  }, [user, navigate]);
+
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
       <Header navigate={navigate} currentRoute={currentRouteName} user={user} isAdmin={isAdmin} />
@@ -65,6 +78,7 @@ function AppContent() {
         {route.name === 'about' && <AboutPage navigate={navigate} />}
         {route.name === 'privacy' && <PrivacyPage navigate={navigate} />}
         {route.name === 'terms' && <TermsPage navigate={navigate} />}
+        {route.name === 'cookies' && <CookiesPage navigate={navigate} />}
         {route.name === 'auth' && <AuthPage navigate={navigate} />}
         {route.name === 'admin' && <AdminHubPage navigate={navigate} />}
         {route.name === 'admin-reviews' && <AdminReviewsPage navigate={navigate} />}
@@ -82,6 +96,7 @@ function AppContent() {
       </main>
       <Footer navigate={navigate} />
       <InstallPrompt />
+      <CookieBanner navigate={navigate} />
       <SplashIntro onComplete={() => setSplashComplete(true)} />
       <OnboardingErrorBoundary><Suspense fallback={null}><OnboardingModal splashComplete={splashComplete} navigate={navigate} suppressOnPublicRoute={currentRouteName === 'review-guidelines'} /></Suspense></OnboardingErrorBoundary>
     </div>

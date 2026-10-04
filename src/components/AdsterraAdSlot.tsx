@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useCookieConsent } from '@/lib/cookieConsent';
 
 interface AdsterraAdSlotProps {
   className?: string;
@@ -25,8 +26,10 @@ type AdWindow = Window & {
  */
 export function AdsterraAdSlot({ className = '' }: AdsterraAdSlotProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const consent = useCookieConsent();
 
   useEffect(() => {
+    if (consent !== 'all') return; // ads (third-party cookies) load only after "Accept all"
     const container = containerRef.current;
     if (!container) return;
 
@@ -66,7 +69,9 @@ export function AdsterraAdSlot({ className = '' }: AdsterraAdSlotProps) {
     return () => {
       container.innerHTML = '';
     };
-  }, []);
+  }, [consent]);
+
+  if (consent !== 'all') return null;
 
   return (
     <div className={`adsterra-slot ${className}`} aria-label="Advertisement">

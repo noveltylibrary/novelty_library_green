@@ -11,6 +11,7 @@ export type Route =
   | { name: 'about' }
   | { name: 'privacy' }
   | { name: 'terms' }
+  | { name: 'cookies' }
   | { name: 'auth' }
   | { name: 'admin' }
   | { name: 'admin-reviews' }
@@ -37,6 +38,7 @@ function parseHash(): Route {
   if (parts[0] === 'about') return { name: 'about' };
   if (parts[0] === 'privacy') return { name: 'privacy' };
   if (parts[0] === 'terms') return { name: 'terms' };
+  if (parts[0] === 'cookies') return { name: 'cookies' };
   if (parts[0] === 'auth') return { name: 'auth' };
   if (parts[0] === 'admin') {
     if (parts[1] === 'reviews') return { name: 'admin-reviews' };

@@ -194,6 +194,35 @@ For privacy inquiries, data deletion requests, or grievances, contact Novelty Li
 Right to Modify
 We may update this notice periodically to reflect platform improvements.`,
   },
+  cookies: {
+    title: 'Cookie Policy',
+    content: `Last updated: October 2026
+
+What are cookies?
+Cookies and similar technologies (such as local storage) are small pieces of data stored on your device when you visit Novelty Library. They help the site work, keep you signed in, and remember your preferences.
+
+Essential cookies and storage
+These are required for the site to function and cannot be switched off. They keep you signed in securely, remember your theme and onboarding choices, and store your cookie preference. They are set by Novelty Library and our authentication provider (Supabase).
+
+Sign-in with Google
+If you choose "Continue with Google", Google may set its own cookies while you sign in. Their use is governed by Google's privacy policy.
+
+Advertising and third-party cookies
+Novelty Library may show ads from third-party networks. These providers may set cookies to serve and measure ads. We only load advertising content after you select "Accept all". If you choose "Essential only", no advertising cookies are requested by us.
+
+Managing your choice
+You can change your decision at any time by using "Cookie settings" in the footer, or by clearing cookies and site data in your browser settings.
+
+Contact
+For questions about this policy, contact Novelty Library support using the email address shown in the footer of this site.
+
+Right to Modify
+We may update this policy periodically to reflect platform improvements.`,
+  },
+  'cookie-banner': {
+    title: 'Cookie bar message',
+    content: `We use cookies to keep you signed in, remember your preferences and, if you allow it, show ads. Read our Cookie Policy for details.`,
+  },
   terms: {
     title: 'Terms of Service & Fair Use',
     content: `Last updated: September 2026

@@ -82,7 +82,7 @@ export function AdminHubPage({ navigate }: AdminHubPageProps) {
     },
     {
       title: 'WebApp Pages Moderation',
-      desc: 'Edit About, Privacy Policy and Terms copy from one protected admin editor.',
+      desc: 'Edit About, Privacy Policy, Terms and Cookie Policy (and cookie bar) copy from one protected admin editor.',
       icon: FileText,
       path: '/admin/pages',
       gradient: 'linear-gradient(135deg, #164e63 0%, #0f766e 100%)',

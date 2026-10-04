@@ -25,7 +25,7 @@ interface GuideImage { file: string; alt: string; caption: string }
 // so they still land correctly when an admin renames or re-orders sections).
 const SECTION_IMAGES: { match: RegExp; images: GuideImage[] }[] = [
   { match: /introduction|vision/i, images: [
-    { file: 'guide-v4-update', alt: 'V4.0 new update: Smart Auto-Fill replaces the V3.0 Smart Form, with Search & Auto-fill, Light/Dark Mode and IG Story Poster', caption: 'From V3.0 Smart Form to V4.0 Smart Auto-Fill' },
+    { file: 'guide-v4-update', alt: 'V4.0 new update: Smart Auto-Fill replaces the V3.0 Smart Form, with Search & Auto-fill, Light/Dark Mode and IG Story Poster', caption: 'V3.0 to V4.0: Smart Auto-Fill' },
   ] },
   { match: /form[\s-]*guide|step[\s-]*by[\s-]*step/i, images: [
     { file: 'guide-picture-guide', alt: 'Picture Addition Guide: upload a clear cover picture, background-removed preferred, and use Quick Search & Add', caption: 'Picture Addition Guide' },
@@ -38,10 +38,10 @@ const SECTION_IMAGES: { match: RegExp; images: GuideImage[] }[] = [
 
 const PAGE_CSS = `
   .ng-header { margin: 0 0 22px; display: flex; justify-content: center; }
-  .ng-header-frame { position: relative; width: 100%; max-width: 600px; border-radius: 26px; overflow: hidden; box-shadow: 0 26px 60px rgba(2,6,23,.26); border: 1px solid rgba(103,232,249,.28); background: #04141c; line-height: 0; }
-  .ng-header-frame img { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; }
+  .ng-header-frame { position: relative; width: 100%; border-radius: 26px; overflow: hidden; box-shadow: 0 26px 60px rgba(2,6,23,.26); border: 1px solid rgba(103,232,249,.28); background: #04141c; line-height: 0; }
+  .ng-header-frame img { display: block; width: 100%; height: auto; aspect-ratio: 1600 / 840; }
   /* Transparent link sitting exactly on the "SUBMIT NOW" pill baked into the header image */
-  .ng-submit-cta { position: absolute; left: 35.3%; top: 87.1%; width: 30.4%; height: 6.4%; border-radius: 999px; overflow: hidden; display: block; cursor: pointer; text-decoration: none; -webkit-tap-highlight-color: transparent; animation: ng-cta-pulse 2.2s ease-out infinite; transition: transform .2s ease, filter .2s ease; }
+  .ng-submit-cta { position: absolute; left: 64.63%; top: 72.86%; width: 24.25%; height: 9.52%; border-radius: 999px; overflow: hidden; display: block; cursor: pointer; text-decoration: none; -webkit-tap-highlight-color: transparent; animation: ng-cta-pulse 2.2s ease-out infinite; transition: transform .2s ease, filter .2s ease; }
   .ng-submit-cta::after { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 45%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.65), transparent); transform: skewX(-18deg); animation: ng-cta-shine 3s ease-in-out infinite; }
   .ng-submit-cta:hover, .ng-submit-cta:focus-visible { transform: scale(1.06); filter: brightness(1.12); animation-play-state: paused; outline: none; }
   .ng-submit-cta:focus-visible { box-shadow: 0 0 0 3px #fff, 0 0 0 6px #0e7490; }
@@ -51,18 +51,17 @@ const PAGE_CSS = `
   @media (prefers-reduced-motion: reduce) { .ng-submit-cta, .ng-submit-cta::after { animation: none !important; } .ng-submit-cta { transition: none; } }
   .ng-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-  .ng-figures { padding: 0 22px 22px; background: rgba(255,255,255,.66); display: grid; grid-template-columns: 1fr; gap: 14px; justify-items: center; }
+  .ng-figures { padding: 0 22px 22px; background: rgba(255,255,255,.66); display: grid; grid-template-columns: 1fr; gap: 14px; justify-items: stretch; }
   .dark .novelty-guide-outer-wrapper .ng-figures { background: rgba(3,20,27,.44); }
-  @media (min-width: 900px) { .ng-figures.ng-multi { grid-template-columns: 1fr 1fr; align-items: start; } }
-  .ng-figure { margin: 0; width: 100%; max-width: 520px; }
+  .ng-figure { margin: 0; width: 100%; }
   .ng-figure .novelty-img-container { margin: 0; }
   .ng-zoom { position: relative; display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; line-height: 0; }
-  .ng-zoom img { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; background: rgba(8,145,178,.08); }
+  .ng-zoom img { display: block; width: 100%; height: auto; aspect-ratio: 1600 / 840; background: rgba(8,145,178,.08); }
   .ng-zoom-badge { position: absolute; right: 10px; top: 10px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: rgba(2,20,26,.7); color: #cffafe; opacity: .85; }
   .ng-figure figcaption { margin-top: 8px; text-align: center; font-size: .74rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--novelty-teal-dark); opacity: .8; line-height: 1.4; }
 
   .ng-lightbox { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 16px; background: rgba(2,10,14,.88); backdrop-filter: blur(6px); animation: fadeIn .2s ease-out; }
-  .ng-lightbox img { max-width: min(96vw, 92vh); max-height: 92vh; width: auto; height: auto; border-radius: 16px; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+  .ng-lightbox img { max-width: 96vw; max-height: 92vh; width: auto; height: auto; border-radius: 16px; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
   .ng-lightbox button { position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.14); color: #fff; border: 0; cursor: pointer; }
 `;
 
@@ -109,7 +108,7 @@ export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
         <div className="novelty-guide-wrapper">
           <header className="ng-header">
             <div className="ng-header-frame">
-              <img src={ASSET('guide-header')} width={1200} height={1200} alt="Novelty Library review guidelines: free, unlimited, no deadline" fetchPriority="high" decoding="async" />
+              <img src={ASSET('guide-header')} width={1600} height={840} alt="Novelty Library review guidelines: free, unlimited, no deadline" fetchPriority="high" decoding="async" />
               <a className="ng-submit-cta" href="#/submit" aria-label="Submit now: open the Submit Reviews page" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); navigate('/submit'); }}><span className="ng-sr-only">Submit now</span></a>
             </div>
           </header>
@@ -129,7 +128,7 @@ export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
             <div className="novelty-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(section.content_html, { ADD_ATTR: ['target', 'rel'], FORBID_TAGS: ['script','iframe','object','embed'] }) }} />
             {(() => { const imgs = sectionImages(section); return imgs.length ? <div className={`ng-figures${imgs.length > 1 ? ' ng-multi' : ''}`}>
               {imgs.map(img => <figure className="ng-figure" key={img.file}>
-                <div className="novelty-img-container"><button type="button" className="ng-zoom" onClick={() => setZoom(img)} aria-label={`Enlarge image: ${img.caption}`}><img src={ASSET(img.file)} width={1200} height={1200} alt={img.alt} loading="lazy" decoding="async" /><span className="ng-zoom-badge" aria-hidden="true"><ZoomIn className="w-4 h-4" /></span></button></div>
+                <div className="novelty-img-container"><button type="button" className="ng-zoom" onClick={() => setZoom(img)} aria-label={`Enlarge image: ${img.caption}`}><img src={ASSET(img.file)} width={1600} height={840} alt={img.alt} loading="lazy" decoding="async" /><span className="ng-zoom-badge" aria-hidden="true"><ZoomIn className="w-4 h-4" /></span></button></div>
                 <figcaption>{img.caption}</figcaption>
               </figure>)}
             </div> : null; })()}

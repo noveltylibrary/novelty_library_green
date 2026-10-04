@@ -101,6 +101,10 @@ export function Footer({ navigate }: FooterProps) {
             <button type="button" onClick={() => navigate('/privacy')} className="hover:underline underline-offset-2">Privacy Policy</button>
             <span aria-hidden="true">·</span>
             <button type="button" onClick={() => navigate('/terms')} className="hover:underline underline-offset-2">Terms of Service</button>
+            <span aria-hidden="true">·</span>
+            <button type="button" onClick={() => navigate('/cookies')} className="hover:underline underline-offset-2">Cookie Policy</button>
+            <span aria-hidden="true">·</span>
+            <button type="button" onClick={() => window.dispatchEvent(new Event('nl-open-cookie-settings'))} className="hover:underline underline-offset-2">Cookie settings</button>
           </div>
         </div>
         <p className="nl-footer-note">Reviews are opinions of individual reviewers, not cumulative assessments.</p>
