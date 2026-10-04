@@ -13,6 +13,7 @@ import { FeedbackList } from '@/components/FeedbackList';
 import { ReviewComments } from '@/components/ReviewComments';
 import { useAuth } from '@/lib/auth';
 import { computeNlRating, deleteFeedback, fetchFeedback, saveFeedback, useEngagement, type FeedbackEntry, type FeedbackInput } from '@/lib/engagement';
+import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
 
 interface ReviewPageProps {
   slug: string;
@@ -136,15 +137,15 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
             {review.poster_url ? (
               // Community poster: always 1:1, never cropped.
               <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-square" style={{ background: 'var(--color-paper)' }}>
-                <PosterImage src={review.poster_url} alt={review.title} />
+                <PosterImage src={review.poster_url} alt={sanitizeUserText(review.title, 200)} />
               </div>
             ) : (
               <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-[4/5]" style={{ background: 'var(--color-paper)' }}>
                 {review.cover_image_url ? (
-                  <img src={review.cover_image_url} alt={review.title} className="w-full h-full object-cover" />
+                  <img src={review.cover_image_url} alt={sanitizeUserText(review.title, 200)} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center gradient-teal">
-                    <span className="font-serif text-3xl text-white/30 px-4 text-center">{review.title}</span>
+                    <span className="font-serif text-3xl text-white/30 px-4 text-center">{sanitizeUserText(review.title, 200)}</span>
                   </div>
                 )}
               </div>
@@ -157,12 +158,12 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
               onLike={() => { if (requireAuth()) void engagement.toggleLike(review.id); }}
               onRate={openModal}
               onReview={openModal}
-              reviewTitle={review.title}
+              reviewTitle={sanitizeUserText(review.title, 200)}
             />
 
             {(review.poster_link || review.buy_link) && (
               <a
-                href={review.poster_link || review.buy_link || '#'}
+                href={safeExternalUrl(review.poster_link || review.buy_link) || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="nl-buy-now w-full mt-4"
@@ -175,18 +176,18 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
           {/* Content */}
           <div className="md:col-span-3 nl-fast-up" style={{ animationDelay: '40ms' }}>
             <div className="flex flex-wrap gap-2 mb-4">
-              <span className="nl-chip px-4 py-1.5 text-[13px] font-semibold">{review.genre}</span>
+              <span className="nl-chip px-4 py-1.5 text-[13px] font-semibold">{sanitizeUserText(review.genre, 80)}</span>
               {review.traits?.split(',').map((trait) => (
-                <span key={trait.trim()} className="px-3 py-1 rounded-full text-xs font-medium" style={{ background: 'rgba(0, 151, 178, 0.06)', color: 'var(--color-text-muted)' }}>
-                  {trait.trim()}
+                <span key={sanitizeUserText(trait.trim(), 60)} className="px-3 py-1 rounded-full text-xs font-medium" style={{ background: 'rgba(0, 151, 178, 0.06)', color: 'var(--color-text-muted)' }}>
+                  {sanitizeUserText(trait.trim(), 60)}
                 </span>
               ))}
             </div>
 
             <h1 className="font-serif text-4xl md:text-5xl font-semibold leading-tight tracking-tight mb-3 text-balance" style={{ color: 'var(--color-text)' }}>
-              {review.title}
+              {sanitizeUserText(review.title, 200)}
             </h1>
-            <p className="text-lg mb-6" style={{ color: 'var(--color-text-muted)' }}>by {review.author}</p>
+            <p className="text-lg mb-6" style={{ color: 'var(--color-text-muted)' }}>by {sanitizeUserText(review.author, 120)}</p>
 
             {/* Ratings */}
             <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -216,26 +217,26 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
                 </span>
               )}
               <span className="flex items-center gap-1.5">
-                <Globe className="w-4 h-4" /> {review.language}
+                <Globe className="w-4 h-4" /> {sanitizeUserText(review.language, 80)}
               </span>
               {review.translated_from && (
                 <span className="flex items-center gap-1.5">
-                  Translated from {review.translated_from}
+                  Translated from {sanitizeUserText(review.translated_from, 80)}
                 </span>
               )}
               {review.series_name && (
                 <span className="flex items-center gap-1.5">
-                  {review.series_name}{review.series_number ? ` #${review.series_number}` : ''}
+                  {sanitizeUserText(review.series_name, 120)}{review.series_number ? ` #${review.series_number}` : ''}
                 </span>
               )}
               {(review.reviewer_handle || review.novelty_username) && (
                 <span className="flex items-center gap-2">
                   {review.reviewer_handle && <Instagram className="w-4 h-4 shrink-0" />}
-                  {review.reviewer_handle && <span style={{ color: 'var(--color-cyan-dark)' }}>{review.reviewer_handle}</span>}
+                  {review.reviewer_handle && <span style={{ color: 'var(--color-cyan-dark)' }}>{sanitizeUserText(review.reviewer_handle, 80)}</span>}
                   {review.novelty_username && (
                     <button type="button" onClick={() => navigate(`/profile/@${encodeURIComponent(review.novelty_username!.replace(/^@/, ''))}`)} className="inline-flex items-center gap-1.5 font-semibold hover:underline" style={{ color: 'var(--color-teal-dark)' }}>
                       <span className="nl-handle-box" aria-hidden="true">NL</span>
-                      @{review.novelty_username.replace(/^@/, '')}
+                      @{sanitizeUserText(review.novelty_username.replace(/^@/, ''), 60)}
                     </button>
                   )}
                 </span>
@@ -246,7 +247,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
             <div className="prose-content">
               {review.review_text.split('\n\n').map((para, i) => (
                 <p key={i} className="leading-[1.8] mb-5 text-[15px] md:text-base" style={{ color: 'var(--color-text)' }}>
-                  {para}
+                  {sanitizeUserText(para, 12000)}
                 </p>
               ))}
             </div>
@@ -260,7 +261,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {review.labels.map((label) => (
-                    <span key={label} className="tag">{label}</span>
+                    <span key={label} className="tag">{sanitizeUserText(label, 80)}</span>
                   ))}
                 </div>
               </div>
@@ -288,7 +289,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
           </div>
         </div>
       </div>
-      <FeedbackModal open={modalOpen} reviewTitle={review.title} existing={myFeedback} onClose={() => setModalOpen(false)} onSubmit={submitFeedback} />
+      <FeedbackModal open={modalOpen} reviewTitle={sanitizeUserText(review.title, 200)} existing={myFeedback} onClose={() => setModalOpen(false)} onSubmit={submitFeedback} />
     </div>
   );
 }

@@ -1,13 +1,13 @@
 /**
  * Client-side image gate for Storage uploads (v3.1).
  *
- * The database/storage layer is the real enforcement (2 MB, JPEG/PNG/WebP
+ * The database/storage layer is the real enforcement (5 MB, JPEG/PNG/WebP
  * only — see the security_hardening migration). This helper keeps the UX
  * smooth: phone photos that are too big, or GIF/BMP/AVIF files, are quietly
  * converted to a compliant WebP instead of failing at upload time. SVG and
  * anything that is not a raster image is rejected outright (stored-XSS risk).
  */
-export const MAX_UPLOAD_BYTES = 2_097_152; // 2 MB
+export const MAX_UPLOAD_BYTES = 5_242_880; // 5 MB
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
 const EXT_BY_TYPE: Record<string, string> = {
@@ -45,7 +45,7 @@ export async function prepareImageForUpload(file: File): Promise<File> {
     throw new Error('That image format is not supported. Please use JPEG, PNG or WebP.');
   }
 
-  let maxSide = 2000;
+  let maxSide = 3000;
   try {
     for (let attempt = 0; attempt < 5; attempt++) {
       const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
@@ -68,5 +68,5 @@ export async function prepareImageForUpload(file: File): Promise<File> {
   } finally {
     bitmap.close();
   }
-  throw new Error('That image is larger than 2 MB and could not be compressed. Please pick a smaller one.');
+  throw new Error('That image is larger than 5 MB and could not be compressed. Please pick a smaller one.');
 }

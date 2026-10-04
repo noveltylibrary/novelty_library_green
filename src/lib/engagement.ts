@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import type { Profile } from '@/types/review';
+import { sanitizeUserText } from '@/lib/sanitize';
 
 export interface EngagementStats {
   likeCount: number;
@@ -44,7 +45,7 @@ export function computeNlRating(rwRating: number | null | undefined, stats?: Eng
 
 export function displayNameFor(user: User, profile: Profile | null): string {
   const name = profile?.name?.trim() || profile?.instagram_id?.trim() || user.email?.split('@')[0] || 'Reader';
-  return name.slice(0, 60);
+  return sanitizeUserText(name, 60).slice(0, 60);
 }
 
 /** Mirrors the review's engagement to the Google Sheet. Fire-and-forget: never blocks or breaks the UI. */
@@ -70,8 +71,8 @@ export async function saveFeedback(user: User, profile: Profile | null, reviewId
     user_id: user.id,
     user_name: displayNameFor(user, profile),
     rating: input.rating,
-    review_text: input.reviewText.trim(),
-    tags: input.tags,
+    review_text: sanitizeUserText(input.reviewText, 4000).trim(),
+    tags: input.tags.map((tag) => sanitizeUserText(tag, 60)).filter(Boolean).slice(0, 10),
   };
   const { error } = await supabase.from('community_review_feedback').upsert(row, { onConflict: 'review_id,user_id' });
   if (error) throw error;

@@ -2,6 +2,7 @@ import { RwStarRating } from '@/components/RwStarRating';
 import { PosterImage } from '@/components/PosterImage';
 import { EngagementBar } from '@/components/EngagementBar';
 import { computeNlRating, type EngagementStats } from '@/lib/engagement';
+import { sanitizeUserText } from '@/lib/sanitize';
 
 export interface CommunityReviewCardData {
   id: string;
@@ -37,8 +38,8 @@ export function CommunityReviewCard({ item, onClick, onPrefetch, index = 0, stat
 
   return (
     <article className="community-review-card group" style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }} onPointerEnter={onPrefetch} onTouchStart={onPrefetch} onFocus={onPrefetch}>
-      <div className="community-review-poster" onClick={onClick} role="link" aria-label={`Open review of ${item.title}`}>
-        <PosterImage src={item.coverImage} alt={item.title} />
+      <div className="community-review-poster" onClick={onClick} role="link" aria-label={`Open review of ${sanitizeUserText(item.title, 200)}`}>
+        <PosterImage src={item.coverImage} alt={sanitizeUserText(item.title, 200)} />
 
         {item.rwRating !== null && (
           <div className="absolute top-2 right-2 z-[2]" title="R/W Rating">

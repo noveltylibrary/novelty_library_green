@@ -24,17 +24,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const checkAdmin = useCallback(async (email: string | undefined) => {
-    if (!email) {
-      setIsAdmin(false);
-      return;
-    }
-    const { data } = await supabase
-      .from('admin_emails')
-      .select('email')
-      .eq('email', email)
-      .maybeSingle();
-    setIsAdmin(!!data);
+  const checkAdmin = useCallback(async () => {
+    const { data, error } = await supabase.rpc('is_admin');
+    setIsAdmin(!error && data === true);
   }, []);
 
   const loadProfile = useCallback(async (uid: string | undefined) => {
@@ -55,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       if (data.session?.user?.email) {
-        checkAdmin(data.session.user.email);
+        checkAdmin();
       }
       if (data.session?.user?.id) {
         loadProfile(data.session.user.id);
@@ -88,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          if (newUserEmail) await checkAdmin(newUserEmail);
+          if (newUserEmail) await checkAdmin();
           if (newUserId) await loadProfile(newUserId);
         }
 

@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { prepareImageForUpload, extForImageType } from '@/lib/imageUpload';
 import type { Review, ReviewStatus, Profile } from '@/types/review';
+import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
 
 function slugify(text: string): string {
   return text
@@ -313,30 +314,30 @@ export async function submitReview(input: {
   // `useAuth().profile` / `.user` rather than letting the reviewer type them.
   const reviewPayload = {
     slug,
-    title: input.title,
-    author: input.author,
-    genre: input.genre,
-    traits: input.traits || null,
-    language: input.language || 'English',
-    review_text: input.review_text,
+    title: sanitizeUserText(input.title, 300),
+    author: sanitizeUserText(input.author, 200),
+    genre: sanitizeUserText(input.genre, 100),
+    traits: input.traits ? sanitizeUserText(input.traits, 500) : null,
+    language: sanitizeUserText(input.language || 'English', 80),
+    review_text: sanitizeUserText(input.review_text, 20000),
     rw_rating: input.rw_rating,
     goodreads_rating: input.goodreads_rating || null,
     amazon_rating: input.amazon_rating || null,
-    reviewer_handle: input.reviewer_handle || null,
-    reviewer_name: input.reviewer_name || null,
-    reviewer_email: input.reviewer_email || null,
+    reviewer_handle: input.reviewer_handle ? sanitizeUserText(input.reviewer_handle, 100) : null,
+    reviewer_name: input.reviewer_name ? sanitizeUserText(input.reviewer_name, 120) : null,
+    reviewer_email: input.reviewer_email ? sanitizeUserText(input.reviewer_email, 320) : null,
     cover_image_url: input.cover_image_url || null,
     cover_storage_path: input.cover_storage_path || null,
-    buy_link: input.buy_link || null,
-    labels: input.labels || [],
+    buy_link: input.buy_link ? safeExternalUrl(input.buy_link) : null,
+    labels: (input.labels || []).map((x) => sanitizeUserText(x, 80)).filter(Boolean).slice(0, 20),
     published_at: new Date().toISOString().slice(0, 10),
     status: 'pending',
-    series_name: input.series_name || null,
+    series_name: input.series_name ? sanitizeUserText(input.series_name, 200) : null,
     series_number: input.series_number || null,
-    translated_from: input.translated_from || null,
+    translated_from: input.translated_from ? sanitizeUserText(input.translated_from, 80) : null,
     review_date: input.review_date || null,
-    heard_from: input.heard_from || null,
-    form_feedback: input.form_feedback || null,
+    heard_from: input.heard_from ? sanitizeUserText(input.heard_from, 120) : null,
+    form_feedback: input.form_feedback ? sanitizeUserText(input.form_feedback, 4000) : null,
     rating_integer: input.rating_integer || null,
     undertaking_accepted: input.undertaking_accepted || false,
     user_id: userId,
@@ -753,10 +754,35 @@ export async function getProfile(uid: string): Promise<Profile | null> {
 }
 
 export async function updateProfile(uid: string, fields: Partial<Profile>): Promise<void> {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ ...fields, updated_at: new Date().toISOString() })
-    .eq('id', uid);
+  // Never forward the whole Profile object to Supabase. In particular, role /
+  // is_admin fields (if introduced later) must never be writable through this
+  // generic client helper.
+  const allowed: Partial<Profile> = {};
+  const textFields = [
+    'name', 'instagram_id', 'website', 'novelty_username',
+    'favorite_book', 'favorite_author', 'favorite_genre',
+  ] as const;
+  for (const key of textFields) {
+    if (key in fields) (allowed as any)[key] = sanitizeUserText((fields as any)[key], 500).trim() || null;
+  }
+  for (const key of ['avatar_url', 'header_image_url'] as const) {
+    if (key in fields) (allowed as any)[key] = safeExternalUrl((fields as any)[key]);
+  }
+  if ('social_links' in fields) {
+    const links = Array.isArray(fields.social_links) ? fields.social_links : [];
+    (allowed as any).social_links = links.slice(0, 12).map((link) => ({
+      platform: sanitizeUserText(link?.platform, 40),
+      url: safeExternalUrl(link?.url) || '',
+    })).filter((link) => link.platform && link.url);
+  }
+  if ('profile_answers' in fields) (allowed as any).profile_answers = fields.profile_answers ?? {};
+  if ('books_read_this_month' in fields) (allowed as any).books_read_this_month = Math.max(0, Math.min(10000, Number(fields.books_read_this_month) || 0));
+  if ('total_books_read' in fields) (allowed as any).total_books_read = Math.max(0, Math.min(100000, Number(fields.total_books_read) || 0));
+  if ('reading_since' in fields) (allowed as any).reading_since = Number.isFinite(Number(fields.reading_since)) ? Number(fields.reading_since) : null;
+  if ('hide_followers' in fields) (allowed as any).hide_followers = Boolean(fields.hide_followers);
+  if ('hide_following' in fields) (allowed as any).hide_following = Boolean(fields.hide_following);
+  if ('profile_visibility' in fields) (allowed as any).profile_visibility = fields.profile_visibility ?? {};
+  const { error } = await supabase.from('profiles').update({ ...allowed, updated_at: new Date().toISOString() }).eq('id', uid);
   if (error) throw error;
 }
 

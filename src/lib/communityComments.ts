@@ -1,6 +1,7 @@
 import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/review';
 import { supabase } from '@/lib/supabase';
+import { sanitizeUserText } from '@/lib/sanitize';
 
 export interface ReviewComment {
   id: string;
@@ -41,11 +42,11 @@ export async function fetchReviewComments(reviewId: string, userId?: string): Pr
 }
 
 function displayName(user: User, profile: Profile | null) {
-  return (profile?.name?.trim() || profile?.novelty_username?.trim() || user.email?.split('@')[0] || 'Reader').slice(0, 60);
+  return sanitizeUserText(profile?.name?.trim() || profile?.novelty_username?.trim() || user.email?.split('@')[0] || 'Reader', 60).slice(0, 60);
 }
 
 export async function addReviewComment(user: User, profile: Profile | null, reviewId: string, text: string, parentId: string | null = null) {
-  const comment = text.trim();
+  const comment = sanitizeUserText(text, 800).trim();
   if (!comment) throw new Error('Write a comment first.');
   if (comment.length > 800) throw new Error('Comments are limited to 800 characters.');
   const { error } = await supabase.from('community_review_comments').insert({

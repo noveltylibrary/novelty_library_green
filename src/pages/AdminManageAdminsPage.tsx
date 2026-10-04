@@ -26,7 +26,8 @@ export function AdminManageAdminsPage({ navigate }: AdminManageAdminsPageProps) 
   }, [user?.id, isAdmin, authLoading]);
 
   const loadAdmins = async () => {
-    const { data } = await supabase.from('admin_emails').select('email').order('created_at', { ascending: false });
+    const { data, error } = await supabase.rpc('admin_list_admins');
+    if (error) throw error;
     setAdminEmails((data ?? []).map((r: { email: string }) => r.email));
   };
 
@@ -34,7 +35,7 @@ export function AdminManageAdminsPage({ navigate }: AdminManageAdminsPageProps) 
     if (!newAdminEmail.trim()) return;
     try {
       setAdminMsg(null);
-      const { error } = await supabase.from('admin_emails').insert({ email: newAdminEmail.trim() });
+      const { error } = await supabase.rpc('admin_add_admin', { p_email: newAdminEmail.trim() });
       if (error) throw error;
       setNewAdminEmail('');
       await loadAdmins();
@@ -62,7 +63,7 @@ export function AdminManageAdminsPage({ navigate }: AdminManageAdminsPageProps) 
     if (!confirm(`Remove ${email} from admins?`)) return;
     try {
       setAdminMsg(null);
-      const { error } = await supabase.from('admin_emails').delete().eq('email', email);
+      const { error } = await supabase.rpc('admin_remove_admin', { p_email: email });
       if (error) throw error;
       await loadAdmins();
       setAdminMsg(`Removed ${email} from admins`);

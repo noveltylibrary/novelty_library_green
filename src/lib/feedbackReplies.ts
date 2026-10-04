@@ -1,6 +1,7 @@
 import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/review';
 import { supabase } from '@/lib/supabase';
+import { sanitizeUserText } from '@/lib/sanitize';
 
 export interface FeedbackReply {
   id: string;
@@ -25,11 +26,11 @@ export async function fetchFeedbackReplies(feedbackIds: string[]): Promise<Feedb
 }
 
 function displayName(user: User, profile: Profile | null) {
-  return (profile?.name?.trim() || profile?.novelty_username?.trim() || user.email?.split('@')[0] || 'Reader').slice(0, 60);
+  return sanitizeUserText(profile?.name?.trim() || profile?.novelty_username?.trim() || user.email?.split('@')[0] || 'Reader', 60).slice(0, 60);
 }
 
 export async function addFeedbackReply(user: User, profile: Profile | null, feedbackId: string, text: string, parentId: string | null = null): Promise<void> {
-  const reply = text.trim();
+  const reply = sanitizeUserText(text, 600).trim();
   if (!reply) throw new Error('Write a reply first.');
   if (reply.length > 600) throw new Error('Replies are limited to 600 characters.');
   const { error } = await supabase.from('community_review_feedback_replies').insert({

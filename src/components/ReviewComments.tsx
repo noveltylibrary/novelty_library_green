@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Loader2, MessageCircle, Send, Trash2, Heart, CornerDownRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { addReviewComment, deleteReviewComment, fetchReviewComments, toggleCommentLike, type ReviewComment } from '@/lib/communityComments';
+import { sanitizeUserText } from '@/lib/sanitize';
 
 interface Props { reviewId: string; navigate: (path: string) => void; }
 
@@ -60,12 +61,12 @@ export function ReviewComments({ reviewId, navigate }: Props) {
     <article key={comment.id} className={`rounded-2xl p-4 ${depth ? 'ml-5 md:ml-10' : ''}`} style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
       <div className="flex items-center gap-3">
         <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: 'rgba(0,151,178,.12)', color: 'var(--color-cyan-dark)' }}>{comment.user_name.charAt(0).toUpperCase()}</span>
-        <div className="flex-1 min-w-0"><p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{comment.user_name}</p><p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{new Date(comment.created_at).toLocaleString()}</p></div>
+        <div className="flex-1 min-w-0"><p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{sanitizeUserText(comment.user_name, 60)}</p><p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{new Date(comment.created_at).toLocaleString()}</p></div>
       </div>
-      <p className="text-sm leading-6 mt-3 whitespace-pre-wrap" style={{ color: 'var(--color-text)' }}>{comment.comment_text}</p>
+      <p className="text-sm leading-6 mt-3 whitespace-pre-wrap" style={{ color: 'var(--color-text)' }}>{sanitizeUserText(comment.comment_text, 800)}</p>
       <div className="flex items-center gap-1.5 mt-3">
         <button type="button" onClick={() => void like(comment)} className={`comment-action ${comment.liked_by_me ? 'is-on' : ''}`}><Heart className="w-3.5 h-3.5" fill={comment.liked_by_me ? 'currentColor' : 'none'} /> {comment.like_count}</button>
-        {depth < 2 && <button type="button" onClick={() => { setReplyTo(comment.id); setText(`@${comment.user_name} `); window.setTimeout(() => document.getElementById('review-comment-box')?.focus(), 0); }} className="comment-action"><CornerDownRight className="w-3.5 h-3.5" /> Reply</button>}
+        {depth < 2 && <button type="button" onClick={() => { setReplyTo(comment.id); setText(`@${sanitizeUserText(comment.user_name, 60)} `); window.setTimeout(() => document.getElementById('review-comment-box')?.focus(), 0); }} className="comment-action"><CornerDownRight className="w-3.5 h-3.5" /> Reply</button>}
         {user?.id === comment.user_id && <button type="button" onClick={() => void remove(comment)} className="comment-action"><Trash2 className="w-3.5 h-3.5" /> Delete</button>}
       </div>
       {(children.get(comment.id) ?? []).map((child) => renderComment(child, depth + 1))}
