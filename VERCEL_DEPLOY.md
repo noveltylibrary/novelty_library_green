@@ -15,9 +15,9 @@ Add these under Project Settings → Environment Variables:
 - `VITE_SUPABASE_ANON_KEY` = your Supabase anon/public key
 
 Optional:
-- `VITE_ETHICALADS_PUBLISHER_ID`
-- `PUBLIC_ETHICALADS_PUBLISHER_ID`
 - `VITE_GOOGLE_DRIVE_API_KEY`
+
+Adsterra is embedded through the isolated 300×250 iframe slot and does not require an Adsterra environment variable.
 
 Do not put a Supabase service-role key in Vercel frontend variables.
 

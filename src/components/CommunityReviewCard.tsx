@@ -35,11 +35,12 @@ interface CommunityReviewCardProps {
 /** Community review card. The poster stays square; R/W is the primary card rating and NL rating lives in the engagement row. */
 export function CommunityReviewCard({ item, onClick, onPrefetch, index = 0, stats, liked, onLike, onRate, onReview }: CommunityReviewCardProps) {
   const nl = computeNlRating(item.rwRating, stats);
+  const safeTitle = sanitizeUserText(item.title, 200);
 
   return (
     <article className="community-review-card group" style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }} onPointerEnter={onPrefetch} onTouchStart={onPrefetch} onFocus={onPrefetch}>
-      <div className="community-review-poster" onClick={onClick} role="link" aria-label={`Open review of ${sanitizeUserText(item.title, 200)}`}>
-        <PosterImage src={item.coverImage} alt={sanitizeUserText(item.title, 200)} />
+      <div className="community-review-poster" onClick={onClick} role="link" aria-label={`Open review of ${safeTitle}`}>
+        <PosterImage src={item.coverImage} alt={safeTitle} />
 
         {item.rwRating !== null && (
           <div className="absolute top-2 right-2 z-[2]" title="R/W Rating">

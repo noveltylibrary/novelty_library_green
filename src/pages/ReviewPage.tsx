@@ -5,7 +5,7 @@ import { loadReviewCached, peekReview, storeReviewInCache } from '@/lib/reviews'
 import { fetchBlogPosts, blogPostDate, htmlToText } from '@/lib/blog';
 import { formatDate } from '@/lib/format';
 import { RatingBadge } from '@/components/RatingBadge';
-import { EthicalAdSlot } from '@/components/EthicalAdSlot';
+import { AdsterraAdSlot } from '@/components/AdsterraAdSlot';
 import { PosterImage } from '@/components/PosterImage';
 import { EngagementBar } from '@/components/EngagementBar';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -30,6 +30,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
   const [feedback, setFeedback] = useState<FeedbackEntry[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const myFeedback = feedback.find((f) => f.user_id === user?.id) ?? null;
+  const safeImageUrl = (value: string | null | undefined) => safeExternalUrl(value) || null;
 
   const loadFeedback = (reviewId: string) => { fetchFeedback(reviewId).then(setFeedback).catch(() => setFeedback([])); };
   useEffect(() => { if (review?.id) loadFeedback(review.id); }, [review?.id]);
@@ -137,12 +138,12 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
             {review.poster_url ? (
               // Community poster: always 1:1, never cropped.
               <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-square" style={{ background: 'var(--color-paper)' }}>
-                <PosterImage src={review.poster_url} alt={sanitizeUserText(review.title, 200)} />
+                <PosterImage src={safeImageUrl(review.poster_url)} alt={sanitizeUserText(review.title, 200)} />
               </div>
             ) : (
               <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-[4/5]" style={{ background: 'var(--color-paper)' }}>
-                {review.cover_image_url ? (
-                  <img src={review.cover_image_url} alt={sanitizeUserText(review.title, 200)} className="w-full h-full object-cover" />
+                {safeImageUrl(review.cover_image_url) ? (
+                  <img src={safeImageUrl(review.cover_image_url) || undefined} alt={sanitizeUserText(review.title, 200)} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center gradient-teal">
                     <span className="font-serif text-3xl text-white/30 px-4 text-center">{sanitizeUserText(review.title, 200)}</span>
@@ -278,7 +279,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
 
             <ReviewComments reviewId={review.id} navigate={navigate} />
 
-            <EthicalAdSlot className="mt-8 mb-8" />
+            <AdsterraAdSlot className="mt-8 mb-8" />
 
             {/* Disclaimer */}
             <div className="mt-8 p-4 rounded-xl" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>

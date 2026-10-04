@@ -75,7 +75,7 @@ export function AdminHubPage({ navigate }: AdminHubPageProps) {
     },
     {
       title: 'Finances and Payments',
-      desc: 'B2B/B2C dashboard links for Ethical Ads and future payment modules, all opened inside the Novelty Library admin experience.',
+      desc: 'B2B/B2C dashboard links for Adsterra and future payment modules, all opened inside the Novelty Library admin experience.',
       icon: WalletCards,
       path: '/admin/finances',
       gradient: 'linear-gradient(135deg, #075985 0%, #22c3d0 100%)',

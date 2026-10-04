@@ -489,7 +489,12 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
       return;
     }
 
-    if (form.cover_image_url.trim() && !isValidHttpUrl(form.cover_image_url.trim())) {
+    if (!form.cover_image_url.trim()) {
+      setError('Cover image is required. Please upload a cover, choose the Open Library cover, or paste a valid image URL.');
+      return;
+    }
+
+    if (!isValidHttpUrl(form.cover_image_url.trim())) {
       setError('Cover image URL must be a valid http:// or https:// URL.');
       return;
     }
@@ -592,7 +597,11 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
       setError('Goodreads rating is required.');
       return;
     }
-    if (form.cover_image_url.trim() && !isValidHttpUrl(form.cover_image_url.trim())) {
+    if (!form.cover_image_url.trim()) {
+      setError('Cover image is required. Please add a cover before saving changes.');
+      return;
+    }
+    if (!isValidHttpUrl(form.cover_image_url.trim())) {
       setError('Cover image URL must be a valid http:// or https:// URL.');
       return;
     }
@@ -697,7 +706,6 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
   <text x="540" y="820" text-anchor="middle" font-family="Georgia, serif" font-size="36" fill="rgba(255,255,255,0.7)">by ${author}</text>
   <g transform="translate(330 890)">
     <rect x="0" y="0" width="420" height="100" rx="50" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.22)"/>
-    <text x="72" y="64" text-anchor="middle" font-family="Arial, sans-serif" font-size="36" font-weight="700" fill="white">${stars.toFixed(1)}</text>
     ${posterStarsSvg(stars)}
   </g>
   <line x1="340" y1="1300" x2="740" y2="1300" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
@@ -1299,18 +1307,18 @@ function SubmitFormFields({
             onClick={() => fileInputRef.current?.click()}
             className="btn-ghost text-sm"
           >
-            <Upload className="w-4 h-4" /> Upload Cover Image
+            <Upload className="w-4 h-4" /> Upload Cover Image <span className="text-red-500">*</span>
           </button>
           <input
             type="url"
             value={form.cover_image_url}
             onChange={(e) => { const value = e.target.value; update('cover_image_url', value); onCoverUrlChange(value); }}
-            placeholder="Or paste image URL"
+            placeholder="Or paste image URL (required)"
             className="input-field text-xs"
           />
           <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
             <span className="cover-source-dot" data-source={coverSource || 'none'} />
-            <span>{coverSource === 'open-library' ? 'Catalogue cover · Open Library' : coverSource === 'uploaded' ? 'Your uploaded cover' : coverSource === 'url' ? 'Cover from pasted image URL' : 'No cover selected yet'}</span>
+            <span>{coverSource === 'open-library' ? 'Catalogue cover · Open Library' : coverSource === 'uploaded' ? 'Your uploaded cover' : coverSource === 'url' ? 'Cover from pasted image URL' : 'Cover image is required'}</span>
           </div>
         </div>
       </div>

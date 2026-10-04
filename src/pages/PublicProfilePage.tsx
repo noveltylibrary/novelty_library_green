@@ -6,7 +6,7 @@ import { fetchFollowStats, followUsername, unfollowUsername, fetchConnections, f
 import { fetchProfileQuestions, type ProfileQuestion } from '@/lib/profileQuestions';
 import { ProfileCard, type ProfileCardData } from '@/components/ProfileCard';
 import { RwStarRating } from '@/components/RwStarRating';
-import { sanitizeUserText } from '@/lib/sanitize';
+import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
 
 interface Props { username: string; navigate: (path: string) => void; }
 export function PublicProfilePage({ username, navigate }: Props) {
@@ -25,7 +25,29 @@ export function PublicProfilePage({ username, navigate }: Props) {
     return ()=>{ alive=false; };
   },[username]);
   const isOwn=!!user&&user.id===profile?.id;
-  const cardData:ProfileCardData|undefined=useMemo(()=>{if(!profile)return undefined;const avg=published.filter(r=>Number(r.reviewers_rating)>0);return {name:profile.name,username:profile.novelty_username,avatarUrl:profile.avatar_url,headerImageUrl:profile.header_image_url,socialLinks:profile.social_links||[],instagram:(profile.profile_visibility?.instagram===false?null:profile.instagram_id),booksThisMonth:profile.books_read_this_month,totalBooksRead:profile.total_books_read,publishedBooks:published.length,avgRating:avg.length?avg.reduce((s,r)=>s+Number(r.reviewers_rating),0)/avg.length:null,readingSince:profile.reading_since,favoriteBook:profile.favorite_book,favoriteAuthor:profile.favorite_author,favoriteGenre:profile.favorite_genre,answers:profile.profile_answers||{},questions,publishedReviews:published.slice(0,6).map(r=>({id:r.id,reviewNo:r.review_no||null,title:r.book_title||'Untitled review',author:r.author||'',coverUrl:r.book_cover||null,rating:Number(r.reviewers_rating)||null}))};},[profile,published,questions]);
+  const cardData:ProfileCardData|undefined=useMemo(()=>{
+    if(!profile)return undefined;
+    const avg=published.filter(r=>Number(r.reviewers_rating)>0);
+    const answers=Object.fromEntries(Object.entries(profile.profile_answers||{}).map(([key,value])=>[sanitizeUserText(key,120),sanitizeUserText(typeof value==='string'?value:String(value??''),1200)]));
+    const safeQuestions=questions.map(q=>({...q,key:sanitizeUserText(q.key,120),question:sanitizeUserText(q.question,300)}));
+    const socialLinks=(profile.social_links||[]).map(l=>({platform:sanitizeUserText(l.platform,40).toLowerCase(),url:safeExternalUrl(l.url)||''})).filter(l=>l.url);
+    return {
+      name:sanitizeUserText(profile.name,120)||null,
+      username:sanitizeUserText(profile.novelty_username,80)||null,
+      avatarUrl:safeExternalUrl(profile.avatar_url),
+      headerImageUrl:safeExternalUrl(profile.header_image_url),
+      socialLinks,
+      instagram:(profile.profile_visibility?.instagram===false?null:sanitizeUserText(profile.instagram_id,80)||null),
+      booksThisMonth:profile.books_read_this_month,totalBooksRead:profile.total_books_read,publishedBooks:published.length,
+      avgRating:avg.length?avg.reduce((s,r)=>s+Number(r.reviewers_rating),0)/avg.length:null,
+      readingSince:profile.reading_since,
+      favoriteBook:sanitizeUserText(profile.favorite_book,200)||null,
+      favoriteAuthor:sanitizeUserText(profile.favorite_author,160)||null,
+      favoriteGenre:sanitizeUserText(profile.favorite_genre,120)||null,
+      answers,questions:safeQuestions,
+      publishedReviews:published.slice(0,6).map(r=>({id:r.id,reviewNo:sanitizeUserText(r.review_no,40)||null,title:sanitizeUserText(r.book_title,200)||'Untitled review',author:sanitizeUserText(r.author,160),coverUrl:safeExternalUrl(r.book_cover),rating:Number(r.reviewers_rating)||null}))
+    };
+  },[profile,published,questions]);
   const doFollow=async()=>{if(!user||busy)return;setBusy(true);try{if(follow.is_following)await unfollowUsername(username);else await followUsername(username);setFollow(await fetchFollowStats(username));}finally{setBusy(false);}};
   if(loading)return <div className="pt-32 pb-20 container-prose text-center">Loading profile…</div>;
   if(!profile||!cardData)return <div className="pt-32 pb-20 container-prose text-center max-w-md mx-auto"><User className="w-12 h-12 mx-auto mb-4"/><h1 className="font-serif text-2xl font-semibold mb-2">Profile not found</h1><p className="text-sm mb-6" style={{color:'var(--color-text-muted)'}}>That Novelty Library username is not attached to a public account.</p><button onClick={()=>navigate('/reviews')} className="btn-ghost"><ArrowLeft className="w-4 h-4"/> Back to Reviews</button></div>;
@@ -34,7 +56,7 @@ export function PublicProfilePage({ username, navigate }: Props) {
     <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_250px] gap-6 items-start"><ProfileCard data={cardData} download={isOwn}/><aside className="surface-card p-5"><p className="text-xs uppercase tracking-wider font-semibold" style={{color:'var(--color-teal-dark)'}}>Community</p><div className="grid grid-cols-2 gap-3 mt-4"><Stat value={follow.followers} label="followers"/><Stat value={follow.following} label="following"/></div><div className="mt-4 text-xs" style={{color:'var(--color-text-muted)'}}>Published books/reviews with Novelty Library: <b style={{color:'var(--color-text)'}}>{published.length}</b></div></aside></section>
     <section className="surface-card p-6"><div className="flex flex-wrap items-center gap-4"><button type="button" className="nl-follow-count" onClick={async()=>{if(!isOwn&&privacy.hide_followers)return;setConnectionKind('followers');setConnections(await fetchConnections(username,'followers'));}}><strong>{follow.followers}</strong> followers</button><button type="button" className="nl-follow-count" onClick={async()=>{if(!isOwn&&privacy.hide_following)return;setConnectionKind('following');setConnections(await fetchConnections(username,'following'));}}><strong>{follow.following}</strong> following</button><span className="text-xs" style={{color:'var(--color-text-muted)'}}>User since {new Date(profile.created_at).toLocaleDateString()}</span></div></section>
     <Shelf title="Published reviews" subtitle="Reviews currently live in Novelty Library" reviews={published} navigate={navigate}/>
-    {connectionKind&&<div className="fixed inset-0 z-[90] grid place-items-center p-4 bg-black/40 backdrop-blur-sm" onClick={()=>setConnectionKind(null)}><div className="w-full max-w-md max-h-[75vh] overflow-hidden rounded-3xl p-5" style={{background:'var(--color-paper)',border:'1px solid var(--color-border)'}} onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between mb-4"><h2 className="font-serif text-2xl font-semibold">{connectionKind==='followers'?'Followers':'Following'}</h2><button onClick={()=>setConnectionKind(null)}><X className="w-5 h-5"/></button></div><div className="overflow-y-auto space-y-2 max-h-[58vh]">{connections.map(person=><button key={person.id} type="button" className="w-full flex items-center gap-3 p-3 rounded-2xl text-left" onClick={()=>{setConnectionKind(null);if(person.novelty_username)navigate(`/profile/@${encodeURIComponent(person.novelty_username)}`)}}><span className="w-10 h-10 rounded-full overflow-hidden gradient-teal grid place-items-center text-white font-bold">{person.avatar_url?<img src={person.avatar_url} alt="" className="w-full h-full object-cover"/>:(person.name||'R').slice(0,1)}</span><span><strong className="block">{sanitizeUserText(person.name||'Novelty Reader', 80)}</strong><span className="text-xs" style={{color:'var(--color-cyan-dark)'}}>@{sanitizeUserText(person.novelty_username||'reader', 60)}</span></span></button>)}</div></div></div>}
+    {connectionKind&&<div className="fixed inset-0 z-[90] grid place-items-center p-4 bg-black/40 backdrop-blur-sm" onClick={()=>setConnectionKind(null)}><div className="w-full max-w-md max-h-[75vh] overflow-hidden rounded-3xl p-5" style={{background:'var(--color-paper)',border:'1px solid var(--color-border)'}} onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between mb-4"><h2 className="font-serif text-2xl font-semibold">{connectionKind==='followers'?'Followers':'Following'}</h2><button onClick={()=>setConnectionKind(null)}><X className="w-5 h-5"/></button></div><div className="overflow-y-auto space-y-2 max-h-[58vh]">{connections.map(person=><button key={person.id} type="button" className="w-full flex items-center gap-3 p-3 rounded-2xl text-left" onClick={()=>{setConnectionKind(null);if(person.novelty_username)navigate(`/profile/@${encodeURIComponent(person.novelty_username)}`)}}><span className="w-10 h-10 rounded-full overflow-hidden gradient-teal grid place-items-center text-white font-bold">{safeExternalUrl(person.avatar_url)?<img src={safeExternalUrl(person.avatar_url) || undefined} alt="" className="w-full h-full object-cover"/>:sanitizeUserText(person.name||'R',80).slice(0,1).toUpperCase()}</span><span><strong className="block">{sanitizeUserText(person.name||'Novelty Reader', 80)}</strong><span className="text-xs" style={{color:'var(--color-cyan-dark)'}}>@{sanitizeUserText(person.novelty_username||'reader', 60)}</span></span></button>)}</div></div></div>}
   </div></div>;
 }
 function Stat({value,label}:{value:number;label:string}){return <div className="rounded-xl p-3" style={{background:'var(--color-paper)',border:'1px solid var(--color-border)'}}><p className="text-xl font-semibold">{value}</p><p className="text-[10px] uppercase tracking-wider" style={{color:'var(--color-text-muted)'}}>{label}</p></div>}

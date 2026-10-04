@@ -63,6 +63,8 @@ begin
                          where lower(novelty_username) = lower(regexp_replace(btrim(p_username), '^@', '')) limit 1);
 end $$;
 
+revoke all on function public.get_follow_stats(text), public.get_profile_privacy(text),
+  public.get_profile_connections(text, text), public.follow_username(text), public.unfollow_username(text) from public;
 grant execute on function public.get_follow_stats(text), public.get_profile_privacy(text),
   public.get_profile_connections(text, text) to anon, authenticated;
 grant execute on function public.follow_username(text), public.unfollow_username(text) to authenticated;

@@ -38,10 +38,21 @@ Owners may edit their own review content, but the SQL trigger prevents non-admin
 ### Storage
 Client image preparation now targets a 5 MB maximum and JPEG/PNG/WebP only. SQL additionally configures bucket limits and Storage RLS policies. SVG is rejected to avoid stored-XSS risks.
 
-## Important deployment step
-Run the separate `novelty_library_security_hardening.sql` file in the Supabase SQL Editor as a project owner.
 
-The SQL is intentionally **not embedded in this frontend package**.
+## SQL review — 2026-10-04
+
+Static review of every `.sql` file currently shipped in this package found one concrete privilege issue and one documentation mismatch:
+
+- `FIX_PROFILE_SOCIAL_RPCS.sql`: PostgreSQL functions default to `EXECUTE` for `PUBLIC`. The file now explicitly revokes that default before granting the intended access: public/authenticated for read-only profile RPCs and authenticated-only for follow/unfollow mutations.
+- `supabase/migrations/20261004_security_hardening.sql`: RLS is enabled on the hardened tables; admin checks are server-side; `SECURITY DEFINER` functions set a controlled search path and the privileged trigger functions have public execution revoked. The reviews insert policy intentionally permits public submissions, while the moderation trigger prevents clients from setting privileged moderation/ownership fields.
+- The existing `SECURITY_HARDENING_AUDIT.md` reference to `novelty_library_security_hardening.sql` was stale; it now points to the actual migration path above.
+
+This is a static SQL review of the files in the uploaded project, not a live Supabase policy/schema inspection. The final verification should still be run in the target Supabase project after applying the SQL.
+
+## Important deployment step
+Run `supabase/migrations/20261004_security_hardening.sql` in the Supabase SQL Editor as a project owner.
+
+The current hardening migration is shipped under `supabase/migrations/`; apply it from the Supabase SQL Editor as part of the database deployment.
 
 ## Dependency
 Run:

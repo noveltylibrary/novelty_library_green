@@ -3,7 +3,7 @@ import { Search, ArrowUp, Sparkles } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { loadReviewCached, fetchReviews } from '@/lib/reviews';
 import { CommunityReviewCard, type CommunityReviewCardData } from '@/components/CommunityReviewCard';
-import { EthicalAdSlot } from '@/components/EthicalAdSlot';
+import { AdsterraAdSlot } from '@/components/AdsterraAdSlot';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { useAuth } from '@/lib/auth';
 import { fetchFeedback, saveFeedback, useEngagement, type FeedbackEntry, type FeedbackInput } from '@/lib/engagement';
@@ -164,12 +164,12 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
                   onRate={() => void openFeedback(item)}
                   onReview={() => void openFeedback(item)}
                 />
-                {i === 11 && <div className="col-span-full"><EthicalAdSlot /></div>}
+                {i === 11 && <div className="col-span-full"><AdsterraAdSlot /></div>}
               </Fragment>
             ))}
           </div>
 
-          <EthicalAdSlot className="mt-8" />
+          <AdsterraAdSlot className="mt-8" />
         </>
       )}
 

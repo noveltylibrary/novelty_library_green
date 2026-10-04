@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ImageOff } from 'lucide-react';
 import { normalizePosterUrl } from '@/lib/posterUrl';
+import { safeExternalUrl } from '@/lib/sanitize';
 
 interface PosterImageProps {
   src: string | null | undefined;
@@ -15,7 +16,7 @@ interface PosterImageProps {
  * `object-contain` guarantees nothing is cropped (no cutting down).
  */
 export function PosterImage({ src, alt, className = '', showPlaceholder = true }: PosterImageProps) {
-  const url = normalizePosterUrl(src);
+  const url = safeExternalUrl(normalizePosterUrl(src));
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [url]);
 

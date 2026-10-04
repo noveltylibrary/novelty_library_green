@@ -5,6 +5,7 @@ import { formatShortDate } from '@/lib/format';
 import type { FeedbackEntry } from '@/lib/engagement';
 import type { Profile } from '@/types/review';
 import { addFeedbackReply, deleteFeedbackReply, fetchFeedbackReplies, type FeedbackReply } from '@/lib/feedbackReplies';
+import { sanitizeUserText } from '@/lib/sanitize';
 
 interface FeedbackListProps {
   entries: FeedbackEntry[];
@@ -73,12 +74,12 @@ export function FeedbackList({ entries, currentUserId, user = null, profile = nu
     <div key={reply.id} className="nl-reply" style={{ marginLeft: depth ? 'clamp(10px, 3vw, 22px)' : 0 }}>
       <div className="flex items-center gap-2">
         <span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 nl-chip">{(reply.user_name || 'R').charAt(0).toUpperCase()}</span>
-        <span className="text-xs font-semibold truncate" style={{ color: 'var(--color-text)' }}>{reply.user_name}</span>
+        <span className="text-xs font-semibold truncate" style={{ color: 'var(--color-text)' }}>{sanitizeUserText(reply.user_name, 120)}</span>
         <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{formatShortDate(reply.created_at)}</span>
       </div>
-      <p className="text-[13px] leading-relaxed mt-1.5 whitespace-pre-wrap break-words" style={{ color: 'var(--color-text)' }}>{reply.reply_text}</p>
+      <p className="text-[13px] leading-relaxed mt-1.5 whitespace-pre-wrap break-words" style={{ color: 'var(--color-text)' }}>{sanitizeUserText(reply.reply_text, 600)}</p>
       <div className="flex items-center gap-1 mt-1">
-        <button type="button" className="comment-action" onClick={() => startReply(reply.feedback_id, reply.id, `@${reply.user_name} `)}><CornerDownRight className="w-3 h-3" /> Reply</button>
+        <button type="button" className="comment-action" onClick={() => startReply(reply.feedback_id, reply.id, `@${sanitizeUserText(reply.user_name, 120)} `)}><CornerDownRight className="w-3 h-3" /> Reply</button>
         {user?.id === reply.user_id && <button type="button" className="comment-action" onClick={() => void remove(reply)}><Trash2 className="w-3 h-3" /> Delete</button>}
       </div>
       {(childrenOf.get(reply.id) ?? []).map((child) => renderReply(child, Math.min(depth + 1, 3)))}
@@ -98,7 +99,7 @@ export function FeedbackList({ entries, currentUserId, user = null, profile = nu
             <div className="flex items-center gap-3 mb-2">
               <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 nl-chip">{(e.user_name || 'R').charAt(0).toUpperCase()}</span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>{e.user_name}{mine && <span className="ml-1.5 text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-teal-dark)' }}>You</span>}</p>
+                <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>{sanitizeUserText(e.user_name, 120)}{mine && <span className="ml-1.5 text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-teal-dark)' }}>You</span>}</p>
                 <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{formatShortDate(e.updated_at || e.created_at)}</p>
               </div>
               {e.rating !== null && (
@@ -111,10 +112,10 @@ export function FeedbackList({ entries, currentUserId, user = null, profile = nu
                 </span>
               )}
             </div>
-            {e.review_text && <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: 'var(--color-text)' }}>{e.review_text}</p>}
+            {e.review_text && <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: 'var(--color-text)' }}>{sanitizeUserText(e.review_text, 1200)}</p>}
             {e.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-3">
-                {e.tags.map((t) => <span key={t} className="tag">{t}</span>)}
+                {e.tags.map((t) => <span key={t} className="tag">{sanitizeUserText(t, 80)}</span>)}
               </div>
             )}
 

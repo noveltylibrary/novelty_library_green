@@ -3,6 +3,7 @@ import { BookOpen, PenTool, Users, BarChart3, ArrowRight } from 'lucide-react';
 import { fetchHomeAnalytics, type HomeAnalytics } from '@/lib/homeAnalytics';
 import { StoriesRail } from '@/components/StoriesRail';
 import { HeroSection } from '@/components/HeroSection';
+import { AdsterraAdSlot } from '@/components/AdsterraAdSlot';
 
 interface HomePageProps { navigate: (path: string) => void; }
 
@@ -14,6 +15,7 @@ export function HomePage({ navigate }: HomePageProps) {
       <HeroSection navigate={navigate} live={analytics ? { accepted_total: analytics.accepted_total, authors: analytics.authors, avg_form_rating: analytics.avg_form_rating } : null} />
       <div className="container-prose pt-14">
         <StoriesRail navigate={navigate} />
+        <AdsterraAdSlot className="my-10 mx-auto" />
         <section className="home-action-grid">
           <NavCard icon={BookOpen} title="Reviews" desc="Browse the community shelf and open any published take." onClick={() => navigate('/reviews')} />
           <NavCard icon={PenTool} title="Submit" desc="Turn your next read into a Novelty Library review." onClick={() => navigate('/submit')} />

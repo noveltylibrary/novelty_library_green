@@ -1,3 +1,11 @@
+# Version 1.7 changes
+
+- **Adsterra banner (mobile fix):** the 300x250 ad is now built with DOM calls and written into its own iframe document instead of `srcdoc`. `atOptions` is set from React rather than an inline `<script>` so the site's Content-Security-Policy no longer blocks it.
+- **Ad component renamed to Adsterra everywhere:** the old ad component name is gone; the component is `src/components/AdsterraAdSlot.tsx` (`AdsterraAdSlot`), and Home, Reviews and Review pages use it.
+- **Sync Now fixed (Admin Book Reviews):** `sheet-proxy` now keeps only the `http(s)` link in the Amazon Link cell (a cell like `Title https://amzn.in/...` broke the database link rule). Source is now in `supabase/functions/sheet-proxy/index.ts`.
+- **Profile updates fixed:** new migration `20261005_fix_protect_profile_roles.sql` repairs a trigger that failed on every profile update (it read `role` / `is_admin` columns that do not exist on `profiles`).
+- Deploy: `supabase functions deploy sheet-proxy` and run the new migration (both are already applied to the live project).
+
 # Novelty Library — requested feature pass
 
 Implemented in this build:

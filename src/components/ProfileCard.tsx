@@ -4,6 +4,7 @@ import { toPng } from 'html-to-image';
 import type { ProfileQuestion } from '@/lib/profileQuestions';
 import { NlLogo } from '@/components/NlLogo';
 import { rwRatingToStars } from '@/components/RwStarRating';
+import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
 
 export type ProfileCardData = {
   name: string | null;
@@ -86,7 +87,7 @@ function nameScale(name: string): number {
   const n = name.trim().length;
   return n <= 9 ? 1 : n <= 14 ? 0.82 : n <= 20 ? 0.66 : n <= 28 ? 0.54 : 0.46;
 }
-function normalizeUrl(value: string) { return /^https?:\/\//i.test(value) ? value : `https://${value}`; }
+function normalizeUrl(value: string) { return safeExternalUrl(value) || '#'; }
 function platformLabel(platform: string) { return platform === 'x' ? 'X' : platform.charAt(0).toUpperCase() + platform.slice(1); }
 function platformIcon(platform: string, size: number) {
   if (platform === 'instagram') return <Instagram width={size} height={size} />;
@@ -206,7 +207,7 @@ function Cover({ url, w, h, radius, iconSize }: { url: string | null; w: number;
   const [failed, setFailed] = useState(false);
   return <div style={{ width: w, height: h, borderRadius: radius, overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(145deg,rgba(255,255,255,.22),rgba(255,255,255,.06))', border: `1px solid ${C.line}`, boxShadow: '0 8px 18px rgba(0,30,40,.35)', display: 'grid', placeItems: 'center' }}>
     <BookOpen width={iconSize} height={iconSize} style={{ color: C.mint, gridArea: '1 / 1' }} />
-    {url && !failed && <img src={url} alt="" crossOrigin="anonymous" onError={() => setFailed(true)} style={{ gridArea: '1 / 1', width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+    {url && !failed && <img src={safeExternalUrl(url) || undefined} alt="" crossOrigin="anonymous" onError={() => setFailed(true)} style={{ gridArea: '1 / 1', width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
   </div>;
 }
 
@@ -284,9 +285,9 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
 
   const tJourney = cue(0.15);
   const journeyItems: [string, string][] = [];
-  if (data.favoriteBook) journeyItems.push(['Favourite book', data.favoriteBook]);
-  if (data.favoriteAuthor) journeyItems.push(['Favourite author', data.favoriteAuthor]);
-  if (data.favoriteGenre) journeyItems.push(['Favourite genre', data.favoriteGenre]);
+  if (data.favoriteBook) journeyItems.push(['Favourite book', sanitizeUserText(data.favoriteBook, 200)]);
+  if (data.favoriteAuthor) journeyItems.push(['Favourite author', sanitizeUserText(data.favoriteAuthor, 160)]);
+  if (data.favoriteGenre) journeyItems.push(['Favourite genre', sanitizeUserText(data.favoriteGenre, 120)]);
   const journeyCues = journeyItems.map(() => cue(0.1));
   const journey = hasJourney ? (() => { const m = mv('drop', tJourney); return <div className={m.className} style={{ ...m.style, borderRadius: s(26), padding: s(20), background: 'linear-gradient(150deg,rgba(1,43,54,.62),rgba(1,58,70,.4))', border: `1px solid ${C.line}`, boxShadow: '0 12px 28px rgba(0,25,35,.28)' }}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(12), marginBottom: s(14) }}>
@@ -311,8 +312,8 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
     <div style={{ display: 'grid', gap: s(10) }}>{reviews.map((review, i) => { const mr = mv('slide', reviewCues[i]); const stars = review.rating && review.rating > 0 ? rwRatingToStars(review.rating) : null; return <div key={review.id} className={mr.className} style={{ ...mr.style, display: 'flex', alignItems: 'center', gap: s(16), borderRadius: s(18), padding: s(10), background: 'rgba(1,43,54,.38)', border: `1px solid ${C.line}` }}>
       <Cover url={review.coverUrl} w={s(62)} h={s(86)} radius={s(10)} iconSize={s(26)} />
       <div style={{ minWidth: 0, flex: 1 }}>
-        <p className="font-serif" style={{ fontSize: s(24), fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{review.title}</p>
-        <p style={{ fontSize: s(18), color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{review.author}{review.reviewNo ? ` · #${review.reviewNo}` : ''}</p>
+        <p className="font-serif" style={{ fontSize: s(24), fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.title, 200)}</p>
+        <p style={{ fontSize: s(18), color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.author, 160)}{review.reviewNo ? ` · #${sanitizeUserText(review.reviewNo, 40)}` : ''}</p>
       </div>
       {stars != null && <span style={{ fontSize: s(20), fontWeight: 800, borderRadius: 999, padding: `${s(5)}px ${s(14)}px`, background: 'rgba(255,255,255,.16)', border: `1px solid ${C.line}`, color: C.ink, whiteSpace: 'nowrap', flexShrink: 0 }}><span style={{ color: '#ffd66b' }}>★</span> {stars.toFixed(1)}</span>}
     </div>; })}</div>
@@ -321,8 +322,8 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
 
   const qaCues = questions.map(() => cue(0.1));
   const qa = questions.length > 0 ? <div style={{ display: 'grid', gridTemplateColumns: cols === 2 ? '1fr' : '1fr 1fr', gap: s(10) }}>{questions.map((q, i) => { const mq = mv('pop', qaCues[i]); return <div key={q.id} className={mq.className} style={{ ...mq.style, borderRadius: s(20), padding: `${s(14)}px ${s(18)}px`, background: 'rgba(1,43,54,.5)', border: `1px solid ${C.line}` }}>
-    <p style={{ fontSize: s(14), letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>{q.question}</p>
-    <p style={{ fontSize: s(24), fontWeight: 600, marginTop: s(4), color: C.ink, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{String(data.answers[q.key])}</p>
+    <p style={{ fontSize: s(14), letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>{sanitizeUserText(q.question, 300)}</p>
+    <p style={{ fontSize: s(24), fontWeight: 600, marginTop: s(4), color: C.ink, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sanitizeUserText(String(data.answers[q.key]), 1200)}</p>
   </div>; })}</div> : null;
 
   const ig = cleanInstagram(data.instagram);
@@ -357,7 +358,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
     {/* Banner */}
     <div className={banner.className} style={{ ...banner.style, position: 'absolute', top: 0, left: 0, right: 0, height: bannerH, overflow: 'hidden', background: `linear-gradient(135deg,${C.deep} 0%,#02586b 55%,#16b5c4 100%)` }}>
       {data.headerImageUrl
-        ? <img className={still ? '' : 'nl-pc-a nl-pc-zoom'} src={data.headerImageUrl} alt="" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        ? <img className={still ? '' : 'nl-pc-a nl-pc-zoom'} src={safeExternalUrl(data.headerImageUrl) || undefined} alt="" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
         : <>
           <svg width="100%" height="100%" viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, opacity: 0.5 }} aria-hidden="true">
             {[120, 190, 260, 330, 400].map((r) => <circle key={r} cx="880" cy="60" r={r} fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="1.5" />)}
@@ -379,15 +380,15 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
           <div style={{ width: '100%', height: '100%', borderRadius: '50%', padding: s(7), background: `conic-gradient(from 210deg, ${C.cyan}, #ffffff, ${C.teal}, ${C.mint}, ${C.cyan})`, boxShadow: '0 14px 34px rgba(0,25,35,.45)' }}>
             <div style={{ width: '100%', height: '100%', borderRadius: '50%', padding: s(5), background: C.deep2 }}>
               {data.avatarUrl
-                ? <img src={data.avatarUrl} alt="" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
-                : <div className="font-serif" style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: avatar * 0.42, fontWeight: 700, color: '#fff', background: `linear-gradient(135deg,${C.teal},${C.cyan})` }}>{(data.name || data.username || 'R').slice(0, 1).toUpperCase()}</div>}
+                ? <img src={safeExternalUrl(data.avatarUrl) || undefined} alt="" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                : <div className="font-serif" style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: avatar * 0.42, fontWeight: 700, color: '#fff', background: `linear-gradient(135deg,${C.teal},${C.cyan})` }}>{sanitizeUserText(data.name || data.username || 'R', 120).slice(0, 1).toUpperCase()}</div>}
             </div>
           </div>
         </div>
         <div style={{ minWidth: 0, flex: 1, paddingTop: avatar / 2 + s(6) }}>
           <p className={eyebrow.className} style={{ ...eyebrow.style, fontSize: s(15), letterSpacing: '.22em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: s(6) }}>Novelty Library · Reader</p>
-          <h2 className={`font-serif ${nameMv.className}`} style={{ ...nameMv.style, fontSize: s((cols === 2 ? 56 : 62) * nameScale(data.name || 'Novelty Reader')), fontWeight: 700, lineHeight: 1.08, color: C.ink, textShadow: '0 4px 22px rgba(0,25,35,.5)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' }}>{data.name || 'Novelty Reader'}</h2>
-          <p className={handleMv.className} style={{ ...handleMv.style, display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: s(24), fontWeight: 700, marginTop: s(8), padding: `${s(4)}px ${s(18)}px`, borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{data.username || 'reader'}</p>
+          <h2 className={`font-serif ${nameMv.className}`} style={{ ...nameMv.style, fontSize: s((cols === 2 ? 56 : 62) * nameScale(data.name || 'Novelty Reader')), fontWeight: 700, lineHeight: 1.08, color: C.ink, textShadow: '0 4px 22px rgba(0,25,35,.5)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' }}>{sanitizeUserText(data.name || 'Novelty Reader', 120)}</h2>
+          <p className={handleMv.className} style={{ ...handleMv.style, display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: s(24), fontWeight: 700, marginTop: s(8), padding: `${s(4)}px ${s(18)}px`, borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader', 80)}</p>
         </div>
       </div>
 
@@ -404,11 +405,11 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
       {/* Footer: socials on the left, brand lockup (wordmark, then logo) on the right, vertically centred */}
       <div className={footerMv.className} style={{ ...footerMv.style, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(16), flexShrink: 0, minHeight: s(84) }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: s(10), minWidth: 0 }}>
-          {ig && <a href={`https://instagram.com/${ig}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(10), maxWidth: '100%', borderRadius: 999, padding: `${s(9)}px ${s(22)}px ${s(9)}px ${s(10)}px`, background: 'linear-gradient(135deg,#feda75 0%,#fa7e1e 28%,#d62976 58%,#962fbf 82%,#4f5bd5 100%)', color: '#fff', fontWeight: 800, fontSize: s(22), boxShadow: '0 10px 24px rgba(0,25,35,.35)', textDecoration: 'none' }}>
+          {ig && <a href={safeExternalUrl(`https://instagram.com/${ig}`) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(10), maxWidth: '100%', borderRadius: 999, padding: `${s(9)}px ${s(22)}px ${s(9)}px ${s(10)}px`, background: 'linear-gradient(135deg,#feda75 0%,#fa7e1e 28%,#d62976 58%,#962fbf 82%,#4f5bd5 100%)', color: '#fff', fontWeight: 800, fontSize: s(22), boxShadow: '0 10px 24px rgba(0,25,35,.35)', textDecoration: 'none' }}>
             <span style={{ display: 'grid', placeItems: 'center', width: s(34), height: s(34), borderRadius: '50%', background: 'rgba(255,255,255,.24)', flexShrink: 0 }}><Instagram width={s(20)} height={s(20)} /></span>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{ig}</span>
           </a>}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(10) }}>{otherSocials.map((link) => <a key={link.platform} href={normalizeUrl(link.url)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(8), borderRadius: 999, padding: `${s(9)}px ${s(20)}px`, fontSize: s(21), fontWeight: 700, background: C.glassStrong, color: '#fff', border: `1px solid ${C.line}`, textDecoration: 'none' }}>{platformIcon(link.platform, s(20))} {platformLabel(link.platform)}</a>)}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(10) }}>{otherSocials.map((link) => <a key={link.platform} href={normalizeUrl(link.url)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(8), borderRadius: 999, padding: `${s(9)}px ${s(20)}px`, fontSize: s(21), fontWeight: 700, background: C.glassStrong, color: '#fff', border: `1px solid ${C.line}`, textDecoration: 'none' }}>{platformIcon(link.platform, s(20))} {sanitizeUserText(platformLabel(link.platform), 40)}</a>)}</div>
         </div>
         <div className={brandMv.className} style={{ ...brandMv.style, display: 'flex', alignItems: 'center', gap: s(16), flexShrink: 0, borderRadius: 999, padding: `${s(10)}px ${s(14)}px ${s(10)}px ${s(30)}px`, background: '#fff', boxShadow: '0 16px 36px rgba(0,40,50,.35)' }}>
           <div style={{ textAlign: 'right' }}><p className="font-serif" style={{ fontSize: s(26), fontWeight: 700, lineHeight: 1, color: C.deep2 }}>Novelty Library</p><p style={{ fontSize: s(14), letterSpacing: '.18em', textTransform: 'uppercase', marginTop: s(6), color: C.teal, fontWeight: 800 }}>Read · Review · Discover</p></div>
