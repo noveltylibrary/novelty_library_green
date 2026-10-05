@@ -30,7 +30,10 @@ export type Route =
 function parseHash(): Route {
   const hash = window.location.hash.replace(/^#\/?/, '');
   if (!hash || hash === '') return { name: 'home' };
-  const parts = hash.split('/');
+  // Support nested action fragments such as #/submit#reserve. The first hash
+  // selects the app route; the trailing fragment is an action handled by the page.
+  const routeHash = hash.split('#')[0];
+  const parts = routeHash.split('/');
   if (parts[0] === 'review' && parts[1]) return { name: 'review', slug: decodeURIComponent(parts[1]) };
   if (parts[0] === 'blog-review' && parts[1]) return { name: 'blog-review', id: decodeURIComponent(parts.slice(1).join('/')) };
   if (parts[0] === 'submit') return { name: 'submit' };

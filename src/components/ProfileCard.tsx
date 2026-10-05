@@ -343,12 +343,16 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, 
     {data.publishedReviews.length > reviews.length && <p style={{ fontSize: s(18), marginTop: s(12), fontWeight: 700, color: C.mint }}>+ {data.publishedReviews.length - reviews.length} more published reviews</p>}
   </div>; })() : null;
 
-  const qaCues = questions.map(() => cue(0.1));
-  const qaCols = cols === 2 && w / h > 1.5 ? 4 : 3;
-  // CSS columns pack tiles of different heights top-to-bottom with no empty gaps (masonry).
-  const qa = questions.length > 0 ? <div style={{ columnCount: qaCols, columnGap: s(10), width: '100%' }}>{questions.map((q, i) => { const mq = mv('pop', qaCues[i]); return <div key={q.id} className={mq.className} style={{ ...mq.style, breakInside: 'avoid', display: 'block', marginBottom: s(10), borderRadius: s(20), padding: `${s(14)}px ${s(16)}px`, background: 'rgba(1,43,54,.5)', border: `1px solid ${C.line}` }}>
-    <p style={{ fontSize: s(13), letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, overflowWrap: 'anywhere' }}>{sanitizeUserText(q.question, 300)}</p>
-    {q.type === 'image_upload' ? <div style={{ display: 'grid', gridTemplateColumns: imageAnswerGrid(answerImageUrls(data.answers[q.key]), 2), gap: s(6), marginTop: s(6) }}>{answerImageUrls(data.answers[q.key]).slice(0, Math.max(1, q.image_count || 1)).map((url, idx) => <img key={`${q.id}-${idx}`} src={safeExternalUrl(url) || undefined} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: s(12), border: `1px solid ${C.line}` }} />)}</div> : q.type === 'select_multiple' && Array.isArray(data.answers[q.key]) ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6), marginTop: s(6) }}>{(data.answers[q.key] as unknown[]).map((v, idx) => { const raw = String(v); const value = decodeOtherAnswer(raw).value || raw; return <span key={`${q.id}-${idx}`} style={{ borderRadius: 999, padding: `${s(6)}px ${s(10)}px`, background: 'rgba(34,211,238,.12)', border: `1px solid ${C.line}`, color: C.ink, fontSize: s(14), fontWeight: 700 }}>{sanitizeUserText(value, 180)}</span>; })}</div> : <p style={{ fontSize: s(24), fontWeight: 600, marginTop: s(4), color: C.ink, overflowWrap: 'anywhere', lineHeight: 1.25 }}>{sanitizeUserText(answerText(data.answers[q.key]), 1200)}</p>}
+  // The admin's 'Show in profile card' flag is the source of truth. Do not
+  // slice to an arbitrary first six: newly added/shared questions must render
+  // immediately when the admin enables them. The normal six-question setup
+  // therefore stays six across, while additional shared questions continue on
+  // subsequent rows instead of disappearing.
+  const cardQuestions = questions.filter(q => q.active !== false && q.show_in_profile_card !== false);
+  const qaCues = cardQuestions.map(() => cue(0.08));
+  const qa = cardQuestions.length > 0 ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: s(8), width: '100%' }}>{cardQuestions.map((q, i) => { const mq = mv('pop', qaCues[i]); return <div key={q.id} className={mq.className} style={{ ...mq.style, breakInside: 'avoid', display: 'block', marginBottom: s(10), borderRadius: s(20), padding: `${s(9)}px ${s(9)}px`, background: 'rgba(1,43,54,.5)', border: `1px solid ${C.line}` }}>
+    <p style={{ fontSize: s(9), letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, overflowWrap: 'anywhere' }}>{sanitizeUserText(q.question, 300)}</p>
+    {q.type === 'image_upload' ? <div style={{ display: 'grid', gridTemplateColumns: imageAnswerGrid(answerImageUrls(data.answers[q.key]), 2), gap: s(6), marginTop: s(6) }}>{answerImageUrls(data.answers[q.key]).slice(0, Math.max(1, q.image_count || 1)).map((url, idx) => <img key={`${q.id}-${idx}`} src={safeExternalUrl(url) || undefined} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: s(12), border: `1px solid ${C.line}` }} />)}</div> : q.type === 'select_multiple' && Array.isArray(data.answers[q.key]) ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6), marginTop: s(6) }}>{(data.answers[q.key] as unknown[]).map((v, idx) => { const raw = String(v); const value = decodeOtherAnswer(raw).value || raw; return <span key={`${q.id}-${idx}`} style={{ borderRadius: 999, padding: `${s(6)}px ${s(10)}px`, background: 'rgba(34,211,238,.12)', border: `1px solid ${C.line}`, color: C.ink, fontSize: s(14), fontWeight: 700 }}>{sanitizeUserText(value, 180)}</span>; })}</div> : <p style={{ fontSize: s(13), fontWeight: 600, marginTop: s(3), color: C.ink, overflowWrap: 'anywhere', lineHeight: 1.25 }}>{sanitizeUserText(answerText(data.answers[q.key]), 1200)}</p>}
   </div>; })}</div> : null;
 
   const ig = cleanInstagram(data.instagram);
@@ -421,15 +425,15 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, 
 
       {/* Body (everything in here is auto-fitted) */}
       <div data-fit style={{ ...colStyle, flex: 1, gap: s(14) }}>
+        {qa}
         {cols === 2
           ? <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: s(18), alignItems: 'start' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: s(14), minWidth: 0 }}>{metrics}{journey}</div>
               <div style={{ minWidth: 0 }}>{shelf}</div>
             </div>
-            {qa}
           </>
-          : <>{metrics}{journey}{shelf}{qa}</>}
+          : <>{metrics}{journey}{shelf}</>}
       </div>
 
       {/* Footer: socials on the left, brand lockup (wordmark, then logo) on the right, vertically centred */}

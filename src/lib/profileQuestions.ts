@@ -25,6 +25,8 @@ export type ProfileQuestion = {
 export type ProfileQuestionSection = {
   id: string;
   name: string;
+  header?: string;
+  description?: string;
   sort_order: number;
   active: boolean;
 };
@@ -36,7 +38,7 @@ export const PROFILE_SECTIONS = DEFAULT_PROFILE_SECTIONS;
 export async function fetchProfileSections(includeInactive = false): Promise<ProfileQuestionSection[]> {
   let q = supabase
     .from('profile_question_sections')
-    .select('id,name,sort_order,active')
+    .select('id,name,header,description,sort_order,active')
     .order('sort_order')
     .order('name');
   if (!includeInactive) q = q.eq('active', true);
@@ -48,7 +50,10 @@ export async function fetchProfileSections(includeInactive = false): Promise<Pro
 export async function saveProfileQuestionSection(input: {
   id?: string;
   name: string;
+  header?: string;
+  description?: string;
   sort_order?: number;
+  active?: boolean;
 }): Promise<ProfileQuestionSection> {
   const name = input.name.trim();
   if (!name) throw new Error('Section name is required.');
@@ -56,18 +61,22 @@ export async function saveProfileQuestionSection(input: {
   const payload = {
     name,
     sort_order: input.sort_order ?? 10,
-    active: true,
+    header: input.header?.trim() || name,
+    description: input.description?.trim() || '',
+    sort_order: input.sort_order ?? 10,
+    active: input.active ?? true,
   };
 
-  const { data, error } = input.id
-    ? await supabase.rpc('rename_profile_question_section', {
-        p_section_id: input.id,
-        p_name: name,
-      })
-    : await supabase.rpc('create_profile_question_section', {
-        p_name: name,
-        p_sort_order: payload.sort_order,
-      });
+  const { data, error } = await supabase.rpc('admin_save_profile_question_section_v2', {
+    p_payload: {
+      id: input.id ?? null,
+      name,
+      header: payload.header,
+      description: payload.description,
+      sort_order: payload.sort_order,
+      active: payload.active,
+    },
+  });
 
   if (error) throw error;
   if (!data) throw new Error('Section was not saved.');

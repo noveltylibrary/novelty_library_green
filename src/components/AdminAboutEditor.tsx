@@ -91,7 +91,7 @@ export function AdminAboutEditor() {
       </div>
     </div>
 
-    {usingDefaults && <div className="mb-5 rounded-2xl p-4 text-sm" style={{ background: 'rgba(8,145,178,.08)', border: '1px solid rgba(8,145,178,.2)' }}>The About page is showing its built-in text. Press <strong>Load default sections</strong> once to copy it into editable sections (run <code>sql/2026-10-05_1.25_about_sections.sql</code> in Supabase first).</div>}
+    {usingDefaults && <div className="mb-5 rounded-2xl p-4 text-sm" style={{ background: 'rgba(8,145,178,.08)', border: '1px solid rgba(8,145,178,.2)' }}>The About page is showing its built-in text. Press <strong>Load default sections</strong> once to copy it into editable sections (run the 1.25 About Sections SQL provided separately in the deployment instructions first).</div>}
 
     <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-5">
       <aside className="rounded-2xl p-3 h-fit space-y-2" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>

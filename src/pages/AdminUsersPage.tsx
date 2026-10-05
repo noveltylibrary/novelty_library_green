@@ -151,7 +151,7 @@ export function AdminUsersPage({ navigate }: AdminUsersPageProps) {
       {error && (
         <div className="mb-6 rounded-2xl p-4 flex gap-3" style={{ background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.22)', color: 'var(--color-text)' }}>
           <AlertCircle className="w-5 h-5 shrink-0" style={{ color: '#ef4444' }} />
-          <div><p className="font-semibold text-sm">Could not load users</p><p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{error}</p><p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>This page reads Supabase Auth users through the protected <code>admin_list_users()</code> RPC. If Supabase says the function is missing from the schema cache, apply the included admin-users migration (the latest one ends in <code>_admin_users_directory_fix.sql</code>) and then click Refresh.</p></div>
+          <div><p className="font-semibold text-sm">Could not load users</p><p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{error}</p><p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>This page reads Supabase Auth users through the protected <code>admin_list_users()</code> RPC. If Supabase says the function is missing from the schema cache, apply the required admin-users SQL migration separately in Supabase, then click Refresh.</p></div>
         </div>
       )}
 

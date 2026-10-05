@@ -67,12 +67,17 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   const [sectionEditorOpen, setSectionEditorOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<ProfileQuestionSection | null>(null);
   const [sectionName, setSectionName] = useState('');
+  const [sectionHeader, setSectionHeader] = useState('');
+  const [sectionDescription, setSectionDescription] = useState('');
+  const [sectionOrder, setSectionOrder] = useState(10);
+  const [sectionActive, setSectionActive] = useState(true);
   const [sectionSaving, setSectionSaving] = useState(false);
 
   const orderedSections = useMemo(
-    () => [...sections].filter(s => s.active).sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)),
+    () => [...sections].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)),
     [sections]
   );
+  const activeSections = useMemo(() => orderedSections.filter(s => s.active), [orderedSections]);
 
   const loadPage = async (slug: typeof PAGE_KEYS[number]) => {
     const page = await fetchEditablePage(slug);
@@ -88,7 +93,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
       ]);
       setSections(sectionRows);
       setQuestions(questionRows);
-      setSection(current => current || sectionRows[0]?.name || '');
+      setSection(current => current || sectionRows.find(s => s.active)?.name || sectionRows[0]?.name || '');
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Could not load profile form builder.');
     }
@@ -149,7 +154,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     setEditing(null);
     setQuestion('');
     setPlaceholder('');
-    setSection(orderedSections[0]?.name || '');
+    setSection(activeSections[0]?.name || '');
     setType('short_text');
     setOptions([]);
     setAllowOther(true);
@@ -249,12 +254,20 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   const openAddSection = () => {
     setEditingSection(null);
     setSectionName('');
+    setSectionHeader('');
+    setSectionDescription('');
+    setSectionOrder((orderedSections.at(-1)?.sort_order ?? 0) + 10);
+    setSectionActive(true);
     setSectionEditorOpen(true);
   };
 
   const openRenameSection = (s: ProfileQuestionSection) => {
     setEditingSection(s);
     setSectionName(s.name);
+    setSectionHeader(s.header || s.name);
+    setSectionDescription(s.description || '');
+    setSectionOrder(s.sort_order);
+    setSectionActive(s.active !== false);
     setSectionEditorOpen(true);
   };
 
@@ -268,7 +281,10 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
       const saved = await saveProfileQuestionSection({
         id: editingSection?.id,
         name: sectionName,
-        sort_order: editingSection?.sort_order ?? ((orderedSections.at(-1)?.sort_order ?? 0) + 10),
+        header: sectionHeader,
+        description: sectionDescription,
+        sort_order: sectionOrder,
+        active: sectionActive,
       });
       setSections(current => {
         const next = editingSection
@@ -277,7 +293,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
         return next.sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
       });
       setSection(saved.name);
-      setMsg(editingSection ? 'Section renamed. Existing questions were updated to the new name.' : 'Section added.');
+      setMsg(editingSection ? 'Section settings saved. Existing questions were updated to the new name.' : 'Section added.');
       setSectionEditorOpen(false);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Could not save section.');
@@ -296,7 +312,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
           <FileText className="w-4 h-4" /> Admin content
         </div>
         <h1 className="font-serif text-4xl font-semibold mt-2">WebApp Pages Moderation</h1>
-        <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>Edit the four heavy-text pages or manage the reader profile and its question-driven card.</p>
+        <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>Edit site pages or fully control the reader profile: section names, reader-facing headers, helper text, order, visibility, built-in fields, questions and profile-card visibility.</p>
         <div className="mt-5 inline-flex flex-wrap gap-2 rounded-2xl p-1.5" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)', boxShadow: '0 10px 28px rgba(1,43,54,.08)' }}>
           <button type="button" onClick={() => { setAdminView('editor'); setMsg(''); }} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition" style={{ background: adminView === 'editor' ? 'linear-gradient(135deg,#013a46,#0097b2)' : 'transparent', color: adminView === 'editor' ? 'white' : 'var(--color-text)' }}>
             <Pencil className="w-4 h-4" /> Editor
@@ -376,13 +392,13 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
 
         <div className="rounded-2xl p-4 mb-6" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div><p className="text-sm font-semibold">Profile question sections</p><p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>The four current sections are editable. Add as many additional sections as your profile needs.</p></div>
+            <div><p className="text-sm font-semibold">Profile question sections</p><p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Every profile-question section is configurable here: internal name, reader-facing heading, text under the heading, order and visibility. Add as many sections as your profile needs.</p></div>
             <button type="button" className="btn-primary !w-auto" onClick={openAddSection}><FolderPlus className="w-4 h-4" /> Add section</button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             {orderedSections.map((s, index) => <div key={s.id} className="rounded-xl p-3 flex items-center gap-2" style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)' }}>
-              <div className="min-w-0 flex-1"><p className="font-semibold text-sm truncate">{s.name}</p><p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: 'var(--color-text-muted)' }}>{index < 4 ? 'Default section' : 'Added section'}</p></div>
-              <button type="button" className="p-2 rounded-lg" title={`Rename ${s.name}`} aria-label={`Rename ${s.name}`} onClick={() => openRenameSection(s)}><Pencil className="w-3.5 h-3.5" /></button>
+              <div className="min-w-0 flex-1"><p className="font-semibold text-sm truncate">{s.header || s.name}</p><p className="text-[11px] mt-1 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>{s.description || 'No helper text set.'}</p><p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: 'var(--color-text-muted)' }}>Order {s.sort_order} · {s.active ? 'Visible' : 'Hidden'}</p></div>
+              <button type="button" className="p-2 rounded-lg" title={`Edit ${s.name}`} aria-label={`Edit ${s.name}`} onClick={() => openRenameSection(s)}><Pencil className="w-3.5 h-3.5" /></button>
             </div>)}
           </div>
         </div>
@@ -442,7 +458,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
             <div className={editingCore ? 'hidden' : ''}>
             <div className="flex items-center justify-between mb-4"><div><p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-teal-dark)' }}>{editing ? 'Edit question' : 'New question'}</p><h3 className="font-serif text-xl font-semibold">Question editor</h3></div>{editing && <button type="button" className="text-xs underline" onClick={resetQuestion}>Cancel</button>}</div>
             <div className="space-y-3">
-              <div><label className="label">Section</label><select value={section} onChange={e => setSection(e.target.value)} className="input-field"><option value="">Choose a section…</option>{orderedSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div>
+              <div><label className="label">Section</label><select value={section} onChange={e => setSection(e.target.value)} className="input-field"><option value="">Choose a section…</option>{activeSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div>
               <div><label className="label">Question</label><input ref={questionInputRef} value={question} onChange={e => setQuestion(e.target.value)} placeholder="What book changed your life?" className="input-field" /></div>
               {(['short_text','long_text','number','year','url'] as ProfileQuestionType[]).includes(type) && <div>
                 <label className="label">Answer placeholder</label>
@@ -472,9 +488,9 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
 
       {sectionEditorOpen && <div className="fixed inset-0 z-[80] grid place-items-center p-4" style={{ background: 'rgba(2,20,26,.52)', backdropFilter: 'blur(6px)' }} onMouseDown={e => { if (e.target === e.currentTarget) setSectionEditorOpen(false); }}>
         <div role="dialog" aria-modal="true" aria-labelledby="section-dialog-title" className="w-full max-w-md rounded-3xl p-6 shadow-2xl" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
-          <div className="flex items-center justify-between gap-3 mb-5"><div><p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-teal-dark)' }}>{editingSection ? 'Rename section' : 'New section'}</p><h3 id="section-dialog-title" className="font-serif text-2xl font-semibold">{editingSection ? `Rename “${editingSection.name}”` : 'Add profile question section'}</h3></div><button type="button" className="p-2 rounded-full" aria-label="Close" onClick={() => setSectionEditorOpen(false)}><X className="w-5 h-5" /></button></div>
-          <label className="label">Section name</label><input autoFocus value={sectionName} onChange={e => setSectionName(e.target.value)} placeholder="Reading Habits" className="input-field" onKeyDown={e => { if (e.key === 'Enter') void saveSection(); }} />
-          <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>{editingSection ? 'Renaming a section also updates every existing question assigned to it.' : 'The new section will be added after the existing sections.'}</p>
+          <div className="flex items-center justify-between gap-3 mb-5"><div><p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-teal-dark)' }}>{editingSection ? 'Edit section' : 'New section'}</p><h3 id="section-dialog-title" className="font-serif text-2xl font-semibold">{editingSection ? `Edit “${editingSection.header || editingSection.name}”` : 'Add profile question section'}</h3></div><button type="button" className="p-2 rounded-full" aria-label="Close" onClick={() => setSectionEditorOpen(false)}><X className="w-5 h-5" /></button></div>
+          <div className="space-y-4"><div><label className="label">Internal section name</label><input autoFocus value={sectionName} onChange={e => setSectionName(e.target.value)} placeholder="Reading Habits" className="input-field" /></div><div><label className="label">Section header shown to readers</label><input value={sectionHeader} onChange={e => setSectionHeader(e.target.value)} placeholder="Your reading habits" className="input-field" /></div><div><label className="label">Text under the heading</label><textarea value={sectionDescription} onChange={e => setSectionDescription(e.target.value)} placeholder="Tell us a little about this part of your reader identity." rows={3} className="input-field resize-y" /></div><div className="grid grid-cols-2 gap-3"><div><label className="label">Section order</label><input type="number" value={sectionOrder} onChange={e => setSectionOrder(Number(e.target.value) || 0)} className="input-field" /></div><label className="flex items-center gap-2 text-sm mt-7"><input type="checkbox" checked={sectionActive} onChange={e => setSectionActive(e.target.checked)} /> Show section</label></div></div>
+          <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>{editingSection ? 'Changing the internal name also updates every existing question assigned to it. Header and helper text are what readers see.' : 'The new section is immediately available for profile questions.'}</p>
           <div className="flex justify-end gap-2 mt-6"><button type="button" className="btn-ghost !w-auto" onClick={() => setSectionEditorOpen(false)}>Cancel</button><button type="button" className="btn-primary !w-auto" disabled={sectionSaving} onClick={saveSection}>{sectionSaving ? 'Saving…' : editingSection ? 'Rename section' : 'Add section'}</button></div>
         </div>
       </div>}

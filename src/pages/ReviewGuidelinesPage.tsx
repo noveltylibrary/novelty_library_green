@@ -177,7 +177,7 @@ function GuideSection({ section, index, navigate, showRating, onZoom }: { sectio
     {index === 0 && <div className="novelty-content" style={{ paddingTop: 0 }}><div className="rounded-3xl p-5" style={{background:'linear-gradient(135deg,rgba(8,145,178,.12),rgba(34,211,238,.06))',border:'1px solid rgba(8,145,178,.24)'}}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0"><p className="text-xs uppercase tracking-[.18em] font-bold" style={{color:'var(--color-teal-dark)'}}>Ready when you are</p><h3 className="font-serif text-2xl font-semibold mt-1">Reserve a book or submit your review</h3><p className="text-sm mt-1" style={{color:'var(--color-text-muted)'}}>Reservations are requests only until an admin accepts them. Reviews are checked by Novelty Library before acceptance and publication.</p></div>
-        <div className="flex flex-wrap gap-2"><button type="button" className="btn-ghost !w-auto" onClick={()=>navigate('/submit#reserve')}>Reserve a Book</button><button type="button" className="btn-primary !w-auto" onClick={()=>navigate('/submit')}>Submit Review</button></div>
+        <div className="flex flex-wrap gap-2"><button type="button" className="btn-ghost !w-auto nl-guide-glow-btn" onClick={()=>navigate('/submit#reserve')}>Reserve a Book</button><button type="button" className="btn-primary !w-auto" onClick={()=>navigate('/submit')}>Submit Review</button></div>
       </div>
     </div></div>}
     {showRating && <div className="novelty-content" style={{ paddingTop: 0 }}><Reveal><RatingGuideCard /></Reveal></div>}
@@ -217,13 +217,31 @@ export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [zoom]);
 
-  const safeSections = useMemo(() => sections.filter(s => s.active).sort((a,b) => a.sort_order - b.sort_order), [sections]);
+  const safeSections = useMemo(() => {
+    const active = sections.filter(s => s.active).sort((a,b) => a.sort_order - b.sort_order);
+    const hasRatingSection = active.some((x) => /understand[\s-]*(the[\s-]*)?rating|rating[\s-]*system|rating[\s-]*guide/i.test(`${x.slug} ${x.title}`));
 
-  // Show the R/W star explainer once, in the form-guide (Ratings Breakdown) section.
+    // Keep the star explainer under a dedicated Rating System section. If an older
+    // saved guide does not have one yet, create a local fallback section rather
+    // than placing the explainer inside the submission/form section.
+    if (!hasRatingSection) {
+      active.push({
+        id: 'fallback-rating-system',
+        slug: 'rating-system',
+        title: 'UNDERSTAND THE RATING SYSTEM',
+        sort_order: Math.max(30, ...active.map(x => x.sort_order + 1)),
+        active: true,
+        content_html: `<p>Novelty uses the reviewer's personal R/W score out of 10. This is separate from Goodreads and Amazon platform ratings. The guide below shows exactly how an R/W score is displayed as stars on Novelty review cards and posters.</p>`
+      });
+    }
+    return active.sort((a,b) => a.sort_order - b.sort_order);
+  }, [sections]);
+
+  // The R/W star explainer belongs only under the dedicated Rating System section,
+  // never inside the form/submission walkthrough.
   const ratingIndex = useMemo(() => {
     const hay = (x: ReviewGuidelineSection) => `${x.slug} ${x.title}`;
-    const i = safeSections.findIndex(x => /form[\s-]*guide|step[\s-]*by[\s-]*step|rating/i.test(hay(x)));
-    return i >= 0 ? i : safeSections.findIndex(x => /core[\s-]*rules|at a glance/i.test(hay(x)));
+    return safeSections.findIndex(x => /understand[\s-]*(the[\s-]*)?rating|rating[\s-]*system|rating[\s-]*guide/i.test(hay(x)));
   }, [safeSections]);
 
   return <div className="pt-20 sm:pt-24 pb-20 px-3 sm:px-5 animate-fade-in">

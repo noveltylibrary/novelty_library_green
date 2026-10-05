@@ -190,6 +190,19 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
   const [draftModalOpen, setDraftModalOpen] = useState(false);
   const [draftName, setDraftName] = useState('');
   const [reservationModalOpen, setReservationModalOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const openFromHash = () => {
+      const hash = window.location.hash.toLowerCase();
+      if (hash === '#reserve' || hash.endsWith('#reserve') || hash.includes('/submit#reserve')) {
+        setReservationModalOpen(true);
+        window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+      }
+    };
+    openFromHash();
+    window.addEventListener('hashchange', openFromHash);
+    return () => window.removeEventListener('hashchange', openFromHash);
+  }, []);
   const [loadDraftModalOpen, setLoadDraftModalOpen] = useState(false);
   const [reservationBook, setReservationBook] = useState('');
   const [reservationAuthor, setReservationAuthor] = useState('');
@@ -1041,10 +1054,10 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
             Skip the essay. Drop your review below. We'll turn your submission into a Novelty Review poster.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
-            <button type="button" onClick={() => navigate('/review-guidelines')} className="btn-ghost inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm">
+            <button type="button" onClick={() => navigate('/review-guidelines')} className="btn-ghost inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm nl-guide-glow-btn">
               <FileText className="w-4 h-4" /> Review Guidelines
             </button>
-            <button type="button" onClick={() => setReservationModalOpen(true)} className="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5" style={{ background: 'var(--color-teal-dark)' }}>
+            <button id="reserve" type="button" onClick={() => setReservationModalOpen(true)} className="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5" style={{ background: 'var(--color-teal-dark)' }}>
               <BookOpen className="w-4 h-4" /> Reserve a Book
             </button>
             <button type="button" onClick={() => void openLoadDraftModal()} className="btn-ghost inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm">
