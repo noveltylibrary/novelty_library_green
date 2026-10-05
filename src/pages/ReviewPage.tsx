@@ -202,7 +202,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
               {(() => {
                 const nl = computeNlRating(review.rw_rating, engagement.statsFor(review.id));
                 return nl !== null ? (
-                  <span className="nl-chip gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold" title="NL Rating: the R/W rating averaged with every reader rating">
+                  <span className="nl-chip gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold" title="NL Rating: cumulative average of all reader ratings on this community review post">
                     <Star className="w-3 h-3 fill-current" />{nl.toFixed(1)}<span className="opacity-70">/10</span>
                     <span className="opacity-70 text-[10px] tracking-wider">NL</span>
                   </span>
@@ -284,7 +284,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
             {/* Disclaimer */}
             <div className="mt-8 p-4 rounded-xl" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                The R/W Rating reflects the specific reviewer's opinion. The NL Rating averages it with the ratings left by Novelty Library readers. A book's impression varies from reader to reader. For a broader perspective, refer to the Goodreads rating.
+                The R/W Rating reflects the specific reviewer's opinion. The NL Rating is the cumulative average of all ratings submitted by Novelty Library readers on this community review post. A book's impression varies from reader to reader. For a broader platform perspective, refer to the Goodreads rating.
               </p>
             </div>
           </div>

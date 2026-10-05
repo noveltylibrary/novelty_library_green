@@ -97,3 +97,22 @@ export function useCoreOverrides(): CoreOverrides {
   }, []);
   return o;
 }
+
+
+export type CoreFieldOrder = Partial<Record<CoreFieldKey, number>>;
+const ORDER_SLUG = 'profile-core-field-order';
+
+export async function fetchCoreFieldOrder(): Promise<CoreFieldOrder> {
+  const { data } = await supabase.from('editable_pages').select('content').eq('slug', ORDER_SLUG).maybeSingle();
+  if (!data?.content) return {};
+  try {
+    const parsed = JSON.parse(String(data.content));
+    return parsed && typeof parsed === 'object' ? parsed as CoreFieldOrder : {};
+  } catch { return {}; }
+}
+
+export async function saveCoreFieldOrder(order: CoreFieldOrder): Promise<CoreFieldOrder> {
+  const { error } = await supabase.from('editable_pages').upsert({ slug: ORDER_SLUG, title: 'Profile built-in field order', content: JSON.stringify(order), updated_at: new Date().toISOString() }, { onConflict: 'slug' });
+  if (error) throw error;
+  return order;
+}

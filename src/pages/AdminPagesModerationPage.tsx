@@ -15,7 +15,8 @@ import {
   type ProfileQuestionType,
   type ProfileQuestionSection,
 } from '@/lib/profileQuestions';
-import { CORE_FIELDS, fetchCoreOverrides, saveCoreOverride, resetCoreOverride, type CoreFieldKey, type CoreOverrides } from '@/lib/profileCoreFields';
+import { CORE_FIELDS, fetchCoreOverrides, saveCoreOverride, resetCoreOverride, fetchCoreFieldOrder, saveCoreFieldOrder, type CoreFieldKey, type CoreOverrides, type CoreFieldOrder } from '@/lib/profileCoreFields';
+import { BUILT_IN_PROFILE_SECTIONS, fetchProfileSectionLayout, saveProfileSectionLayout, type ProfileSectionLayoutItem } from '@/lib/profileLayout';
 
 const PAGE_KEYS = ['review-guidelines', 'about', 'privacy', 'terms', 'cookies', 'cookie-banner'] as const;
 const QUESTION_TYPES: { value: ProfileQuestionType; label: string }[] = [
@@ -44,6 +45,8 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
 
   const [questions, setQuestions] = useState<ProfileQuestion[]>([]);
   const [sections, setSections] = useState<ProfileQuestionSection[]>([]);
+  const [sectionLayout, setSectionLayout] = useState<ProfileSectionLayoutItem[]>(BUILT_IN_PROFILE_SECTIONS);
+  const [coreFieldOrder, setCoreFieldOrder] = useState<CoreFieldOrder>({});
   const [editing, setEditing] = useState<ProfileQuestion | null>(null);
   const [coreOverrides, setCoreOverrides] = useState<CoreOverrides>({});
   const [editingCore, setEditingCore] = useState<CoreFieldKey | null>(null);
@@ -63,6 +66,10 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   const [required, setRequired] = useState(false);
   const [publicDefault, setPublicDefault] = useState(true);
   const [showInCard, setShowInCard] = useState(true);
+  const [profileCardMode, setProfileCardMode] = useState<'tag' | 'answer' | 'answer_no_question'>('answer');
+  const [showQuestionInCard, setShowQuestionInCard] = useState(true);
+  const [maxSelections, setMaxSelections] = useState<number | null>(null);
+  const [alphabeticalSort, setAlphabeticalSort] = useState(false);
 
   const [sectionEditorOpen, setSectionEditorOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<ProfileQuestionSection | null>(null);
@@ -73,10 +80,14 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   const [sectionActive, setSectionActive] = useState(true);
   const [sectionSaving, setSectionSaving] = useState(false);
 
-  const orderedSections = useMemo(
-    () => [...sections].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)),
-    [sections]
-  );
+  const orderedSections = useMemo(() => [...sections].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)), [sections]);
+  const allSectionLayout = useMemo(() => {
+    const custom = orderedSections.map((s) => ({ key: `custom:${s.id}` as const, order: s.sort_order, active: s.active, header: s.header || s.name, description: s.description || '', custom: s }));
+    const built = sectionLayout.map(s => ({ ...s }));
+    const byKey = new Map(built.map(s => [s.key, s]));
+    custom.forEach(c => { if (!byKey.has(c.key)) built.push({ key: c.key, order: c.order, active: c.active, header: c.header, description: c.description }); });
+    return built.sort((a,b)=>a.order-b.order || a.key.localeCompare(b.key));
+  }, [orderedSections, sectionLayout]);
   const activeSections = useMemo(() => orderedSections.filter(s => s.active), [orderedSections]);
 
   const loadPage = async (slug: typeof PAGE_KEYS[number]) => {
@@ -87,12 +98,16 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
 
   const loadProfileBuilder = async () => {
     try {
-      const [sectionRows, questionRows] = await Promise.all([
+      const [sectionRows, questionRows, layoutRows, fieldOrder] = await Promise.all([
         fetchProfileSections(true),
         fetchProfileQuestions(true),
+        fetchProfileSectionLayout(),
+        fetchCoreFieldOrder(),
       ]);
       setSections(sectionRows);
       setQuestions(questionRows);
+      setSectionLayout(layoutRows);
+      setCoreFieldOrder(fieldOrder);
       setSection(current => current || sectionRows.find(s => s.active)?.name || sectionRows[0]?.name || '');
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Could not load profile form builder.');
@@ -165,6 +180,10 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     setRequired(false);
     setPublicDefault(true);
     setShowInCard(true);
+    setProfileCardMode('answer');
+    setShowQuestionInCard(true);
+    setMaxSelections(null);
+    setAlphabeticalSort(false);
   };
 
   const editQuestion = (q: ProfileQuestion) => {
@@ -185,6 +204,10 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     setRequired(q.required);
     setPublicDefault(q.public_default);
     setShowInCard(q.show_in_profile_card !== false);
+    setProfileCardMode(q.profile_card_mode === 'tag' ? 'tag' : q.profile_card_mode === 'answer_no_question' ? 'answer_no_question' : 'answer');
+    setShowQuestionInCard(q.profile_card_mode !== 'answer_no_question');
+    setMaxSelections(q.max_selections == null ? null : Math.max(1, Number(q.max_selections) || 1));
+    setAlphabeticalSort(!!q.alphabetical_sort);
     requestAnimationFrame(() => questionInputRef.current?.focus({ preventScroll: true }));
   };
 
@@ -214,6 +237,9 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
         required,
         public_default: publicDefault,
         show_in_profile_card: showInCard,
+        profile_card_mode: profileCardMode === 'tag' ? 'tag' : showQuestionInCard ? 'answer' : 'answer_no_question',
+        max_selections: type === 'select_multiple' ? maxSelections : null,
+        alphabetical_sort: (type === 'select_multiple' || type === 'select_single' || type === 'select') ? alphabeticalSort : false,
         sort_order: editing?.sort_order ?? questions.length,
       });
       setQuestions(v => editing ? v.map(x => x.id === saved.id ? saved : x) : [...v, saved]);
@@ -251,6 +277,16 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     }
   };
 
+  const openBuiltInSection = (item: ProfileSectionLayoutItem) => {
+    setEditingSection({ id: `builtin:${item.key}`, name: item.key, header: item.header, description: item.description, sort_order: item.order, active: item.active });
+    setSectionName(item.key);
+    setSectionHeader(item.header || item.key);
+    setSectionDescription(item.description || '');
+    setSectionOrder(item.order);
+    setSectionActive(item.active);
+    setSectionEditorOpen(true);
+  };
+
   const openAddSection = () => {
     setEditingSection(null);
     setSectionName('');
@@ -271,6 +307,32 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     setSectionEditorOpen(true);
   };
 
+  const moveSection = async (index: number, direction: -1 | 1) => {
+    const next = [...allSectionLayout];
+    const target = index + direction;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    try {
+      setSectionLayout(await saveProfileSectionLayout(next));
+      setMsg('Profile section order saved.');
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not save section order.'); }
+  };
+
+  const moveCoreField = async (key: CoreFieldKey, direction: -1 | 1) => {
+    const group = CORE_FIELDS.filter(f => {
+      const sectionKey = f.section === 'Reading Journey' ? 'reading_journey' : 'reader_identity';
+      return sectionKey === (key === 'reading_since' || key === 'books_read_this_month' || key === 'total_books_read' || key === 'favorite_book' || key === 'favorite_author' || key === 'favorite_genre' ? 'reading_journey' : 'reader_identity');
+    });
+    const sorted = [...group].sort((a,b)=>(coreFieldOrder[a.key] ?? CORE_FIELDS.indexOf(a))-(coreFieldOrder[b.key] ?? CORE_FIELDS.indexOf(b)));
+    const index = sorted.findIndex(f => f.key === key);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= sorted.length) return;
+    [sorted[index], sorted[target]] = [sorted[target], sorted[index]];
+    const next = { ...coreFieldOrder };
+    sorted.forEach((f,i)=>{ next[f.key] = i; });
+    try { setCoreFieldOrder(await saveCoreFieldOrder(next)); setMsg('Built-in field order saved.'); } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not save built-in field order.'); }
+  };
+
   const saveSection = async () => {
     if (!sectionName.trim()) {
       setMsg('Enter a section name first.');
@@ -278,22 +340,27 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     }
     try {
       setSectionSaving(true);
-      const saved = await saveProfileQuestionSection({
-        id: editingSection?.id,
-        name: sectionName,
-        header: sectionHeader,
-        description: sectionDescription,
-        sort_order: sectionOrder,
-        active: sectionActive,
-      });
-      setSections(current => {
-        const next = editingSection
-          ? current.map(x => x.id === saved.id ? saved : x)
-          : [...current, saved];
-        return next.sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
-      });
-      setSection(saved.name);
-      setMsg(editingSection ? 'Section settings saved. Existing questions were updated to the new name.' : 'Section added.');
+      if (editingSection?.id.startsWith('builtin:')) {
+        const key = editingSection.name as ProfileSectionLayoutItem['key'];
+        const next = sectionLayout.map(item => item.key === key ? { ...item, header: sectionHeader.trim() || item.header, description: sectionDescription.trim(), active: sectionActive, order: sectionOrder } : item);
+        setSectionLayout(await saveProfileSectionLayout(next));
+        setMsg('Built-in section settings saved.');
+      } else {
+        const saved = await saveProfileQuestionSection({
+          id: editingSection?.id,
+          name: sectionName,
+          header: sectionHeader,
+          description: sectionDescription,
+          sort_order: sectionOrder,
+          active: sectionActive,
+        });
+        setSections(current => {
+          const next = editingSection ? current.map(x => x.id === saved.id ? saved : x) : [...current, saved];
+          return next.sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+        });
+        setSection(saved.name);
+        setMsg(editingSection ? 'Section settings saved. Existing questions were updated to the new name.' : 'Section added.');
+      }
       setSectionEditorOpen(false);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Could not save section.');
@@ -376,7 +443,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
         </div>
         {profilePreview ? <div className="rounded-3xl p-5 sm:p-7" style={{ background: 'linear-gradient(145deg,#012b36,#075985 58%,#22c3d0)', border: '1px solid rgba(255,255,255,.16)', boxShadow: '0 24px 60px rgba(1,43,54,.22)' }}>
           <div className="flex items-start justify-between gap-4 mb-5"><div><span className="text-[10px] uppercase tracking-[.2em] font-bold text-cyan-100/70">Novelty reader card</span><h3 className="font-serif text-2xl font-semibold text-white mt-1">Profile answers</h3></div><span className="rounded-full px-3 py-1 text-[10px] uppercase tracking-wider font-bold bg-white/10 text-cyan-50">Admin preview</span></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">{questions.filter(q => q.show_in_profile_card !== false).slice(0, 12).map(q => <QuestionCardAppearancePreview key={q.id} type={q.type} question={q.question} options={q.options.filter(Boolean)} allowOther={q.allow_other !== false} imageCount={q.image_count || 1} placeholder={q.placeholder || ''} imageMaxWidth={q.image_max_width || 1600} imageMaxHeight={q.image_max_height || 1600} />)}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">{questions.filter(q => q.show_in_profile_card !== false).slice(0, 12).map(q => <QuestionCardAppearancePreview key={q.id} profileCardMode={q.profile_card_mode} type={q.type} question={q.question} options={q.options.filter(Boolean)} allowOther={q.allow_other !== false} imageCount={q.image_count || 1} placeholder={q.placeholder || ''} imageMaxWidth={q.image_max_width || 1600} imageMaxHeight={q.image_max_height || 1600} />)}</div>
         </div> : <div className="text-sm py-2" style={{ color: 'var(--color-text-muted)' }}>Use the question list below to edit, reorder, and control card visibility.</div>}
       </section>
 
@@ -395,11 +462,16 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
             <div><p className="text-sm font-semibold">Profile question sections</p><p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Every profile-question section is configurable here: internal name, reader-facing heading, text under the heading, order and visibility. Add as many sections as your profile needs.</p></div>
             <button type="button" className="btn-primary !w-auto" onClick={openAddSection}><FolderPlus className="w-4 h-4" /> Add section</button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-            {orderedSections.map((s, index) => <div key={s.id} className="rounded-xl p-3 flex items-center gap-2" style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)' }}>
-              <div className="min-w-0 flex-1"><p className="font-semibold text-sm truncate">{s.header || s.name}</p><p className="text-[11px] mt-1 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>{s.description || 'No helper text set.'}</p><p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: 'var(--color-text-muted)' }}>Order {s.sort_order} · {s.active ? 'Visible' : 'Hidden'}</p></div>
-              <button type="button" className="p-2 rounded-lg" title={`Edit ${s.name}`} aria-label={`Edit ${s.name}`} onClick={() => openRenameSection(s)}><Pencil className="w-3.5 h-3.5" /></button>
-            </div>)}
+          <div className="space-y-2">
+            {allSectionLayout.map((item, index) => {
+              const builtIn = item.key === 'reader_identity' || item.key === 'profile_questions' || item.key === 'reading_journey';
+              const custom = !builtIn ? orderedSections.find(s => item.key === `custom:${s.id}`) : null;
+              return <div key={item.key} className="rounded-xl p-3 flex items-center gap-2" style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)' }}>
+                <div className="flex flex-col"><button type="button" disabled={index===0} onClick={()=>void moveSection(index,-1)} className="p-1 rounded disabled:opacity-30" title="Move section up"><ChevronUp className="w-4 h-4"/></button><button type="button" disabled={index===allSectionLayout.length-1} onClick={()=>void moveSection(index,1)} className="p-1 rounded disabled:opacity-30" title="Move section down"><ChevronDown className="w-4 h-4"/></button></div>
+                <div className="min-w-0 flex-1"><p className="font-semibold text-sm truncate">{item.header || item.key}</p><p className="text-[11px] mt-1 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>{item.description || 'No helper text set.'}</p><p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: 'var(--color-text-muted)' }}>{builtIn ? 'Built-in section' : 'Custom section'} · Order {index+1} · {item.active ? 'Visible' : 'Hidden'}</p></div>
+                {custom ? <button type="button" className="p-2 rounded-lg" title={`Edit ${custom.name}`} aria-label={`Edit ${custom.name}`} onClick={() => openRenameSection(custom)}><Pencil className="w-3.5 h-3.5" /></button> : <button type="button" className="p-2 rounded-lg" title="Edit built-in section heading and text" aria-label="Edit built-in section" onClick={() => openBuiltInSection(item)}><Pencil className="w-3.5 h-3.5" /></button>}
+              </div>;
+            })}
           </div>
         </div>
 
@@ -408,16 +480,11 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
             <div className="rounded-2xl p-4" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
               <p className="text-sm font-semibold">Built-in profile fields</p>
               <p className="text-xs mt-1 mb-3" style={{ color: 'var(--color-text-muted)' }}>These ship with every profile. Edit their label, placeholder and default visibility. Name and Email are locked.</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {CORE_FIELDS.map(f => { const o = coreOverrides[f.key] || {}; return <div key={f.key} className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', outline: editingCore === f.key ? '2px solid var(--color-cyan-dark)' : 'none' }}>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'var(--color-teal-dark)' }}>{f.section} · {f.type}</p>
-                    <p className="font-semibold text-sm truncate">{o.label || f.label}</p>
-                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{(o.defaultVisible ?? f.defaultVisible) ? 'Public by default' : 'Private by default'}</p>
-                  </div>
-                  {f.locked ? <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: 'var(--color-text-muted)' }} title="Locked: account identity field"><Lock className="w-3.5 h-3.5" /> Locked</span>
-                    : <button type="button" onClick={() => editCore(f.key)} className="btn-ghost !w-auto !px-3 text-xs">Edit</button>}
-                </div>; })}
+              <div className="space-y-4">
+                {(['reader_identity','reading_journey'] as const).map(sectionKey => {
+                  const fields = CORE_FIELDS.filter(f => (sectionKey === 'reading_journey' ? f.section === 'Reading Journey' : f.section === 'Personal Details')).sort((a,b)=>(coreFieldOrder[a.key] ?? CORE_FIELDS.indexOf(a))-(coreFieldOrder[b.key] ?? CORE_FIELDS.indexOf(b)));
+                  return <div key={sectionKey} className="rounded-2xl p-3" style={{background:'var(--color-background)',border:'1px solid var(--color-border)'}}><p className="text-xs uppercase tracking-wider font-bold mb-2" style={{color:'var(--color-teal-dark)'}}>{sectionKey === 'reading_journey' ? 'Reading Journey' : 'Build Your Reader Identity'}</p><div className="space-y-2">{fields.map((f,i)=><div key={f.key} className="rounded-xl p-3 flex items-center gap-2" style={{background:'var(--color-paper)',border:'1px solid var(--color-border)'}}><div className="flex flex-col"><button type="button" disabled={i===0} onClick={()=>void moveCoreField(f.key,-1)} className="p-1 rounded disabled:opacity-30" title="Move field up"><ChevronUp className="w-4 h-4"/></button><button type="button" disabled={i===fields.length-1} onClick={()=>void moveCoreField(f.key,1)} className="p-1 rounded disabled:opacity-30" title="Move field down"><ChevronDown className="w-4 h-4"/></button></div><div className="min-w-0 flex-1"><p className="text-[10px] uppercase tracking-wider font-bold" style={{color:'var(--color-teal-dark)'}}>{f.type}</p><p className="font-semibold text-sm truncate">{(coreOverrides[f.key]?.label || f.label)}</p><p className="text-[11px] mt-0.5" style={{color:'var(--color-text-muted)'}}>{f.key === 'name' || f.key === 'email' ? 'Built-in · locked' : 'Built-in · reorder / label controls'}</p></div>{f.locked ? <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{color:'var(--color-text-muted)'}}><Lock className="w-3.5 h-3.5"/> Locked</span> : <button type="button" onClick={()=>editCore(f.key)} className="btn-ghost !w-auto !px-3 text-xs">Edit</button>}</div>)}</div></div>;
+                })}
               </div>
             </div>
             {questions.length === 0 ? <div className="py-10 text-center" style={{ color: 'var(--color-text-muted)' }}>No profile questions yet.</div> : questions.map((q, i) => <div key={q.id} className="rounded-2xl p-4" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
@@ -428,7 +495,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
                     <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full" style={{ background: 'rgba(8,145,178,.09)', color: 'var(--color-teal-dark)' }}>{q.section}</span>
                     <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>{questionTypeLabel(q.type)}</span>
                     {q.required && <span className="text-[10px] font-bold">Required</span>}
-                    {q.show_in_profile_card !== false && <span className="text-[10px] font-bold" style={{ color: 'var(--color-teal-dark)' }}>Profile card</span>}
+                    {q.show_in_profile_card !== false && <span className="text-[10px] font-bold" style={{ color: 'var(--color-teal-dark)' }}>{q.profile_card_mode === 'answer_no_question' ? 'Answer only' : q.profile_card_mode === 'tag' ? 'Profile card · Tag' : 'Profile card · Q + A'}</span>}
                   </div>
                   <p className="font-semibold mt-2">{q.question}</p>
                   {q.options.length > 0 && <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Options: {q.options.join(' · ')}</p>}
@@ -465,11 +532,13 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
                 <input value={placeholder} onChange={e => setPlaceholder(e.target.value)} placeholder={type === 'long_text' ? 'Write a few lines about your reading life…' : type === 'number' ? 'e.g. 12' : type === 'year' ? 'e.g. 2018' : type === 'url' ? 'https://example.com/your-profile' : 'e.g. The book that changed everything'} className="input-field" />
                 <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>Shown inside the answer field to guide users. It disappears once they type an answer.</p>
               </div>}
-              <QuestionCardAppearancePreview type={type} question={question} options={options.filter(Boolean)} allowOther={allowOther} imageCount={imageCount} placeholder={placeholder} imageMaxWidth={imageMaxWidth} imageMaxHeight={imageMaxHeight} />
+              <QuestionCardAppearancePreview profileCardMode={profileCardMode === 'tag' ? 'tag' : showQuestionInCard ? 'answer' : 'answer_no_question'} type={type} question={question} options={options.filter(Boolean)} allowOther={allowOther} imageCount={imageCount} placeholder={placeholder} imageMaxWidth={imageMaxWidth} imageMaxHeight={imageMaxHeight} />
               <div><label className="label">Question type</label><select value={type} onChange={e => setType(e.target.value as ProfileQuestionType)} className="input-field">{QUESTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
               {(type === 'select' || type === 'select_single' || type === 'select_multiple') && <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3"><div><label className="label">Dropdown options</label><p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Each option has its own field. Add as many as needed.</p></div><button type="button" className="btn-ghost !w-auto !px-3 text-xs" onClick={() => setOptions(v => [...v, ''])}><Plus className="w-3.5 h-3.5"/> Add option</button></div>
+                <div className="flex items-center justify-between gap-3"><div><label className="label">Dropdown options</label><p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Each option has its own field. Add as many as needed.</p></div><div className="flex gap-2"><button type="button" className="btn-ghost !w-auto !px-3 text-xs" onClick={() => setOptions(v => [...v, ''])}><Plus className="w-3.5 h-3.5"/> Add option</button><button type="button" className="btn-ghost !w-auto !px-3 text-xs" onClick={() => setOptions(v => [...v].sort((a,b) => a.localeCompare(b, undefined, { sensitivity: 'base' })))}>A–Z</button></div></div>
                 <div className="space-y-2">{options.map((option, index) => <div key={`opt-${index}`} className="flex items-center gap-2"><span className="w-7 text-center text-xs font-bold" style={{ color: 'var(--color-text-muted)' }}>{index + 1}</span><input value={option} onChange={e => setOptions(v => v.map((x, i) => i === index ? e.target.value : x))} placeholder={`Option ${index + 1}`} className="input-field flex-1"/><button type="button" className="p-2 rounded-lg" title="Remove option" aria-label={`Remove option ${index + 1}`} onClick={() => setOptions(v => v.filter((_, i) => i !== index))}><Trash2 className="w-4 h-4"/></button></div>)}</div>
+                {type === 'select_multiple' && <div className="rounded-xl p-3" style={{ background: 'rgba(8,145,178,.08)', border: '1px solid var(--color-border)' }}><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="label">Maximum selections</label><select value={maxSelections == null ? 'none' : String(maxSelections)} onChange={e => setMaxSelections(e.target.value === 'none' ? null : Math.max(1, Number(e.target.value) || 1))} className="input-field"><option value="none">No cap</option>{Array.from({length: 20}, (_,i) => <option key={i+1} value={i+1}>{i+1} option{i ? 's' : ''}</option>)}</select><p className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>Controls how many choices a reader may select.</p></div><label className="flex items-center gap-2 text-sm mt-7"><input type="checkbox" checked={alphabeticalSort} onChange={e => setAlphabeticalSort(e.target.checked)} /> Sort answers A–Z</label></div></div>}
+                {(type === 'select_single' || type === 'select') && <label className="flex items-center gap-2 text-sm rounded-xl p-3" style={{ background: 'rgba(8,145,178,.08)' }}><input type="checkbox" checked={alphabeticalSort} onChange={e => setAlphabeticalSort(e.target.checked)} /> Sort answer choices A–Z</label>}
                 <div className="flex items-center justify-between rounded-xl p-3" style={{ background: 'rgba(8,145,178,.08)', border: '1px solid var(--color-border)' }}><div><p className="text-sm font-semibold">Other</p><p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Lets users enter their own answer. Present by default until removed.</p></div><button type="button" role="switch" aria-checked={allowOther} onClick={() => setAllowOther(v => !v)} className={`relative h-6 w-11 rounded-full transition ${allowOther ? 'bg-teal-500' : 'bg-slate-300 dark:bg-slate-700'}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${allowOther ? 'left-6' : 'left-1'}`} /></button></div>
               </div>}
               {type === 'image_upload' && <div className="space-y-3 rounded-2xl p-4" style={{ background: 'rgba(8,145,178,.08)', border: '1px solid var(--color-border)' }}>
@@ -478,7 +547,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
               </div>}
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={required} onChange={e => setRequired(e.target.checked)} /> Required</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={publicDefault} onChange={e => setPublicDefault(e.target.checked)} /> Visible by default</label>
-              <label className="flex items-center gap-2 text-sm rounded-xl p-3" style={{ background: 'rgba(0,151,178,.08)' }}><input type="checkbox" checked={showInCard} onChange={e => setShowInCard(e.target.checked)} /> Show answer on profile card</label>
+              <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(0,151,178,.08)' }}><p className="text-sm font-semibold">Profile card presentation</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><label className="flex items-center gap-2 text-sm rounded-lg p-2 border"><input type="radio" name="profile-card-mode" checked={profileCardMode === 'tag'} onChange={() => { setProfileCardMode('tag'); setShowQuestionInCard(true); }} /> Tag</label><label className="flex items-center gap-2 text-sm rounded-lg p-2 border"><input type="radio" name="profile-card-mode" checked={profileCardMode !== 'tag'} onChange={() => setProfileCardMode(showQuestionInCard ? 'answer' : 'answer_no_question')} /> Answer</label></div><label className="flex items-center gap-2 text-sm rounded-lg p-2 border mt-2"><input type="checkbox" checked={showQuestionInCard} disabled={profileCardMode === 'tag'} onChange={e => { const checked = e.target.checked; setShowQuestionInCard(checked); setProfileCardMode(checked ? 'answer' : 'answer_no_question'); }} /> <span><strong>Show question</strong> on the profile card when displaying the answer</span></label><p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Use this control to show or hide the question label while keeping the saved answer visible. “Show answer on profile card” still controls whether the question is included at all.</p></div>
               <button type="button" className="btn-primary w-full" disabled={questionSaving} onClick={saveQuestion}><Save className="w-4 h-4" />{questionSaving ? (editing ? 'Updating…' : 'Saving…') : (editing ? 'Update question' : 'Add question')}</button>
             </div>
             </div>
@@ -490,8 +559,8 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
         <div role="dialog" aria-modal="true" aria-labelledby="section-dialog-title" className="w-full max-w-md rounded-3xl p-6 shadow-2xl" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
           <div className="flex items-center justify-between gap-3 mb-5"><div><p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-teal-dark)' }}>{editingSection ? 'Edit section' : 'New section'}</p><h3 id="section-dialog-title" className="font-serif text-2xl font-semibold">{editingSection ? `Edit “${editingSection.header || editingSection.name}”` : 'Add profile question section'}</h3></div><button type="button" className="p-2 rounded-full" aria-label="Close" onClick={() => setSectionEditorOpen(false)}><X className="w-5 h-5" /></button></div>
           <div className="space-y-4"><div><label className="label">Internal section name</label><input autoFocus value={sectionName} onChange={e => setSectionName(e.target.value)} placeholder="Reading Habits" className="input-field" /></div><div><label className="label">Section header shown to readers</label><input value={sectionHeader} onChange={e => setSectionHeader(e.target.value)} placeholder="Your reading habits" className="input-field" /></div><div><label className="label">Text under the heading</label><textarea value={sectionDescription} onChange={e => setSectionDescription(e.target.value)} placeholder="Tell us a little about this part of your reader identity." rows={3} className="input-field resize-y" /></div><div className="grid grid-cols-2 gap-3"><div><label className="label">Section order</label><input type="number" value={sectionOrder} onChange={e => setSectionOrder(Number(e.target.value) || 0)} className="input-field" /></div><label className="flex items-center gap-2 text-sm mt-7"><input type="checkbox" checked={sectionActive} onChange={e => setSectionActive(e.target.checked)} /> Show section</label></div></div>
-          <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>{editingSection ? 'Changing the internal name also updates every existing question assigned to it. Header and helper text are what readers see.' : 'The new section is immediately available for profile questions.'}</p>
-          <div className="flex justify-end gap-2 mt-6"><button type="button" className="btn-ghost !w-auto" onClick={() => setSectionEditorOpen(false)}>Cancel</button><button type="button" className="btn-primary !w-auto" disabled={sectionSaving} onClick={saveSection}>{sectionSaving ? 'Saving…' : editingSection ? 'Rename section' : 'Add section'}</button></div>
+          <p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>{editingSection?.id.startsWith('builtin:') ? 'Built-in section: heading, helper text, visibility and order are editable. The underlying fields remain built-in.' : editingSection ? 'Changing the internal name also updates every existing question assigned to it. Header and helper text are what readers see.' : 'The new section is immediately available for profile questions.'}</p>
+          <div className="flex justify-end gap-2 mt-6"><button type="button" className="btn-ghost !w-auto" onClick={() => setSectionEditorOpen(false)}>Cancel</button><button type="button" className="btn-primary !w-auto" disabled={sectionSaving} onClick={saveSection}>{sectionSaving ? 'Saving…' : editingSection ? 'Save section settings' : 'Add section'}</button></div>
         </div>
       </div>}
 
@@ -510,6 +579,7 @@ function questionTypeLabel(type: ProfileQuestion['type']): string {
 }
 
 function QuestionCardAppearancePreview({
+  profileCardMode,
   type,
   question,
   options,
@@ -519,6 +589,7 @@ function QuestionCardAppearancePreview({
   imageMaxWidth,
   imageMaxHeight,
 }: {
+  profileCardMode?: ProfileQuestion['profile_card_mode'];
   type: ProfileQuestion['type'];
   question: string;
   options: string[];
@@ -541,7 +612,7 @@ function QuestionCardAppearancePreview({
       <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-100">Live</span>
     </div>
     <div className="mt-3 rounded-2xl border border-white/10 bg-black/10 p-4">
-      <p className="text-xs font-bold uppercase tracking-[.12em] text-cyan-200">{title}</p>
+      {profileCardMode !== 'answer_no_question' && <p className="text-xs font-bold uppercase tracking-[.12em] text-cyan-200">{title}</p>}
       {type === 'image_upload' ? <div className={`mt-3 grid gap-2 ${imageCount > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
         {Array.from({ length: Math.min(imageCount || 1, 3) }).map((_, i) => <div key={i} className="aspect-square rounded-xl border border-dashed border-cyan-200/30 bg-white/[0.05] grid place-items-center text-[10px] text-white/40">Image {i + 1}</div>)}{imageMaxWidth && imageMaxHeight && <p className="col-span-full text-[10px] text-white/45">Up to {imageMaxWidth} × {imageMaxHeight}px</p>}
       </div> : type === 'select_multiple' ? <div className="mt-3 flex flex-wrap gap-1.5">

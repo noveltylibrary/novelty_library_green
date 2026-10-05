@@ -2,6 +2,7 @@ import { useSupportEmail } from '@/lib/siteSettings';
 import { useEditableOverride, EditablePageOverride } from '@/components/EditablePageOverride';
 import { useAboutSections } from '@/lib/aboutSections';
 import { AboutSectionBlock } from '@/components/AboutSectionsView';
+import AdsterraAdSlot from '@/components/AdsterraAdSlot';
 
 interface AboutPageProps {
   navigate: (path: string) => void;
@@ -19,7 +20,7 @@ export function AboutPage({ navigate }: AboutPageProps) {
     <div className="pt-24 pb-20 container-prose animate-fade-in nl-about-shell">
       <div className="max-w-4xl mx-auto" aria-busy={!loaded}>
         {loaded
-          ? sections.filter((s) => s.active).sort((a, b) => a.sort_order - b.sort_order).map((s) => <AboutSectionBlock key={s.id} section={s} email={supportEmail} navigate={navigate} />)
+          ? sections.filter((s) => s.active).sort((a, b) => a.sort_order - b.sort_order).map((s) => <div key={s.id}><AboutSectionBlock section={s} email={supportEmail} navigate={navigate} /><AdsterraAdSlot className="my-10" /></div>)
           : <div className="h-96 rounded-3xl animate-pulse" style={{ background: 'var(--color-paper)' }} />}
       </div>
     </div>

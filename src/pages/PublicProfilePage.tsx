@@ -48,7 +48,7 @@ export function PublicProfilePage({ username, navigate }: Props) {
       favoriteBook:sanitizeUserText(profile.favorite_book,200)||null,
       favoriteAuthor:sanitizeUserText(profile.favorite_author,160)||null,
       favoriteGenre:sanitizeUserText(profile.favorite_genre,120)||null,
-      answers,questions:safeQuestions.filter(q => q.active !== false && q.show_in_profile_card !== false && profile.profile_visibility?.[`question:${q.key}`] !== false),
+      answers,questions:safeQuestions.filter(q => q.active !== false),
       publishedReviews:published.slice(0,6).map(r=>({id:r.id,reviewNo:sanitizeUserText(r.review_no,40)||null,title:sanitizeUserText(r.book_title,200)||'Untitled review',author:sanitizeUserText(r.author,160),coverUrl:safeExternalUrl(r.book_cover),rating:Number(r.reviewers_rating)||null}))
     };
   },[profile,published,questions]);

@@ -32,7 +32,7 @@ interface CommunityReviewCardProps {
   onReview: () => void;
 }
 
-/** Community review card. The poster stays square; R/W is the primary card rating and NL rating lives in the engagement row. */
+/** Community review card. The poster stays square; R/W is the reviewer score and NL is the cumulative community rating in the engagement row. */
 export function CommunityReviewCard({ item, onClick, onPrefetch, index = 0, stats, liked, onLike, onRate, onReview }: CommunityReviewCardProps) {
   const nl = computeNlRating(item.rwRating, stats);
   const safeTitle = sanitizeUserText(item.title, 200);

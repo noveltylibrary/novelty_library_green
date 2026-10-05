@@ -231,22 +231,35 @@ function Cover({ url, w, h, radius, iconSize }: { url: string | null; w: number;
 }
 
 function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, onAvatarUpload, onHeaderUpload }: { canvasRef: RefObject<HTMLDivElement>; data: ProfileCardData; width: number; height: number; scale: number; play: boolean; still: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void }) {
-  const cols = w / h >= 0.95 ? 2 : 1;
-  const compactSquare = w / h <= 1.05;
+  /*
+   * One information architecture, responsive composition.
+   * The card keeps the same reading order at every aspect ratio, but the
+   * columns change intelligently so no format feels like a squeezed version
+   * of another format.
+   */
+  const ratio = w / h;
+  const isWide = ratio >= 1.45;
+  const isLandscape = ratio >= 0.95;
+  const isSquareish = ratio >= 0.78 && ratio < 0.95;
+  const isPortrait = ratio < 0.78;
+  // The 4:5 card gets a dedicated editorial composition: the published shelf
+  // stays prominent, then profile tags, then a compact 3-column answer grid.
+  const isFourFive = Math.abs(ratio - 0.8) < 0.035;
+  const isTall = ratio < 0.68;
+  const compact = w <= 1080 || h <= 1080;
+
   const signature = `${w}x${h}|${data.publishedReviews.length}|${data.questions.length}|${JSON.stringify(data.answers).length}|${data.name}|${data.favoriteBook}|${data.favoriteAuthor}|${data.favoriteGenre}|${data.socialLinks.length}`;
   const [step, setStep] = useState(0);
   const [lastSignature, setLastSignature] = useState(signature);
   if (signature !== lastSignature) { setLastSignature(signature); setStep(0); }
   const fit = FIT_STEPS[Math.min(step, FIT_STEPS.length - 1)];
 
-  // After every render, check whether any column spills out of its box and, if so, take the next (smaller) step.
   useLayoutEffect(() => {
     const root = canvasRef.current;
     if (!root) return;
     if (columnOverflows(root) && step < FIT_STEPS.length - 1) setStep(step + 1);
   }, [step, signature, canvasRef]);
 
-  // Late-loading images/fonts can change heights; re-check once they settle.
   useEffect(() => {
     const t = window.setTimeout(() => {
       const root = canvasRef.current;
@@ -256,198 +269,209 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, 
     return () => window.clearTimeout(t);
   }, [signature, step, canvasRef]);
 
-  // Entrance choreography. Every animated piece takes the next slot on one timeline.
-  // (Only downward-settling motion is used so it never changes the measured layout.)
-  let clock = 0.2;
+  let clock = 0.15;
   const cue = (gap = 0.1) => { clock += gap; return clock; };
   const mv = (kind: 'drop' | 'slide' | 'pop' | 'fade' | 'rise', delay: number): { className: string; style: CSSProperties } => still
     ? { className: '', style: {} }
     : { className: `nl-pc-a nl-pc-${kind}`, style: { ['--d' as string]: `${delay.toFixed(2)}s` } as CSSProperties };
 
-  // On-screen edit controls keep a constant ~28px size whatever the preview scale; they never render into the export.
   const ui = (px: number) => px / Math.max(scale, 0.2);
-  const u = Math.min(w / 1080, h / 1000) * fit.m;
+  const u = Math.min(w / 1080, h / 1350) * fit.m;
   const s = (n: number) => n * u;
-  const pad = w * 0.055;
-  const bannerH = Math.round(cols === 2 ? h * 0.25 : Math.min(h * 0.17, w * 0.34));
-  const avatar = Math.round(cols === 2 ? h * 0.2 : w * 0.17);
+  const pad = Math.max(w * 0.045, s(isTall ? 34 : 48));
+  const bannerH = Math.round(isWide ? h * 0.25 : isLandscape ? h * 0.19 : isTall ? h * 0.13 : h * 0.16);
+  const avatar = Math.round(isWide ? h * 0.19 : isLandscape ? h * 0.18 : isTall ? w * 0.18 : w * 0.16);
 
-  // Every answered question is shown (the reader's own eye/privacy choices are already applied to data.answers).
-  const questions = data.questions.filter((q) => {
+  const normalizeAnswer = (value: unknown): string => answerText(value).trim();
+  const questionValues = (terms: string[]) => {
+    const matches = data.questions.filter((item) => {
+      const hay = `${item.key} ${item.question}`.toLowerCase();
+      return terms.some((term) => hay.includes(term));
+    });
+    const values: string[] = [];
+    matches.forEach((q) => {
+      const raw = data.answers[q.key];
+      if (Array.isArray(raw)) raw.forEach((v) => { const text = normalizeAnswer(v); if (text) values.push(text); });
+      else { const text = normalizeAnswer(raw); if (text) values.push(text); }
+    });
+    return [...new Set(values)];
+  };
+  const questionValue = (terms: string[]) => {
+    const values = questionValues(terms);
+    return values.length ? values[0] : null;
+  };
+  const listValue = (terms: string[]) => questionValues(terms).flatMap((value) => value.split(/[,;|]/).map((v) => v.trim()).filter(Boolean));
+
+
+  const bio = questionValue(['bio', 'about me', 'about', 'reader bio']);
+  const city = questionValue(['city', 'town', 'location', 'residence']);
+  const state = questionValue(['state', 'province']);
+  const country = questionValue(['country']);
+  const gender = questionValue(['gender']);
+  const languages = [...new Set(listValue(['languages read', 'language read', 'languages', 'language']))].sort((a,b) => a.localeCompare(b, undefined, { sensitivity: 'base' })).slice(0, 5);
+  const genres = [...new Set(listValue(['preferred genres', 'preferred genre', 'favourite genres', 'favorite genres', 'genres']))].slice(0, 5);
+  const location = [city, state, country].filter((v): v is string => typeof v === 'string' && !!v).join(', ');
+
+  const answeredQuestions = data.questions.filter((q) => {
     const value = data.answers[q.key];
     return value !== undefined && value !== null && (q.type === 'image_upload' ? answerImageUrls(value).length > 0 : answerText(value).trim() !== '');
   });
-  const reviews = data.publishedReviews.slice(0, fit.reviews);
-  const hasJourney = !!(data.favoriteBook || data.favoriteAuthor || data.favoriteGenre || data.readingSince);
+  const fixedMeta = new Set(['bio', 'about me', 'about', 'reader bio', 'city', 'town', 'location', 'residence', 'state', 'province', 'country', 'gender', 'languages read', 'language read', 'languages', 'language', 'preferred genres', 'preferred genre', 'favourite genres', 'favorite genres', 'genres']);
+  const isFixedQuestion = (q: ProfileQuestion) => Array.from(fixedMeta).some(term => `${q.key} ${q.question}`.toLowerCase().includes(term));
+  const tagQuestions = answeredQuestions.filter(q => q.profile_card_mode === 'tag' && !isFixedQuestion(q));
+  const answerQuestions = answeredQuestions.filter(q => q.profile_card_mode !== 'tag' && !isFixedQuestion(q));
+  const sortValues = (q: ProfileQuestion, value: unknown) => {
+    const values = Array.isArray(value) ? value.map(String) : [answerText(value)];
+    return q.alphabetical_sort ? values.filter(Boolean).sort((a,b) => a.localeCompare(b, undefined, { sensitivity: 'base' })) : values.filter(Boolean);
+  };
 
-  // ---- timeline slots (in reading order) ----
+  const reviewsLimit = isWide ? 3 : isTall ? 1 : 2;
+  const reviews = data.publishedReviews.slice(0, reviewsLimit);
+  const moreReviews = Math.max(0, data.publishedReviews.length - reviews.length);
+
   const tBanner = 0;
   const tAvatar = cue(0.1);
-  const tEyebrow = cue(0.25);
-  const tName = cue(0.12);
-  const tHandle = cue(0.12);
-  const stats: { value: string; label: string; icon: ReactNode }[] = [];
-  if (data.booksThisMonth != null) stats.push({ value: String(data.booksThisMonth), label: 'read this month', icon: <BookOpen width={s(18)} height={s(18)} /> });
-  if (data.totalBooksRead != null) stats.push({ value: String(data.totalBooksRead), label: 'books read', icon: <BookOpen width={s(18)} height={s(18)} /> });
-  stats.push({ value: String(data.publishedBooks), label: 'published', icon: <BookOpen width={s(18)} height={s(18)} /> });
-  if (data.avgRating != null) stats.push({ value: data.avgRating.toFixed(1), label: 'avg rating given', icon: <span style={{ fontSize: s(18), lineHeight: 1 }}>★</span> });
-  const statCues = stats.map(() => cue(0.12));
+  const tHero = cue(0.2);
+  const tMeta = cue(0.12);
 
-  const metrics = <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: s(10) }}>
+  const stats: { value: string; label: string; icon: ReactNode }[] = [
+    { value: data.booksThisMonth == null ? '—' : String(data.booksThisMonth), label: 'read this month', icon: <BookOpen width={s(18)} height={s(18)} /> },
+    { value: data.totalBooksRead == null ? '—' : String(data.totalBooksRead), label: 'books read', icon: <BookOpen width={s(18)} height={s(18)} /> },
+    { value: String(data.publishedBooks), label: 'published', icon: <BookOpen width={s(18)} height={s(18)} /> },
+    { value: data.avgRating == null ? '—' : data.avgRating.toFixed(1), label: 'avg rating given', icon: <span style={{ fontSize: s(18), lineHeight: 1 }}>★</span> },
+  ];
+
+  const statCues = stats.map(() => cue(0.08));
+  const statColumns = isTall ? 2 : 4;
+  const metrics = <div style={{ display: 'grid', gridTemplateColumns: `repeat(${statColumns}, minmax(0, 1fr))`, gap: s(isTall ? 8 : 10) }}>
     {stats.map((st, i) => {
       const m = mv('pop', statCues[i]);
-      return <div key={st.label} className={m.className} style={{ ...m.style, position: 'relative', overflow: 'hidden', borderRadius: s(20), padding: `${s(12)}px ${s(16)}px`, background: `linear-gradient(150deg,${C.glassStrong},${C.glass})`, border: `1px solid ${C.line}`, boxShadow: '0 10px 26px rgba(0,25,35,.25), inset 0 1px 0 rgba(255,255,255,.22)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: s(10), color: C.mint }}>
-          {st.icon}
-          <span style={{ fontSize: s(13), letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 700, color: C.soft }}>{st.label}</span>
-        </div>
-        <p className="font-serif" style={{ fontSize: s(46), fontWeight: 700, lineHeight: 1.05, marginTop: s(2), color: C.ink, textShadow: '0 3px 14px rgba(0,25,35,.35)' }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
+      return <div key={st.label} className={m.className} style={{ ...m.style, minWidth: 0, textAlign: 'center', borderRadius: s(18), padding: `${s(isTall ? 10 : 13)}px ${s(8)}px`, background: 'linear-gradient(150deg,rgba(255,255,255,.15),rgba(255,255,255,.07))', border: `1px solid ${C.line}`, boxShadow: '0 10px 26px rgba(0,25,35,.22), inset 0 1px 0 rgba(255,255,255,.16)' }}>
+        <p className="font-serif" style={{ fontSize: s(isTall ? 32 : isWide ? 42 : 38), fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(5), marginTop: s(6), color: C.mint }}>{st.icon}<span style={{ fontSize: s(9), letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 800, color: C.soft }}>{st.label}</span></div>
       </div>;
     })}
   </div>;
 
-  const tJourney = cue(0.15);
-  const journeyItems: [string, string][] = [];
-  if (data.favoriteBook) journeyItems.push(['Favourite book', sanitizeUserText(data.favoriteBook, 200)]);
-  if (data.favoriteAuthor) journeyItems.push(['Favourite author', sanitizeUserText(data.favoriteAuthor, 160)]);
-  if (data.favoriteGenre) journeyItems.push(['Favourite genre', sanitizeUserText(data.favoriteGenre, 120)]);
-  const journeyCues = journeyItems.map(() => cue(0.1));
-  const journey = hasJourney ? (() => { const m = mv('drop', tJourney); return <div className={m.className} style={{ ...m.style, borderRadius: s(26), padding: s(20), background: 'linear-gradient(150deg,rgba(1,43,54,.62),rgba(1,58,70,.4))', border: `1px solid ${C.line}`, boxShadow: '0 12px 28px rgba(0,25,35,.28)' }}>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(12), marginBottom: s(compactSquare ? 8 : 14) }}>
-      <p style={{ fontSize: s(16), letterSpacing: '.22em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Reading journey</p>
-      {data.readingSince && <span style={{ fontSize: s(17), fontWeight: 700, borderRadius: 999, padding: `${s(5)}px ${s(16)}px`, background: C.mint, color: C.deep2, whiteSpace: 'nowrap' }}>Since {data.readingSince}</span>}
+  const journeyItems: [string, string][] = [
+    ['Favourite book', data.favoriteBook || '—'],
+    ['Favourite author', data.favoriteAuthor || '—'],
+    ['Favourite genre', data.favoriteGenre || '—'],
+  ];
+  const journey = <div style={{ borderRadius: s(22), padding: s(isTall ? 13 : 17), background: 'linear-gradient(150deg,rgba(1,43,54,.62),rgba(1,58,70,.38))', border: `1px solid ${C.line}`, boxShadow: '0 12px 28px rgba(0,25,35,.22)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(10), marginBottom: s(11) }}>
+      <p style={{ fontSize: s(13), letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Reading journey</p>
+      {data.readingSince && <span style={{ fontSize: s(11), fontWeight: 800, borderRadius: 999, padding: `${s(5)}px ${s(11)}px`, background: C.mint, color: C.deep2, whiteSpace: 'nowrap' }}>Since {data.readingSince}</span>}
     </div>
-    <div style={{ display: 'grid', gap: s(10) }}>
-      {journeyItems.map(([label, value], i) => { const mi = mv('slide', journeyCues[i]); return <div key={label} className={mi.className} style={{ ...mi.style, borderRadius: s(16), padding: `${s(12)}px ${s(16)}px`, background: C.glass, border: `1px solid ${C.line}`, borderLeft: `${s(5)}px solid ${C.cyan}` }}>
-        <p style={{ fontSize: s(14), letterSpacing: '.14em', textTransform: 'uppercase', fontWeight: 800, color: C.faint }}>{label}</p>
-        <p className="font-serif" style={{ fontSize: s(24), fontWeight: 600, marginTop: s(2), color: C.ink, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{value}</p>
+    <div style={{ display: 'grid', gridTemplateColumns: isTall ? '1fr' : 'repeat(3,minmax(0,1fr))', gap: s(8) }}>
+      {journeyItems.map(([label, value], i) => { const m = mv('slide', cue(0.08)); return <div key={label} className={m.className} style={{ ...m.style, minWidth: 0, borderRadius: s(14), padding: s(11), background: C.glass, border: `1px solid ${C.line}` }}>
+        <p style={{ fontSize: s(8), letterSpacing: '.10em', textTransform: 'uppercase', fontWeight: 800, color: C.faint }}>{label}</p>
+        <p className="font-serif" style={{ fontSize: s(isTall ? 18 : 20), fontWeight: 600, marginTop: s(4), color: C.ink, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{sanitizeUserText(value, 160)}</p>
       </div>; })}
     </div>
-  </div>; })() : null;
+  </div>;
 
-  const tShelf = cue(0.15);
-  const reviewCues = reviews.map(() => cue(0.12));
-  const shelf = reviews.length > 0 ? (() => { const m = mv('drop', tShelf); return <div className={m.className} style={{ ...m.style, borderRadius: s(26), padding: s(compactSquare ? 13 : 20), background: 'linear-gradient(150deg,rgba(255,255,255,.17),rgba(255,255,255,.07))', border: `1px solid ${C.line}`, boxShadow: '0 14px 32px rgba(0,25,35,.28), inset 0 1px 0 rgba(255,255,255,.2)' }}>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(12), marginBottom: s(14) }}>
-      <div><p style={{ fontSize: s(compactSquare ? 11 : 15), letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Published shelf</p><p className="font-serif" style={{ fontSize: s(compactSquare ? 19 : 28), fontWeight: 700, lineHeight: 1.1, color: C.ink, marginTop: s(2) }}>Reviews on Novelty Library</p></div>
-      <span className="font-serif" style={{ fontSize: s(compactSquare ? 20 : 30), fontWeight: 700, minWidth: s(compactSquare ? 40 : 56), textAlign: 'center', borderRadius: 999, padding: `${s(compactSquare ? 2 : 4)}px ${s(compactSquare ? 9 : 16)}px`, background: C.ink, color: C.deep2 }}>{data.publishedReviews.length}</span>
+  const shelf = reviews.length > 0 ? <div style={{ borderRadius: s(22), padding: s(isTall ? 13 : 17), background: 'linear-gradient(150deg,rgba(255,255,255,.15),rgba(255,255,255,.07))', border: `1px solid ${C.line}`, boxShadow: '0 14px 32px rgba(0,25,35,.24)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(10), marginBottom: s(11) }}>
+      <div><p style={{ fontSize: s(11), letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Published shelf</p><p className="font-serif" style={{ fontSize: s(isTall ? 18 : 22), fontWeight: 700, lineHeight: 1.1, color: C.ink, marginTop: s(2) }}>Reviews on Novelty Library</p></div>
+      <span className="font-serif" style={{ fontSize: s(17), fontWeight: 700, minWidth: s(36), textAlign: 'center', borderRadius: 999, padding: `${s(3)}px ${s(8)}px`, background: 'rgba(255,255,255,.16)', border: `1px solid ${C.line}`, color: C.ink }}>{data.publishedReviews.length}</span>
     </div>
-    <div style={{ display: 'grid', gap: s(10) }}>{reviews.map((review, i) => { const mr = mv('slide', reviewCues[i]); const stars = review.rating && review.rating > 0 ? rwRatingToStars(review.rating) : null; return <div key={review.id} className={mr.className} style={{ ...mr.style, display: 'flex', alignItems: 'center', gap: s(compactSquare ? 9 : 16), borderRadius: s(compactSquare ? 13 : 18), padding: s(compactSquare ? 7 : 10), background: 'rgba(1,43,54,.38)', border: `1px solid ${C.line}` }}>
-      <Cover url={review.coverUrl} w={s(compactSquare ? 50 : 62)} h={s(compactSquare ? 70 : 86)} radius={s(10)} iconSize={s(compactSquare ? 21 : 26)} />
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <p className="font-serif" style={{ fontSize: s(compactSquare ? 17 : 24), fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.title, 200)}</p>
-        <p style={{ fontSize: s(compactSquare ? 12 : 18), color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.author, 160)}{review.reviewNo ? ` · #${sanitizeUserText(review.reviewNo, 40)}` : ''}</p>
-      </div>
-      {stars != null && <span style={{ fontSize: s(compactSquare ? 13 : 20), fontWeight: 800, borderRadius: 999, padding: `${s(compactSquare ? 3 : 5)}px ${s(compactSquare ? 8 : 14)}px`, background: 'rgba(255,255,255,.16)', border: `1px solid ${C.line}`, color: C.ink, whiteSpace: 'nowrap', flexShrink: 0 }}><span style={{ color: '#ffd66b' }}>★</span> {stars.toFixed(1)}</span>}
-    </div>; })}</div>
-    {data.publishedReviews.length > reviews.length && <p style={{ fontSize: s(18), marginTop: s(12), fontWeight: 700, color: C.mint }}>+ {data.publishedReviews.length - reviews.length} more published reviews</p>}
-  </div>; })() : null;
+    <div style={{ display: 'grid', gridTemplateColumns: isTall ? '1fr' : reviews.length > 1 ? 'repeat(2,minmax(0,1fr))' : '1fr', gap: s(8) }}>
+      {reviews.map((review) => { const stars = review.rating && review.rating > 0 ? rwRatingToStars(review.rating) : null; return <div key={review.id} style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: s(9), borderRadius: s(14), padding: s(8), background: 'rgba(1,43,54,.40)', border: `1px solid ${C.line}` }}>
+        <Cover url={review.coverUrl} w={s(isTall ? 44 : 50)} h={s(isTall ? 62 : 70)} radius={s(8)} iconSize={s(19)} />
+        <div style={{ minWidth: 0, flex: 1 }}><p className="font-serif" style={{ fontSize: s(15), fontWeight: 700, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.title, 160)}</p><p style={{ fontSize: s(10), color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.author, 120)}{review.reviewNo ? ` · #${sanitizeUserText(review.reviewNo, 30)}` : ''}</p>{stars != null && <span style={{ fontSize: s(10), color: C.ink }}><span style={{ color: '#ffd66b' }}>★</span> {stars.toFixed(1)}</span>}</div>
+      </div>; })}
+    </div>
+    {moreReviews > 0 && <span style={{ display: 'inline-flex', marginTop: s(9), borderRadius: 999, padding: `${s(4)}px ${s(9)}px`, background: 'rgba(92,225,230,.10)', border: `1px solid rgba(92,225,230,.26)`, color: C.mint, fontSize: s(9), fontWeight: 800 }}>+{moreReviews} more reviews</span>}
+  </div> : null;
 
-  // The admin's 'Show in profile card' flag is the source of truth. Do not
-  // slice to an arbitrary first six: newly added/shared questions must render
-  // immediately when the admin enables them. The normal six-question setup
-  // therefore stays six across, while additional shared questions continue on
-  // subsequent rows instead of disappearing.
-  const cardQuestions = questions.filter(q => q.active !== false && q.show_in_profile_card !== false);
-  const qaCues = cardQuestions.map(() => cue(0.08));
-  const qa = cardQuestions.length > 0 ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: s(8), width: '100%' }}>{cardQuestions.map((q, i) => { const mq = mv('pop', qaCues[i]); return <div key={q.id} className={mq.className} style={{ ...mq.style, breakInside: 'avoid', display: 'block', marginBottom: s(10), borderRadius: s(20), padding: `${s(9)}px ${s(9)}px`, background: 'rgba(1,43,54,.5)', border: `1px solid ${C.line}` }}>
-    <p style={{ fontSize: s(9), letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, overflowWrap: 'anywhere' }}>{sanitizeUserText(q.question, 300)}</p>
-    {q.type === 'image_upload' ? <div style={{ display: 'grid', gridTemplateColumns: imageAnswerGrid(answerImageUrls(data.answers[q.key]), 2), gap: s(6), marginTop: s(6) }}>{answerImageUrls(data.answers[q.key]).slice(0, Math.max(1, q.image_count || 1)).map((url, idx) => <img key={`${q.id}-${idx}`} src={safeExternalUrl(url) || undefined} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: s(12), border: `1px solid ${C.line}` }} />)}</div> : q.type === 'select_multiple' && Array.isArray(data.answers[q.key]) ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6), marginTop: s(6) }}>{(data.answers[q.key] as unknown[]).map((v, idx) => { const raw = String(v); const value = decodeOtherAnswer(raw).value || raw; return <span key={`${q.id}-${idx}`} style={{ borderRadius: 999, padding: `${s(6)}px ${s(10)}px`, background: 'rgba(34,211,238,.12)', border: `1px solid ${C.line}`, color: C.ink, fontSize: s(14), fontWeight: 700 }}>{sanitizeUserText(value, 180)}</span>; })}</div> : <p style={{ fontSize: s(13), fontWeight: 600, marginTop: s(3), color: C.ink, overflowWrap: 'anywhere', lineHeight: 1.25 }}>{sanitizeUserText(answerText(data.answers[q.key]), 1200)}</p>}
-  </div>; })}</div> : null;
-
-  const ig = cleanInstagram(data.instagram);
-  const otherSocials = data.socialLinks.filter((l) => !(ig && l.platform === 'instagram')).slice(0, ig ? 2 : 3);
-  const tFooter = cue(0.2);
-  const tBrand = cue(0.2);
-  const colStyle: CSSProperties = { position: 'relative', minHeight: 0, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(14) };
   const banner = mv('fade', tBanner);
   const avatarMv = mv('pop', tAvatar);
-  const eyebrow = mv('drop', tEyebrow);
-  const nameMv = mv('drop', tName);
-  const handleMv = mv('drop', tHandle);
-  const footerMv = mv('fade', tFooter);
-  const brandMv = mv('pop', tBrand);
+  const heroMv = mv('rise', tHero);
+  const metaMv = mv('fade', tMeta);
+  const ig = cleanInstagram(data.instagram);
+  const otherSocials = data.socialLinks.filter((link) => !(ig && link.platform === 'instagram')).slice(0, 2);
+  const tBrand = cue(0.15);
+  const footerMv = mv('rise', tBrand);
 
-  return <div
-    ref={canvasRef}
-    className={`nl-profile-card-export${play || still ? '' : ' nl-pc-paused'}`}
-    style={{
-      position: 'absolute', top: 0, left: 0, width: w, height: h, overflow: 'hidden',
-      transform: `scale(${scale})`, transformOrigin: 'top left',
-      // Deep teal -> bright teal, like the review poster, with a soft white bloom behind the logo.
-      background: `linear-gradient(150deg,${C.deep} 0%,${C.deep2} 26%,#00687f 52%,${C.teal} 76%,#3fd3d9 100%)`,
-      color: C.ink,
-    }}
-  >
-    {/* Ambient light (slowly drifting on screen, static in the export) */}
+  const topTag = (label: string, tone: 'neutral' | 'language' | 'genre' = 'neutral') => <span style={{ borderRadius: 999, padding: `${s(5)}px ${s(9)}px`, background: tone === 'language' ? 'rgba(92,225,230,.15)' : tone === 'genre' ? 'rgba(0,151,178,.27)' : C.glass, border: `1px solid ${tone === 'language' ? 'rgba(92,225,230,.40)' : tone === 'genre' ? 'rgba(159,243,245,.22)' : C.line}`, color: tone === 'language' ? C.mint : C.soft, fontSize: s(9), fontWeight: 800 }}>{sanitizeUserText(label, 140)}</span>;
+  const fixedTags = [country || '', location && location !== country ? location : '', typeof gender === 'string' ? gender : '', ...languages, ...genres];
+  const details = (fixedTags.some(Boolean) || bio || tagQuestions.length || answerQuestions.length) ? <div className={metaMv.className} style={{ ...metaMv.style, minWidth: 0, display: 'flex', flexDirection: 'column', gap: s(8) }}>
+    {fixedTags.some(Boolean) && <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6) }}>{fixedTags.map((tag, i) => tag ? topTag(tag, (i >= 3 && i < 3 + languages.length) ? 'language' : (i >= 3 + languages.length ? 'genre' : 'neutral')) : null)}</div>}
+    {bio && <div style={{ borderRadius: s(10), padding: `${s(6)}px ${s(9)}px`, background: 'rgba(255,255,255,.055)', border: `1px solid rgba(255,255,255,.12)`, color: C.soft, fontSize: s(8), lineHeight: 1.3 }}><b style={{ color: C.mint }}>Bio:</b> {sanitizeUserText(String(bio), 180)}</div>}
+    {!isFourFive && tagQuestions.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6) }}>{tagQuestions.map(q => { if (q.type === 'image_upload') return null; const values = sortValues(q, data.answers[q.key]); return values.map((v,i) => <span key={`${q.id}-${i}`} style={{ maxWidth: '100%', borderRadius: 999, padding: `${s(5)}px ${s(9)}px`, background: 'rgba(255,255,255,.10)', border: `1px solid rgba(255,255,255,.18)`, color: C.soft, fontSize: s(8), lineHeight: 1.2 }}><b style={{ color: C.mint }}>{sanitizeUserText(q.question, 54)}:</b> {sanitizeUserText(v, 120)}</span>); })}</div>}
+  </div> : null;
+
+  // On 4:5, question-tags are deliberately collected after the published shelf
+  // rather than following their original section order. Answers then use a
+  // three-column grid so the card reads like an editorial profile, not a list.
+  const questionTags = tagQuestions.length > 0 ? <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: s(6), width: '100%' }}>
+    {tagQuestions.flatMap((q) => {
+      if (q.type === 'image_upload') return [];
+      return sortValues(q, data.answers[q.key]).map((v, i) => <span key={`${q.id}-${i}`} style={{ maxWidth: '100%', borderRadius: 999, padding: `${s(5)}px ${s(9)}px`, background: 'rgba(255,255,255,.10)', border: `1px solid rgba(255,255,255,.18)`, color: C.soft, fontSize: s(8), lineHeight: 1.2, textAlign: 'center' }}>{q.profile_card_mode !== 'answer_no_question' && <b style={{ color: C.mint }}>{sanitizeUserText(q.question, 54)}: </b>}{sanitizeUserText(v, 120)}</span>);
+    })}
+  </div> : null;
+
+  const extra = answerQuestions.length > 0 ? <div style={{ display: 'grid', gridTemplateColumns: isFourFive ? 'repeat(3,minmax(0,1fr))' : isWide ? 'repeat(2,minmax(0,1fr))' : '1fr', gap: s(isFourFive ? 7 : 7), width: '100%' }}>
+    {answerQuestions.map((q) => {
+      if (q.type === 'image_upload') return null;
+      const values = sortValues(q, data.answers[q.key]);
+      if (!values.length) return null;
+      return <div key={q.id} style={{ minWidth: 0, borderRadius: s(10), padding: `${s(isFourFive ? 7 : 6)}px ${s(isFourFive ? 8 : 9)}px`, background: 'rgba(255,255,255,.055)', border: `1px solid rgba(255,255,255,.12)`, color: C.soft, fontSize: s(isFourFive ? 7.5 : 8), lineHeight: 1.3, overflow: 'hidden' }}>{q.profile_card_mode !== 'answer_no_question' && <b style={{ color: C.mint }}>{sanitizeUserText(q.question, isFourFive ? 48 : 70)}: </b>}{sanitizeUserText(values.join(', '), isFourFive ? 120 : 180)}</div>;
+    })}
+  </div> : null;
+
+  const fourFiveQuestions = isFourFive ? <div style={{ display: 'flex', flexDirection: 'column', gap: s(8), width: '100%', borderRadius: s(16), padding: s(9), background: 'rgba(1,43,54,.22)', border: `1px solid rgba(255,255,255,.12)` }}>
+    {questionTags}
+    {extra}
+  </div> : null;
+
+  return <div ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: w, height: h, overflow: 'hidden', transform: `scale(${scale})`, transformOrigin: 'top left', background: `linear-gradient(150deg,${C.deep} 0%,${C.deep2} 26%,#00687f 52%,${C.teal} 76%,#3fd3d9 100%)`, color: C.ink }}>
     <div className={still ? '' : 'nl-pc-loop nl-pc-drift'} style={{ position: 'absolute', right: -w * 0.25, top: -h * 0.12, width: w * 0.9, height: w * 0.9, borderRadius: '50%', background: 'radial-gradient(circle, rgba(92,225,230,.42) 0%, rgba(92,225,230,0) 62%)' }} />
-    <div style={{ position: 'absolute', right: -w * 0.22, bottom: -w * 0.3, width: w * 0.8, height: w * 0.8, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(255,255,255,.55) 24%, rgba(255,255,255,0) 58%)' }} />
+    <div style={{ position: 'absolute', right: -w * 0.22, bottom: -w * 0.3, width: w * 0.8, height: w * 0.8, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,.9) 0%, rgba(255,255,255,.4) 24%, rgba(255,255,255,0) 58%)' }} />
     <div style={{ position: 'absolute', left: -w * 0.2, bottom: h * 0.18, width: w * 0.7, height: w * 0.7, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,151,178,.35) 0%, rgba(0,151,178,0) 65%)' }} />
 
-    {/* Banner */}
     <div className={banner.className} style={{ ...banner.style, position: 'absolute', top: 0, left: 0, right: 0, height: bannerH, overflow: 'hidden', background: `linear-gradient(135deg,${C.deep} 0%,#02586b 55%,#16b5c4 100%)` }}>
-      {data.headerImageUrl
-        ? <img className={still ? '' : 'nl-pc-a nl-pc-zoom'} src={safeExternalUrl(data.headerImageUrl) || undefined} alt="" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-        : <>
-          <svg width="100%" height="100%" viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, opacity: 0.5 }} aria-hidden="true">
-            {[120, 190, 260, 330, 400].map((r) => <circle key={r} cx="880" cy="60" r={r} fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="1.5" />)}
-            {[[120, 70], [260, 190], [420, 90], [610, 210], [730, 70]].map(([x, y], i) => <circle key={i} className={still ? '' : 'nl-pc-loop nl-pc-twinkle'} style={{ animationDelay: `${i * 0.6}s`, transformOrigin: `${x}px ${y}px` }} cx={x} cy={y} r="3" fill="#fff" />)}
-          </svg>
-          <NlLogo className={still ? '' : 'nl-pc-loop nl-pc-float'} style={{ position: 'absolute', right: pad, top: '50%', marginTop: -bannerH * 0.36, height: bannerH * 0.72, width: bannerH * 0.72, color: '#fff', opacity: 0.16 }} />
-        </>}
-      <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, rgba(1,43,54,.05) 30%, rgba(1,43,54,.55) 100%)` }} />
+      {data.headerImageUrl ? <img className={still ? '' : 'nl-pc-a nl-pc-zoom'} src={safeExternalUrl(data.headerImageUrl) || undefined} alt="" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <><svg width="100%" height="100%" viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, opacity: 0.5 }} aria-hidden="true">{[120,190,260,330,400].map((r) => <circle key={r} cx="880" cy="60" r={r} fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="1.5" />)}{[[120,70],[260,190],[420,90],[610,210],[730,70]].map(([x,y],i) => <circle key={i} className={still ? '' : 'nl-pc-loop nl-pc-twinkle'} style={{ animationDelay: `${i * .6}s`, transformOrigin: `${x}px ${y}px` }} cx={x} cy={y} r="3" fill="#fff" />)}</svg><NlLogo className={still ? '' : 'nl-pc-loop nl-pc-float'} style={{ position: 'absolute', right: pad, top: '50%', marginTop: -bannerH * .36, height: bannerH * .72, width: bannerH * .72, color: '#fff', opacity: .16 }} /></>}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom,rgba(1,43,54,.05) 30%,rgba(1,43,54,.55) 100%)' }} />
       {!still && onHeaderUpload && <button type="button" onClick={(e) => { e.stopPropagation(); onHeaderUpload(); }} title="Change banner (1500 × 500 px)" aria-label="Change banner image, 1500 by 500 pixels" className="nl-pc-edit-chip" style={{ top: ui(10), right: ui(10), height: ui(28), padding: `0 ${ui(5)}px 0 ${ui(11)}px`, gap: ui(7), fontSize: ui(11) }}>1500 × 500 px<span className="nl-pc-edit-dot" style={{ width: ui(20), height: ui(20) }}><ImagePlus width={ui(12)} height={ui(12)} /></span></button>}
     </div>
 
-    {/* One-off light sweep across the whole card (screen only) */}
-    {!still && <div className="nl-pc-a nl-pc-sweep" style={{ ['--d' as string]: `${(tBrand + 0.2).toFixed(2)}s`, position: 'absolute', top: -h * 0.1, bottom: -h * 0.1, width: w * 0.22, left: 0, background: 'linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.28), rgba(255,255,255,0))', pointerEvents: 'none' } as CSSProperties} />}
-
-    <div style={{ position: 'absolute', left: pad, right: pad, top: bannerH - avatar / 2, bottom: pad * 0.7, display: 'flex', flexDirection: 'column', gap: s(18) }}>
-      {/* Identity */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: s(24), flexShrink: 0 }}>
-        <div className={avatarMv.className} style={{ ...avatarMv.style, position: 'relative', width: avatar, height: avatar, flexShrink: 0 }}>
-          {!still && <div className="nl-pc-a nl-pc-ring" style={{ ['--d' as string]: `${(tAvatar + 0.5).toFixed(2)}s`, position: 'absolute', inset: 0, borderRadius: '50%' } as CSSProperties} />}
-          <div style={{ width: '100%', height: '100%', borderRadius: '50%', padding: s(7), background: `conic-gradient(from 210deg, ${C.cyan}, #ffffff, ${C.teal}, ${C.mint}, ${C.cyan})`, boxShadow: '0 14px 34px rgba(0,25,35,.45)' }}>
-            <div style={{ width: '100%', height: '100%', borderRadius: '50%', padding: s(5), background: C.deep2 }}>
-              {data.avatarUrl
-                ? <img src={safeExternalUrl(data.avatarUrl) || undefined} alt="" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
-                : <div className="font-serif" style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: avatar * 0.42, fontWeight: 700, color: '#fff', background: `linear-gradient(135deg,${C.teal},${C.cyan})` }}>{sanitizeUserText(data.name || data.username || 'R', 120).slice(0, 1).toUpperCase()}</div>}
-            </div>
+    <div style={{ position: 'absolute', left: pad, right: pad, top: Math.max(bannerH - avatar * .45, s(26)), bottom: pad * .7, display: 'flex', flexDirection: 'column', gap: s(isTall ? 11 : 15) }}>
+      {/* Hero identity: same semantic order everywhere, composition changes with ratio. */}
+      <div className={heroMv.className} style={{ ...heroMv.style, display: isTall ? 'block' : 'grid', gridTemplateColumns: isWide ? '1.05fr .95fr' : 'minmax(0,1fr) minmax(0,.82fr)', gap: s(18), alignItems: 'center', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: s(18), minWidth: 0 }}>
+          <div className={avatarMv.className} style={{ ...avatarMv.style, position: 'relative', width: avatar, height: avatar, flexShrink: 0 }}>
+            {!still && <div className="nl-pc-a nl-pc-ring" style={{ ['--d' as string]: `${(tAvatar + .5).toFixed(2)}s`, position: 'absolute', inset: 0, borderRadius: '50%' } as CSSProperties} />}
+            <div style={{ width: '100%', height: '100%', borderRadius: '50%', padding: s(6), background: `conic-gradient(from 210deg,${C.cyan},#fff,${C.teal},${C.mint},${C.cyan})`, boxShadow: '0 14px 34px rgba(0,25,35,.45)' }}><div style={{ width: '100%', height: '100%', borderRadius: '50%', padding: s(4), background: C.deep2 }}>{data.avatarUrl ? <img src={safeExternalUrl(data.avatarUrl) || undefined} alt="" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} /> : <div className="font-serif" style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: avatar * .42, fontWeight: 700, color: '#fff', background: `linear-gradient(135deg,${C.teal},${C.cyan})` }}>{sanitizeUserText(data.name || data.username || 'R',120).slice(0,1).toUpperCase()}</div>}</div></div>
+            {!still && onAvatarUpload && <button type="button" onClick={(e) => { e.stopPropagation(); onAvatarUpload(); }} title="Change profile picture" aria-label="Change profile picture" className="nl-pc-cam" style={{ width: ui(26), height: ui(26), left: avatar * .80 - ui(13), top: avatar * .80 - ui(13) }}><Camera width={ui(13)} height={ui(13)} /></button>}
           </div>
-          {!still && onAvatarUpload && <button type="button" onClick={(e) => { e.stopPropagation(); onAvatarUpload(); }} title="Change profile picture" aria-label="Change profile picture" className="nl-pc-cam" style={{ width: ui(26), height: ui(26), left: avatar * 0.853 - ui(26) / 2, top: avatar * 0.853 - ui(26) / 2 }}><Camera width={ui(13)} height={ui(13)} /></button>}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ fontSize: s(10), letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: s(5) }}>Novelty Library · Reader</p>
+            <h2 className="font-serif" style={{ fontSize: s((isWide ? 54 : 48) * nameScale(data.name || 'Novelty Reader')), fontWeight: 700, lineHeight: 1.04, color: C.ink, textShadow: '0 4px 22px rgba(0,25,35,.5)', overflow: 'hidden', overflowWrap: 'anywhere' }}>{sanitizeUserText(data.name || 'Novelty Reader',120)}</h2>
+            <p style={{ display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: s(17), fontWeight: 700, marginTop: s(6), padding: `${s(4)}px ${s(11)}px`, borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader',80)}</p>
+            {bio && isTall && <p style={{ marginTop: s(7), color: C.soft, fontSize: s(11), lineHeight: 1.3 }}>{sanitizeUserText(String(bio), 180)}</p>}
+          </div>
         </div>
-        <div style={{ minWidth: 0, flex: 1, paddingTop: avatar / 2 + s(6) }}>
-          <p className={eyebrow.className} style={{ ...eyebrow.style, fontSize: s(15), letterSpacing: '.22em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: s(6) }}>Novelty Library · Reader</p>
-          <h2 className={`font-serif ${nameMv.className}`} style={{ ...nameMv.style, fontSize: s((cols === 2 ? 56 : 62) * nameScale(data.name || 'Novelty Reader')), fontWeight: 700, lineHeight: 1.08, color: C.ink, textShadow: '0 4px 22px rgba(0,25,35,.5)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' }}>{sanitizeUserText(data.name || 'Novelty Reader', 120)}</h2>
-          <p className={handleMv.className} style={{ ...handleMv.style, display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: s(24), fontWeight: 700, marginTop: s(8), padding: `${s(4)}px ${s(18)}px`, borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader', 80)}</p>
-        </div>
+        {details}
       </div>
 
-      {/* Body (everything in here is auto-fitted) */}
-      <div data-fit style={{ ...colStyle, flex: 1, gap: s(14) }}>
-        {qa}
-        {cols === 2
-          ? <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: s(18), alignItems: 'start' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: s(14), minWidth: 0 }}>{metrics}{journey}</div>
-              <div style={{ minWidth: 0 }}>{shelf}</div>
-            </div>
-          </>
-          : <>{metrics}{journey}{shelf}</>}
+      {/* Main reading order: stats -> journey -> shelf -> optional secondary answers. */}
+      <div data-fit style={{ position: 'relative', minHeight: 0, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(isTall ? 10 : 13), flex: 1 }}>
+        {metrics}
+        {journey}
+        {shelf}
+        {isFourFive ? fourFiveQuestions : <>{extra}</>}
       </div>
 
-      {/* Footer: socials on the left, brand lockup (wordmark, then logo) on the right, vertically centred */}
-      <div className={footerMv.className} style={{ ...footerMv.style, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(16), flexShrink: 0, minHeight: s(84) }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: s(10), minWidth: 0 }}>
-          {ig && <a href={safeExternalUrl(`https://instagram.com/${ig}`) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(10), maxWidth: '100%', borderRadius: 999, padding: `${s(9)}px ${s(22)}px ${s(9)}px ${s(10)}px`, background: 'linear-gradient(135deg,#feda75 0%,#fa7e1e 28%,#d62976 58%,#962fbf 82%,#4f5bd5 100%)', color: '#fff', fontWeight: 800, fontSize: s(22), boxShadow: '0 10px 24px rgba(0,25,35,.35)', textDecoration: 'none' }}>
-            <span style={{ display: 'grid', placeItems: 'center', width: s(34), height: s(34), borderRadius: '50%', background: 'rgba(255,255,255,.24)', flexShrink: 0 }}><Instagram width={s(20)} height={s(20)} /></span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{ig}</span>
-          </a>}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(10) }}>{otherSocials.map((link) => <a key={link.platform} href={normalizeUrl(link.url)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(8), borderRadius: 999, padding: `${s(9)}px ${s(20)}px`, fontSize: s(21), fontWeight: 700, background: C.glassStrong, color: '#fff', border: `1px solid ${C.line}`, textDecoration: 'none' }}>{platformIcon(link.platform, s(20))} {sanitizeUserText(platformLabel(link.platform), 40)}</a>)}</div>
+      <div className={footerMv.className} style={{ ...footerMv.style, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(12), flexShrink: 0, minHeight: s(isTall ? 52 : 66) }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: s(6), minWidth: 0 }}>
+          {ig && <a href={safeExternalUrl(`https://instagram.com/${ig}`) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(7), maxWidth: '100%', borderRadius: 999, padding: `${s(6)}px ${s(10)}px`, background: 'linear-gradient(135deg,#feda75 0%,#fa7e1e 28%,#d62976 58%,#962fbf 82%,#4f5bd5 100%)', color: '#fff', fontWeight: 800, fontSize: s(11), boxShadow: '0 8px 20px rgba(0,25,35,.3)', textDecoration: 'none' }}><span style={{ display: 'grid', placeItems: 'center', width: s(23), height: s(23), borderRadius: '50%', background: 'rgba(255,255,255,.24)', flexShrink: 0 }}><Instagram width={s(13)} height={s(13)} /></span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{ig}</span></a>}
+          {otherSocials.map((link) => <a key={link.platform} href={normalizeUrl(link.url)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(5), borderRadius: 999, padding: `${s(6)}px ${s(9)}px`, fontSize: s(10), fontWeight: 700, background: C.glassStrong, color: '#fff', border: `1px solid ${C.line}`, textDecoration: 'none' }}>{platformIcon(link.platform,s(12))}{sanitizeUserText(platformLabel(link.platform),40)}</a>)}
         </div>
-        <div className={brandMv.className} style={{ ...brandMv.style, display: 'flex', alignItems: 'center', gap: s(16), flexShrink: 0, borderRadius: 999, padding: `${s(10)}px ${s(14)}px ${s(10)}px ${s(30)}px`, background: '#fff', boxShadow: '0 16px 36px rgba(0,40,50,.35)' }}>
-          <div style={{ textAlign: 'right' }}><p className="font-serif" style={{ fontSize: s(26), fontWeight: 700, lineHeight: 1, color: C.deep2 }}>Novelty Library</p><p style={{ fontSize: s(14), letterSpacing: '.18em', textTransform: 'uppercase', marginTop: s(6), color: C.teal, fontWeight: 800 }}>Read · Review · Discover</p></div>
-          <img src={LOGO} alt="Novelty Library" style={{ width: s(60), height: s(60), objectFit: 'contain', display: 'block' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: s(10), flexShrink: 0, minWidth: isWide ? '42%' : '48%', borderRadius: s(16), padding: `${s(8)}px ${s(11)}px`, background: 'linear-gradient(135deg,rgba(255,255,255,.92),rgba(206,255,255,.78))', border: `1px solid rgba(159,243,245,.72)`, boxShadow: '0 12px 28px rgba(0,25,35,.25),inset 0 1px 0 rgba(255,255,255,.85)' }}>
+          <div style={{ display: 'grid', placeItems: 'center', width: s(42), height: s(42), borderRadius: s(12), flexShrink: 0, background: `linear-gradient(135deg,${C.deep2},${C.teal})`, boxShadow: '0 6px 14px rgba(0,65,80,.28)' }}><img src={LOGO} alt="Novelty Library" style={{ width: s(30), height: s(30), objectFit: 'contain', display: 'block', filter: 'brightness(0) invert(1)' }} /></div>
+          <div style={{ minWidth: 0 }}><p className="font-serif" style={{ fontSize: s(17), fontWeight: 800, lineHeight: 1, color: C.deep2 }}>Novelty Library</p><p style={{ fontSize: s(7), letterSpacing: '.12em', textTransform: 'uppercase', marginTop: s(4), color: C.teal, fontWeight: 900 }}>Readers&apos; personal archive · branding tool</p></div>
         </div>
       </div>
     </div>

@@ -679,17 +679,11 @@ input:not(:-webkit-autofill) {
 }
 .adsterra-label::before, .adsterra-label::after { content: ""; flex: 1; height: 1px; background: var(--color-border); }
 
-.adsterra-frame {
-  width: 300px;
-  max-width: 100%;
-  height: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: height .45s cubic-bezier(.2,.8,.2,1), opacity .45s ease;
-}
-.adsterra-slot[data-state="filled"] .adsterra-frame { height: 250px; opacity: 1; }
-.adsterra-slot:not([data-state="filled"]) { margin-top: .6rem !important; margin-bottom: .6rem !important; }
-.adsterra-slot:not([data-state="filled"]) .adsterra-label { margin-bottom: 0; }
+.adsterra-frame { width: 300px; max-width: 100%; height: 250px; overflow: hidden; opacity: 1; transition: opacity .35s ease; }
+.adsterra-slot[data-state="empty"] .adsterra-frame { height: 0; opacity: 0; }
+.adsterra-slot[data-state="loading"] .adsterra-label span::after { content: ' · LOADING'; }
+.adsterra-slot[data-state="empty"] { margin-top: .6rem !important; margin-bottom: .6rem !important; }
+.adsterra-slot[data-state="empty"] .adsterra-label { margin-bottom: 0; }
 
 @media (max-width: 640px) {
   .adsterra-slot { margin: 1.5rem auto; }
@@ -1470,7 +1464,7 @@ a.nl-an-handle:hover { text-decoration: underline; }
 
 /* ---------- Profile page: two-column workspace ---------- */
 .nl-profile-work { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
-@media (min-width: 1024px) { .nl-profile-work { grid-template-columns: minmax(340px, 440px) minmax(0, 1fr); } .nl-profile-story-col { position: sticky; top: 96px; } }
+@media (min-width: 1024px) { .nl-profile-work { grid-template-columns: minmax(0, 1.45fr) minmax(360px, .75fr); } .nl-profile-story-col { position: sticky; top: 96px; } }
 .nl-story-drop { display: grid; place-items: center; text-align: center; gap: 8px; width: 100%; min-height: 190px; padding: 18px; border-radius: 22px; border: 2px dashed rgba(8,145,178,.35); background: linear-gradient(145deg, rgba(8,145,178,.07), rgba(94,234,212,.12)); color: var(--color-teal-dark); cursor: pointer; transition: transform .2s ease, border-color .2s ease, background .2s ease; }
 .nl-story-drop:hover { transform: translateY(-2px); border-color: #0e9ab5; }
 .nl-story-drop strong { font-size: .95rem; }

@@ -17,6 +17,9 @@ export type ProfileQuestion = {
   required: boolean;
   public_default: boolean;
   show_in_profile_card: boolean;
+  profile_card_mode?: 'tag' | 'answer' | 'answer_no_question';
+  max_selections?: number | null;
+  alphabetical_sort?: boolean;
   sort_order: number;
   active: boolean;
   section_order?: number;
@@ -113,6 +116,9 @@ export async function saveProfileQuestion(input: Partial<ProfileQuestion> & Pick
     required: input.required ?? false,
     public_default: input.public_default ?? true,
     show_in_profile_card: input.show_in_profile_card ?? true,
+    profile_card_mode: input.profile_card_mode ?? 'answer',
+    max_selections: input.max_selections == null || Number(input.max_selections) <= 0 ? null : Math.max(1, Math.floor(Number(input.max_selections))),
+    alphabetical_sort: input.alphabetical_sort ?? false,
     sort_order: input.sort_order ?? 0,
     active: input.active ?? true,
   };
@@ -134,13 +140,24 @@ export async function saveProfileQuestion(input: Partial<ProfileQuestion> & Pick
       required: payload.required,
       public_default: payload.public_default,
       show_in_profile_card: payload.show_in_profile_card,
+      profile_card_mode: payload.profile_card_mode,
+      max_selections: payload.max_selections,
+      alphabetical_sort: payload.alphabetical_sort,
       sort_order: payload.sort_order,
       active: payload.active,
     },
   });
   if (error) throw error;
   if (!data) throw new Error('Profile question was not returned after saving.');
-  return data as ProfileQuestion;
+  // The admin RPC may predate the newer presentation fields. Persist them directly
+  // as well when the columns exist; this keeps older RPC implementations compatible.
+  const { data: updated, error: updateError } = await supabase.from('profile_questions').update({
+    profile_card_mode: payload.profile_card_mode,
+    max_selections: payload.max_selections,
+    alphabetical_sort: payload.alphabetical_sort,
+  }).eq('id', (data as ProfileQuestion).id).select('*').single();
+  if (updateError) throw updateError;
+  return (updated || data) as ProfileQuestion;
 }
 
 export async function deleteProfileQuestion(id: string): Promise<void> {

@@ -108,14 +108,18 @@ export function ProfileQuestionAnswer({ question, value, userId, onChange, disab
     const selectedOptions = raw.filter(v => !v.startsWith(OTHER_PREFIX));
     const otherEntry = raw.find(v => v.startsWith(OTHER_PREFIX)) || '';
     const otherValue = otherEntry.slice(OTHER_PREFIX.length);
+    const maxSelections = question.max_selections == null ? null : Math.max(1, Math.floor(Number(question.max_selections) || 1));
+    const sortedOptions = question.alphabetical_sort ? [...question.options].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })) : question.options;
     const toggleOption = (option: string) => {
       const next = selectedOptions.includes(option)
         ? selectedOptions.filter(v => v !== option)
-        : [...selectedOptions, option];
+        : (maxSelections != null && selectedOptions.length >= maxSelections ? selectedOptions : [...selectedOptions, option]);
       onChange(otherEntry ? [...next, otherEntry] : next);
     };
     const toggleOther = () => {
-      onChange(otherEntry ? selectedOptions : [...selectedOptions, encodeOtherAnswer('')]);
+      if (otherEntry) { onChange(selectedOptions); return; }
+      if (maxSelections != null && selectedOptions.length >= maxSelections) return;
+      onChange([...selectedOptions, encodeOtherAnswer('')]);
     };
     const summary = [...selectedOptions, ...(otherEntry ? [otherValue || 'Other'] : [])];
     return <div className="space-y-2">
@@ -125,9 +129,9 @@ export function ProfileQuestionAnswer({ question, value, userId, onChange, disab
           <span className={`shrink-0 text-xs transition-transform ${multiOpen ? 'rotate-180' : ''}`}>⌄</span>
         </button>
         {multiOpen && <div className="absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
-          <div className="px-2 pb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Select one or more</div>
+          <div className="px-2 pb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Select one or more{maxSelections != null ? ` · ${selectedOptions.length}/${maxSelections}` : ''}</div>
           <div className="grid gap-1">
-            {question.options.map(option => <label key={option} className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-sm hover:bg-teal-500/10">
+            {sortedOptions.map(option => <label key={option} className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-sm hover:bg-teal-500/10">
               <input type="checkbox" checked={selectedOptions.includes(option)} onChange={() => toggleOption(option)} disabled={disabled} />
               <span>{option}</span>
             </label>)}

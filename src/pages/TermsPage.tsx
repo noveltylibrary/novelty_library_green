@@ -36,6 +36,11 @@ export function TermsPage({ navigate }: TermsPageProps) {
             Applicable Law: These Terms are intended to operate in accordance with applicable laws of India.
           </p>
 
+          <section className="rounded-2xl p-4 sm:p-5 mb-8" style={{ background: 'linear-gradient(90deg,rgba(0,151,178,.08),rgba(92,225,230,.11))', border: '1px solid rgba(0,151,178,.18)' }}>
+            <h2 className="font-serif text-lg font-semibold mb-1.5">Service availability notice</h2>
+            <p className="text-sm leading-6">Some features available in the current webapp deployment might become locked in future deployments once subscription plans are introduced.</p>
+          </section>
+
           <div className="space-y-8 text-sm leading-7" style={{ color: 'var(--color-text)' }}>
             <section>
               <h2 className="font-serif text-xl font-semibold mb-2">Scope of these terms</h2>

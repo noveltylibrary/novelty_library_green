@@ -33,14 +33,15 @@ export interface FeedbackInput {
 export const EMPTY_STATS: EngagementStats = { likeCount: 0, ratingCount: 0, ratingSum: 0, reviewCount: 0 };
 
 /**
- * NL Rating = (R/W rating + every reader rating) / (1 + number of reader ratings).
- * With no reader ratings it equals the R/W rating. Returns null when there is nothing to average.
+ * NL Rating is the cumulative community average for this book/review post.
+ * It uses only ratings submitted by readers in the community review post;
+ * the reviewer's R/W score is intentionally not included in this average.
+ * Returns null until at least one community rating exists.
  */
-export function computeNlRating(rwRating: number | null | undefined, stats?: EngagementStats): number | null {
-  const rw = rwRating && rwRating > 0 ? rwRating : 0;
-  const n = (rw > 0 ? 1 : 0) + (stats?.ratingCount ?? 0);
-  if (n === 0) return null;
-  return (rw + (stats?.ratingSum ?? 0)) / n;
+export function computeNlRating(_rwRating: number | null | undefined, stats?: EngagementStats): number | null {
+  const count = stats?.ratingCount ?? 0;
+  if (count <= 0) return null;
+  return (stats?.ratingSum ?? 0) / count;
 }
 
 export function displayNameFor(user: User, profile: Profile | null): string {
