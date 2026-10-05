@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, ArrowLeft, CheckCircle, KeyRound, LogOut, Lock, Mail, Save, Settings, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle, KeyRound, LogOut, Lock, Mail, Save, Settings, Trash2, MessageSquareWarning } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { updateProfile } from '@/lib/reviews';
 import { deleteCurrentAccount } from '@/lib/account';
 import { supabase } from '@/lib/supabase';
+import { createGrievance, fetchMyGrievances, type GrievanceRecord } from '@/lib/moderation';
 
 interface AccountPageProps { navigate: (path: string) => void; }
 
@@ -13,6 +14,12 @@ export function AccountPage({ navigate }: AccountPageProps) {
   const providers: string[] = identities.length ? identities.map((i) => i.provider) : ((user?.app_metadata?.providers as string[] | undefined) ?? []);
   const usesGoogle = providers.includes('google');
   const [passwordSet, setPasswordSet] = useState<boolean | null>(null);
+  const [grievanceCategory, setGrievanceCategory] = useState('Account or profile issue');
+  const [grievanceSubject, setGrievanceSubject] = useState('');
+  const [grievanceDetails, setGrievanceDetails] = useState('');
+  const [grievanceSaving, setGrievanceSaving] = useState(false);
+  const [grievanceMessage, setGrievanceMessage] = useState<string | null>(null);
+  const [grievances, setGrievances] = useState<GrievanceRecord[]>([]);
   const hasPassword = passwordSet ?? (providers.includes('email') || !usesGoogle);
   const [signingOut, setSigningOut] = useState(false);
   const [resetSending, setResetSending] = useState(false);
@@ -31,6 +38,7 @@ export function AccountPage({ navigate }: AccountPageProps) {
   const [deleteEmail, setDeleteEmail] = useState('');
 
   useEffect(() => { if (profile?.novelty_username) setUsername(profile.novelty_username); }, [profile?.novelty_username]);
+  useEffect(() => { if (user) void fetchMyGrievances().then(setGrievances).catch(() => undefined); }, [user?.id]);
 
   if (loading) return <div className="pt-32 container-prose text-center"><p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading account…</p></div>;
   if (!user) return <div className="pt-32 container-prose text-center"><button onClick={() => navigate('/auth')} className="btn-primary">Sign In</button></div>;
@@ -134,6 +142,16 @@ export function AccountPage({ navigate }: AccountPageProps) {
           <button type="button" onClick={() => void sendResetLink()} disabled={resetSending} className="btn-ghost text-sm"><Mail className="w-4 h-4" /> {resetSending ? 'Sending…' : 'Email me a reset link'}</button>
         </div>
       </form>
+
+      <section className="surface-card p-6 space-y-4">
+        <div className="flex items-start gap-3"><div className="w-10 h-10 rounded-xl grid place-items-center" style={{background:'rgba(8,145,178,.10)',color:'var(--color-teal-dark)'}}><MessageSquareWarning className="w-5 h-5" /></div><div><h2 className="font-serif text-xl font-semibold">Grievances & support</h2><p className="text-sm mt-1" style={{color:'var(--color-text-muted)'}}>Send a coordinated grievance to the Novelty Library administration team. You will receive a reference number and can track its status here.</p></div></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="label">Category</label><select value={grievanceCategory} onChange={e=>setGrievanceCategory(e.target.value)} className="input-field"><option>Account or profile issue</option><option>Review or submission issue</option><option>Moderation decision</option><option>Report / blacklist concern</option><option>Privacy concern</option><option>Technical problem</option><option>Other</option></select></div><div><label className="label">Subject</label><input value={grievanceSubject} onChange={e=>setGrievanceSubject(e.target.value)} className="input-field" maxLength={160} placeholder="Briefly describe the issue" /></div></div>
+        <div><label className="label">Details</label><textarea value={grievanceDetails} onChange={e=>setGrievanceDetails(e.target.value)} className="input-field min-h-32 resize-y" maxLength={5000} placeholder="Explain what happened, what you need reviewed, and any relevant context." /></div>
+        {grievanceMessage && <p className="text-sm" style={{color:/submitted|GRV-/i.test(grievanceMessage)?'var(--color-teal-dark)':'#dc2626'}}>{grievanceMessage}</p>}
+        <button type="button" disabled={grievanceSaving} onClick={async()=>{setGrievanceMessage(null);if(!grievanceSubject.trim()||grievanceDetails.trim().length<5){setGrievanceMessage('Please enter a subject and at least a few details.');return;}setGrievanceSaving(true);try{const row=await createGrievance(grievanceCategory,grievanceSubject,grievanceDetails);setGrievances(v=>[row,...v]);setGrievanceSubject('');setGrievanceDetails('');setGrievanceMessage(`Grievance submitted. Reference ${row.reference_no}.`);}catch(e){setGrievanceMessage(e instanceof Error?e.message:'Could not submit grievance.');}finally{setGrievanceSaving(false);}}} className="btn-primary !w-auto">{grievanceSaving?'Submitting…':'Submit grievance'}</button>
+        {grievances.length>0 && <div className="pt-3 border-t space-y-2" style={{borderColor:'var(--color-border)'}}><p className="text-xs uppercase tracking-wider font-bold" style={{color:'var(--color-text-muted)'}}>Your grievance records</p>{grievances.map(g=><div key={g.id} className="rounded-xl p-3" style={{background:'var(--color-paper)',border:'1px solid var(--color-border)'}}><div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-sm">{g.reference_no} · {g.subject}</strong><span className="text-[11px] px-2 py-1 rounded-full" style={{background:'rgba(8,145,178,.10)',color:'var(--color-teal-dark)'}}>{g.status}</span></div><p className="text-xs mt-1" style={{color:'var(--color-text-muted)'}}>{g.category} · {new Date(g.created_at).toLocaleString()}</p></div>)}</div>}
+      </section>
+
 
       <form onSubmit={deleteAccount} className="rounded-3xl p-6 space-y-4" style={{ background: 'rgba(239,68,68,.045)', border: '1px solid rgba(239,68,68,.2)' }}>
         <div className="flex items-start gap-3"><div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(239,68,68,.1)', color: '#dc2626' }}><AlertTriangle className="w-5 h-5" /></div><div><h2 className="font-serif text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Delete account</h2><p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>This permanently removes your authentication account and associated profile data. This action cannot be undone.</p></div></div>

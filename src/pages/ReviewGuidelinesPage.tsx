@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ChevronDown, X, ZoomIn } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { fetchReviewGuidelineSections, type ReviewGuidelineSection } from '@/lib/reviewGuidelines';
 import { GUIDE_CSS } from '@/components/ReviewGuidelinesModal';
+import AdsterraAdSlot from '@/components/AdsterraAdSlot';
 
 interface ReviewGuidelinesPageProps {
   navigate: (path: string) => void;
@@ -123,16 +124,30 @@ export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
             </select>
           </div>
 
-          {safeSections.map((section, index) => <details className="novelty-section" key={section.id} id={`guide-section-${section.id}`} open={index === 0}>
+          {safeSections.map((section, index) => <Fragment key={section.id}><details className="novelty-section" id={`guide-section-${section.id}`} open={index === 0}>
             <summary><span style={{ display:'flex', alignItems:'center', gap:10 }}><span>{section.title}</span></span><svg className="arrow-icon" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg></summary>
             <div className="novelty-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(section.content_html, { ADD_ATTR: ['target', 'rel'], FORBID_TAGS: ['script','iframe','object','embed'] }) }} />
+            {index === 0 && <div className="mt-5 rounded-3xl p-5" style={{background:'linear-gradient(135deg,rgba(8,145,178,.12),rgba(34,211,238,.06))',border:'1px solid rgba(8,145,178,.24)'}}>
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div><p className="text-xs uppercase tracking-[.18em] font-bold" style={{color:'var(--color-teal-dark)'}}>Ready when you are</p><h3 className="font-serif text-2xl font-semibold mt-1">Reserve a book or submit your review</h3><p className="text-sm mt-1" style={{color:'var(--color-text-muted)'}}>Reservations are requests only until an admin accepts them. Reviews are checked by Novelty Library before acceptance and publication.</p></div>
+                <div className="flex flex-wrap gap-2"><button type="button" className="btn-ghost !w-auto" onClick={()=>navigate('/submit#reserve')}>Reserve a Book</button><button type="button" className="btn-primary !w-auto" onClick={()=>navigate('/submit')}>Submit Review</button></div>
+              </div>
+            </div>}
+            {(section.slug + ' ' + section.title).match(/rating|form|core-rules/i) && <div className="mt-5 rounded-3xl p-5 overflow-x-auto" style={{background:'var(--color-paper)',border:'1px solid var(--color-border)'}}>
+              <p className="text-xs uppercase tracking-[.18em] font-bold mb-2" style={{color:'var(--color-teal-dark)'}}>Star rating explained</p>
+              <h3 className="font-serif text-xl font-semibold mb-3">How the 5-star book rating relates to R/W</h3>
+              <table className="w-full text-sm"><thead><tr style={{borderBottom:'1px solid var(--color-border)'}}><th className="text-left p-2">Stars</th><th className="text-left p-2">Meaning</th><th className="text-left p-2">R/W equivalent</th></tr></thead><tbody>
+                {[['★','Very poor','1–2 / 10'],['★★','Below average','3–4 / 10'],['★★★','Good / average','5–6 / 10'],['★★★★','Very good','7–8 / 10'],['★★★★★','Excellent','9–10 / 10']].map(([stars,meaning,rw])=><tr key={stars} style={{borderBottom:'1px solid var(--color-border)'}}><td className="p-2 font-bold tracking-widest" style={{color:'var(--color-teal-dark)'}}>{stars}</td><td className="p-2">{meaning}</td><td className="p-2 font-semibold">{rw}</td></tr>)}
+              </tbody></table><p className="text-xs mt-3" style={{color:'var(--color-text-muted)'}}>Goodreads and Amazon ratings remain 5-point platform ratings. R/W is the reviewer's personal score out of 10 and is not an average of those platform scores.</p>
+            </div>}
             {(() => { const imgs = sectionImages(section); return imgs.length ? <div className={`ng-figures${imgs.length > 1 ? ' ng-multi' : ''}`}>
               {imgs.map(img => <figure className="ng-figure" key={img.file}>
                 <div className="novelty-img-container"><button type="button" className="ng-zoom" onClick={() => setZoom(img)} aria-label={`Enlarge image: ${img.caption}`}><img src={ASSET(img.file)} width={1600} height={840} alt={img.alt} loading="lazy" decoding="async" /><span className="ng-zoom-badge" aria-hidden="true"><ZoomIn className="w-4 h-4" /></span></button></div>
                 <figcaption>{img.caption}</figcaption>
               </figure>)}
             </div> : null; })()}
-          </details>)}
+          </details>
+          <div className="flex justify-center py-4"><AdsterraAdSlot /></div></Fragment>)}
         </div>
       </div>
     </div>

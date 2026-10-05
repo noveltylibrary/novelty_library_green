@@ -14,6 +14,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { fetchBlacklistedUsers, type BlacklistedUser } from '@/lib/moderation';
 import { supabase } from '@/lib/supabase';
 
 interface AdminUsersPageProps {
@@ -77,6 +78,8 @@ export function AdminUsersPage({ navigate }: AdminUsersPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<AdminUser | null>(null);
+  const [blacklist, setBlacklist] = useState<BlacklistedUser[]>([]);
+  const [blacklistLoading, setBlacklistLoading] = useState(false);
 
   const loadUsers = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
@@ -97,7 +100,10 @@ export function AdminUsersPage({ navigate }: AdminUsersPageProps) {
     if (!user) { navigate('/auth'); return; }
     if (!isAdmin) return;
     loadUsers();
+    void loadBlacklist();
   }, [authLoading, user, isAdmin, navigate, loadUsers]);
+
+  const loadBlacklist = async () => { setBlacklistLoading(true); try { setBlacklist(await fetchBlacklistedUsers()); } catch { setBlacklist([]); } finally { setBlacklistLoading(false); } };
 
   const filteredUsers = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -166,6 +172,8 @@ export function AdminUsersPage({ navigate }: AdminUsersPageProps) {
           );
         })}
       </div>
+
+      <section className="surface-card rounded-2xl p-5 mb-6" style={{border:'1px solid rgba(239,68,68,.18)'}}><div className="flex flex-wrap items-center justify-between gap-3 mb-4"><div><div className="flex items-center gap-2"><Shield className="w-4 h-4" style={{color:'#dc2626'}}/><h2 className="font-serif text-xl font-semibold">Blacklist</h2></div><p className="text-xs mt-1" style={{color:'var(--color-text-muted)'}}>Profiles reaching 30 or more community reports are automatically listed here and admins are notified.</p></div><button onClick={()=>void loadBlacklist()} disabled={blacklistLoading} className="btn-ghost text-xs">{blacklistLoading?'Refreshing…':'Refresh blacklist'}</button></div>{blacklist.length===0?<p className="text-sm" style={{color:'var(--color-text-muted)'}}>No automatically blacklisted profiles.</p>:<div className="space-y-2">{blacklist.map(item=><div key={item.user_id} className="flex flex-wrap items-center gap-3 rounded-2xl p-3" style={{background:'rgba(239,68,68,.045)',border:'1px solid rgba(239,68,68,.12)'}}>{item.avatar_url?<img src={item.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover"/>:<div className="w-10 h-10 rounded-full grid place-items-center font-bold" style={{background:'rgba(239,68,68,.10)',color:'#b91c1c'}}>{(item.name||item.novelty_username||'U').slice(0,1).toUpperCase()}</div>}<div className="min-w-0 flex-1"><p className="font-semibold text-sm truncate">{item.name||'Unnamed user'} {item.novelty_username&&<span className="font-normal" style={{color:'var(--color-cyan-dark)'}}>@{item.novelty_username}</span>}</p><p className="text-xs mt-0.5" style={{color:'var(--color-text-muted)'}}>{item.report_count} reports · {item.blacklisted_at?formatDate(item.blacklisted_at):'Blacklisted automatically'}</p></div><span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full" style={{background:'rgba(239,68,68,.10)',color:'#b91c1c'}}>Blacklisted</span></div>)}</div>}</section>
 
       <div className="surface-card rounded-2xl overflow-hidden">
         <div className="p-4 flex flex-wrap gap-3 items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>

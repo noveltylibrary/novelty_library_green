@@ -16,11 +16,11 @@ export function RatingBadge({ rating, max = 10, variant = 'rw' }: RatingBadgePro
     <div
       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold"
       style={{
-        background: isRw ? 'var(--color-cyan)' : isAmazon ? 'rgba(245, 158, 11, 0.15)' : 'rgba(53, 211, 217, 0.2)',
-        color: isRw ? 'white' : isAmazon ? '#d97706' : 'var(--color-teal-dark)',
+        background: isRw ? 'rgba(0, 151, 178, 0.10)' : isAmazon ? 'rgba(245, 158, 11, 0.15)' : 'rgba(53, 211, 217, 0.2)',
+        color: isRw ? 'var(--color-teal-dark)' : isAmazon ? '#d97706' : 'var(--color-teal-dark)',
       }}
     >
-      <Star className={`w-3 h-3 ${isRw ? 'fill-white' : 'fill-current'}`} />
+      <Star className={`w-3 h-3 ${isRw ? 'fill-current' : 'fill-current'}`} />
       <span>
         {display}
         <span className="opacity-60">/{max}</span>

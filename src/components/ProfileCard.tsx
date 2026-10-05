@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
-import { Download, Instagram, Linkedin, Link2, BookOpen, RotateCcw } from 'lucide-react';
+import { Download, Instagram, Linkedin, Link2, BookOpen, RotateCcw, ChevronDown, Camera, ImagePlus, ExternalLink } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import type { ProfileQuestion } from '@/lib/profileQuestions';
 import { NlLogo } from '@/components/NlLogo';
@@ -36,7 +36,7 @@ const FORMATS = [
   { key: '4:5', width: 1080, height: 1350 },
   { key: '1:1', width: 1080, height: 1080 },
 ] as const;
-type FormatKey = (typeof FORMATS)[number]['key'];
+export type FormatKey = (typeof FORMATS)[number]['key'];
 const PREVIEW_FORMAT: FormatKey = '4:5';
 
 /** A 1x1 transparent gif used when a remote image refuses to be exported (no CORS). */
@@ -63,21 +63,14 @@ const C = {
  * shrink the type (it starts slightly enlarged so sparse cards fill the canvas),
  * then trim the lists, until nothing overflows.
  */
-const FIT_STEPS = [
-  { m: 1.3, reviews: 5, qs: 4 },
-  { m: 1.2, reviews: 5, qs: 4 },
-  { m: 1.1, reviews: 5, qs: 4 },
-  { m: 1, reviews: 5, qs: 4 },
-  { m: 1, reviews: 4, qs: 3 },
-  { m: 0.94, reviews: 4, qs: 3 },
-  { m: 0.9, reviews: 3, qs: 2 },
-  { m: 0.85, reviews: 3, qs: 2 },
-  { m: 0.8, reviews: 2, qs: 2 },
-  { m: 0.75, reviews: 2, qs: 1 },
-  { m: 0.7, reviews: 2, qs: 0 },
-  { m: 0.64, reviews: 1, qs: 0 },
-  { m: 0.58, reviews: 1, qs: 0 },
-];
+const FIT_STEPS = (() => {
+  const steps: { m: number; reviews: number }[] = [];
+  // Start large so sparse cards fill the canvas, then shrink ~5% at a time until nothing overflows.
+  for (let m = 1.9; m >= 0.32; m *= 0.95) {
+    steps.push({ m: Number(m.toFixed(3)), reviews: m > 0.7 ? 5 : m > 0.55 ? 4 : m > 0.45 ? 3 : m > 0.38 ? 2 : 1 });
+  }
+  return steps;
+})();
 
 /** Reduces '@name', 'instagram.com/name/' or a full URL to a bare handle. */
 export function cleanInstagram(value: string | null | undefined): string {
@@ -107,11 +100,13 @@ const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() 
 
 function imageAnswerGrid(urls: string[], cols: number): string { return urls.length <= 1 ? '1fr' : cols === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)'; }
 
-export function ProfileCard({ data, download = false }: { data: ProfileCardData; download?: boolean }) {
+export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUpload, onViewPublicProfile, initialFormat = PREVIEW_FORMAT, publicFormat = PREVIEW_FORMAT, onPublicFormatChange, toolbarRight }: { data: ProfileCardData; download?: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void; onViewPublicProfile?: () => void; initialFormat?: FormatKey; publicFormat?: FormatKey; onPublicFormatChange?: (format: FormatKey) => void; toolbarRight?: ReactNode }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [format, setFormat] = useState<FormatKey>(PREVIEW_FORMAT);
+  const [format, setFormat] = useState<FormatKey>(initialFormat);
+  useEffect(() => { setFormat(initialFormat); }, [initialFormat]);
   const [downloading, setDownloading] = useState(false);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [boxWidth, setBoxWidth] = useState(0);
   const [inView, setInView] = useState(false);
   const [replay, setReplay] = useState(0);
@@ -138,18 +133,21 @@ export function ProfileCard({ data, download = false }: { data: ProfileCardData;
     return () => io.disconnect();
   }, []);
 
-  const downloadCard = async () => {
+  const downloadCard = async (formatOverride?: FormatKey) => {
     if (!canvasRef.current || downloading) return;
+    const exportFormat = formatOverride || format;
+    if (exportFormat !== format) setFormat(exportFormat);
     setDownloading(true); // renders the card in its final, motion-free state
     try {
       await nextFrame();
       await new Promise((r) => window.setTimeout(r, 120));
       if ('fonts' in document) await document.fonts.ready;
+      const exportSelected = FORMATS.find((f) => f.key === exportFormat) || selected;
       const options = {
         cacheBust: true,
         pixelRatio: 1,
-        width: selected.width,
-        height: selected.height,
+        width: exportSelected.width,
+        height: exportSelected.height,
         backgroundColor: C.deep2,
         imagePlaceholder: IMAGE_PLACEHOLDER,
         // The on-screen preview is scaled down with CSS; export at full size.
@@ -159,7 +157,7 @@ export function ProfileCard({ data, download = false }: { data: ProfileCardData;
       await toPng(canvasRef.current, options).catch(() => undefined);
       const dataUrl = await toPng(canvasRef.current, options);
       const a = document.createElement('a');
-      a.download = `novelty-library-profile-${data.username || 'reader'}-${format.replace(':', 'x')}.png`;
+      a.download = `novelty-library-profile-${data.username || 'reader'}-${exportFormat.replace(':', 'x')}.png`;
       a.href = dataUrl;
       a.click();
     } catch (error) {
@@ -169,17 +167,44 @@ export function ProfileCard({ data, download = false }: { data: ProfileCardData;
   };
 
   return <div className="w-full">
-    {download && <div className="flex flex-wrap items-center justify-end gap-2 mb-3">
-      <button type="button" onClick={() => setReplay((n) => n + 1)} className="btn-ghost !w-auto !px-3 !py-2 text-sm" title="Replay animation" aria-label="Replay animation"><RotateCcw className="w-4 h-4" /></button>
-      <select value={format} onChange={(e) => setFormat(e.target.value as FormatKey)} className="input-field !w-auto !py-2 text-sm" aria-label="Card format">
-        {FORMATS.map((f) => <option key={f.key} value={f.key}>{f.key} · {f.width}×{f.height}</option>)}
-      </select>
-      <button type="button" onClick={downloadCard} disabled={downloading} className="btn-primary !w-auto disabled:opacity-50"><Download className="w-4 h-4" /> {downloading ? 'Preparing…' : 'Download Profile Card'}</button>
+    {(download || onViewPublicProfile || toolbarRight) && <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {onViewPublicProfile && <button type="button" onClick={onViewPublicProfile} className="btn-ghost !w-auto !px-3 !py-2 text-sm"><ExternalLink className="w-4 h-4" /> View public profile</button>}
+        {download && <label className="inline-flex items-center gap-2 btn-ghost !w-auto !px-3 !py-2 text-sm">
+          <span className="sr-only">View profile card format</span><span>View card</span>
+          <select value={format} onChange={(e) => setFormat(e.target.value as FormatKey)} className="bg-transparent border-0 outline-none text-sm font-semibold cursor-pointer">
+            {FORMATS.map((f) => <option key={f.key} value={f.key}>{f.key} · {f.width}×{f.height}</option>)}
+          </select>
+        </label>}
+        {download && onPublicFormatChange && <label className="inline-flex items-center gap-2 btn-ghost !w-auto !px-3 !py-2 text-sm">
+          <span>Public view</span>
+          <select value={publicFormat} onChange={(e) => onPublicFormatChange(e.target.value as FormatKey)} className="bg-transparent border-0 outline-none text-sm font-semibold cursor-pointer">
+            {FORMATS.map((f) => <option key={f.key} value={f.key}>{f.key}</option>)}
+          </select>
+        </label>}
+        {download && <button type="button" onClick={() => setReplay((n) => n + 1)} className="btn-ghost !w-auto !px-3 !py-2 text-sm" title="Replay animation" aria-label="Replay animation"><RotateCcw className="w-4 h-4" /></button>}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {toolbarRight}
+        {download && <div className="relative">
+          <button type="button" onClick={() => setDownloadMenuOpen(v => !v)} disabled={downloading} className="btn-primary !w-auto disabled:opacity-50"><Download className="w-4 h-4" /> {downloading ? 'Preparing…' : 'Download Profile Card'} <ChevronDown className="w-4 h-4" /></button>
+          {downloadMenuOpen && <div className="absolute right-0 top-full mt-2 z-30 min-w-[210px] rounded-2xl p-1.5 shadow-2xl" style={{background:'var(--color-surface)',border:'1px solid var(--color-border)'}}>
+            {FORMATS.map((f) => <button key={f.key} type="button" onClick={() => { setFormat(f.key); setDownloadMenuOpen(false); window.setTimeout(() => void downloadCard(f.key), 0); }} className="w-full text-left rounded-xl px-3 py-2.5 text-sm hover:bg-black/5 dark:hover:bg-white/5">{f.key} <span className="opacity-60">· {f.width}×{f.height}</span>{format===f.key && <span className="float-right font-bold">✓</span>}</button>)}
+          </div>}
+        </div>}
+      </div>
     </div>}
 
     {/* The preview is the exact export canvas, scaled down to fit the page. What you see is what you download. */}
     <div ref={wrapRef} className="relative w-full mx-auto overflow-hidden rounded-[24px] nl-pc-preview" style={{ height: selected.height * scale, maxWidth: selected.width > selected.height ? 560 : 380, boxShadow: '0 26px 60px rgba(0,80,95,.28)', border: '1px solid rgba(8,145,178,.3)' }}>
       <CardCanvas key={`${format}-${replay}`} canvasRef={canvasRef} data={data} width={selected.width} height={selected.height} scale={scale} play={inView} still={downloading} />
+      {(onHeaderUpload || onAvatarUpload) && <div className="absolute inset-0 z-10 pointer-events-none">
+        {onHeaderUpload && <div className="absolute top-3 right-3 pointer-events-auto flex items-center gap-1.5 rounded-full px-2 py-1.5 shadow-lg backdrop-blur-sm" style={{background:'rgba(255,255,255,.9)',color:'var(--color-teal-dark)'}}>
+          <span className="text-[10px] font-bold tracking-wide">1500 × 500 px</span>
+          <button type="button" onClick={onHeaderUpload} disabled={!onHeaderUpload} className="grid place-items-center w-7 h-7 rounded-full" style={{background:'var(--color-teal-dark)',color:'white'}} title="Add or change banner" aria-label="Add or change banner"><ImagePlus className="w-3.5 h-3.5" /></button>
+        </div>}
+        {onAvatarUpload && <button type="button" onClick={onAvatarUpload} className="absolute pointer-events-auto grid place-items-center w-9 h-9 rounded-full shadow-lg" style={{left:'8%',top:'15%',background:'white',color:'var(--color-teal-dark)',border:'2px solid rgba(92,225,230,.8)'}} title="Add or change profile picture" aria-label="Add or change profile picture"><Camera className="w-4 h-4" /></button>}
+      </div>}
     </div>
   </div>;
 }
@@ -216,6 +241,7 @@ function Cover({ url, w, h, radius, iconSize }: { url: string | null; w: number;
 
 function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }: { canvasRef: RefObject<HTMLDivElement>; data: ProfileCardData; width: number; height: number; scale: number; play: boolean; still: boolean }) {
   const cols = w / h >= 0.95 ? 2 : 1;
+  const compactSquare = w / h <= 1.05;
   const signature = `${w}x${h}|${data.publishedReviews.length}|${data.questions.length}|${JSON.stringify(data.answers).length}|${data.name}|${data.favoriteBook}|${data.favoriteAuthor}|${data.favoriteGenre}|${data.socialLinks.length}`;
   const [step, setStep] = useState(0);
   const [lastSignature, setLastSignature] = useState(signature);
@@ -253,10 +279,11 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
   const bannerH = Math.round(cols === 2 ? h * 0.25 : Math.min(h * 0.17, w * 0.34));
   const avatar = Math.round(cols === 2 ? h * 0.2 : w * 0.17);
 
+  // Every answered question is shown (the reader's own eye/privacy choices are already applied to data.answers).
   const questions = data.questions.filter((q) => {
     const value = data.answers[q.key];
-    return q.show_in_profile_card !== false && value !== undefined && value !== null && (q.type === 'image_upload' ? answerImageUrls(value).length > 0 : answerText(value).trim() !== '');
-  }).slice(0, fit.qs);
+    return value !== undefined && value !== null && (q.type === 'image_upload' ? answerImageUrls(value).length > 0 : answerText(value).trim() !== '');
+  });
   const reviews = data.publishedReviews.slice(0, fit.reviews);
   const hasJourney = !!(data.favoriteBook || data.favoriteAuthor || data.favoriteGenre || data.readingSince);
 
@@ -293,7 +320,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
   if (data.favoriteGenre) journeyItems.push(['Favourite genre', sanitizeUserText(data.favoriteGenre, 120)]);
   const journeyCues = journeyItems.map(() => cue(0.1));
   const journey = hasJourney ? (() => { const m = mv('drop', tJourney); return <div className={m.className} style={{ ...m.style, borderRadius: s(26), padding: s(20), background: 'linear-gradient(150deg,rgba(1,43,54,.62),rgba(1,58,70,.4))', border: `1px solid ${C.line}`, boxShadow: '0 12px 28px rgba(0,25,35,.28)' }}>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(12), marginBottom: s(14) }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(12), marginBottom: s(compactSquare ? 8 : 14) }}>
       <p style={{ fontSize: s(16), letterSpacing: '.22em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Reading journey</p>
       {data.readingSince && <span style={{ fontSize: s(17), fontWeight: 700, borderRadius: 999, padding: `${s(5)}px ${s(16)}px`, background: C.mint, color: C.deep2, whiteSpace: 'nowrap' }}>Since {data.readingSince}</span>}
     </div>
@@ -307,26 +334,28 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
 
   const tShelf = cue(0.15);
   const reviewCues = reviews.map(() => cue(0.12));
-  const shelf = reviews.length > 0 ? (() => { const m = mv('drop', tShelf); return <div className={m.className} style={{ ...m.style, borderRadius: s(26), padding: s(20), background: 'linear-gradient(150deg,rgba(255,255,255,.17),rgba(255,255,255,.07))', border: `1px solid ${C.line}`, boxShadow: '0 14px 32px rgba(0,25,35,.28), inset 0 1px 0 rgba(255,255,255,.2)' }}>
+  const shelf = reviews.length > 0 ? (() => { const m = mv('drop', tShelf); return <div className={m.className} style={{ ...m.style, borderRadius: s(26), padding: s(compactSquare ? 13 : 20), background: 'linear-gradient(150deg,rgba(255,255,255,.17),rgba(255,255,255,.07))', border: `1px solid ${C.line}`, boxShadow: '0 14px 32px rgba(0,25,35,.28), inset 0 1px 0 rgba(255,255,255,.2)' }}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(12), marginBottom: s(14) }}>
-      <div><p style={{ fontSize: s(15), letterSpacing: '.22em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Published shelf</p><p className="font-serif" style={{ fontSize: s(28), fontWeight: 700, lineHeight: 1.1, color: C.ink, marginTop: s(2) }}>Reviews on Novelty Library</p></div>
-      <span className="font-serif" style={{ fontSize: s(30), fontWeight: 700, minWidth: s(56), textAlign: 'center', borderRadius: 999, padding: `${s(4)}px ${s(16)}px`, background: C.ink, color: C.deep2 }}>{data.publishedReviews.length}</span>
+      <div><p style={{ fontSize: s(compactSquare ? 11 : 15), letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Published shelf</p><p className="font-serif" style={{ fontSize: s(compactSquare ? 19 : 28), fontWeight: 700, lineHeight: 1.1, color: C.ink, marginTop: s(2) }}>Reviews on Novelty Library</p></div>
+      <span className="font-serif" style={{ fontSize: s(compactSquare ? 20 : 30), fontWeight: 700, minWidth: s(compactSquare ? 40 : 56), textAlign: 'center', borderRadius: 999, padding: `${s(compactSquare ? 2 : 4)}px ${s(compactSquare ? 9 : 16)}px`, background: C.ink, color: C.deep2 }}>{data.publishedReviews.length}</span>
     </div>
-    <div style={{ display: 'grid', gap: s(10) }}>{reviews.map((review, i) => { const mr = mv('slide', reviewCues[i]); const stars = review.rating && review.rating > 0 ? rwRatingToStars(review.rating) : null; return <div key={review.id} className={mr.className} style={{ ...mr.style, display: 'flex', alignItems: 'center', gap: s(16), borderRadius: s(18), padding: s(10), background: 'rgba(1,43,54,.38)', border: `1px solid ${C.line}` }}>
-      <Cover url={review.coverUrl} w={s(62)} h={s(86)} radius={s(10)} iconSize={s(26)} />
+    <div style={{ display: 'grid', gap: s(10) }}>{reviews.map((review, i) => { const mr = mv('slide', reviewCues[i]); const stars = review.rating && review.rating > 0 ? rwRatingToStars(review.rating) : null; return <div key={review.id} className={mr.className} style={{ ...mr.style, display: 'flex', alignItems: 'center', gap: s(compactSquare ? 9 : 16), borderRadius: s(compactSquare ? 13 : 18), padding: s(compactSquare ? 7 : 10), background: 'rgba(1,43,54,.38)', border: `1px solid ${C.line}` }}>
+      <Cover url={review.coverUrl} w={s(compactSquare ? 50 : 62)} h={s(compactSquare ? 70 : 86)} radius={s(10)} iconSize={s(compactSquare ? 21 : 26)} />
       <div style={{ minWidth: 0, flex: 1 }}>
-        <p className="font-serif" style={{ fontSize: s(24), fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.title, 200)}</p>
-        <p style={{ fontSize: s(18), color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.author, 160)}{review.reviewNo ? ` · #${sanitizeUserText(review.reviewNo, 40)}` : ''}</p>
+        <p className="font-serif" style={{ fontSize: s(compactSquare ? 17 : 24), fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.title, 200)}</p>
+        <p style={{ fontSize: s(compactSquare ? 12 : 18), color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.author, 160)}{review.reviewNo ? ` · #${sanitizeUserText(review.reviewNo, 40)}` : ''}</p>
       </div>
-      {stars != null && <span style={{ fontSize: s(20), fontWeight: 800, borderRadius: 999, padding: `${s(5)}px ${s(14)}px`, background: 'rgba(255,255,255,.16)', border: `1px solid ${C.line}`, color: C.ink, whiteSpace: 'nowrap', flexShrink: 0 }}><span style={{ color: '#ffd66b' }}>★</span> {stars.toFixed(1)}</span>}
+      {stars != null && <span style={{ fontSize: s(compactSquare ? 13 : 20), fontWeight: 800, borderRadius: 999, padding: `${s(compactSquare ? 3 : 5)}px ${s(compactSquare ? 8 : 14)}px`, background: 'rgba(255,255,255,.16)', border: `1px solid ${C.line}`, color: C.ink, whiteSpace: 'nowrap', flexShrink: 0 }}><span style={{ color: '#ffd66b' }}>★</span> {stars.toFixed(1)}</span>}
     </div>; })}</div>
     {data.publishedReviews.length > reviews.length && <p style={{ fontSize: s(18), marginTop: s(12), fontWeight: 700, color: C.mint }}>+ {data.publishedReviews.length - reviews.length} more published reviews</p>}
   </div>; })() : null;
 
   const qaCues = questions.map(() => cue(0.1));
-  const qa = questions.length > 0 ? <div style={{ display: 'grid', gridTemplateColumns: cols === 2 ? '1fr' : '1fr 1fr', gap: s(10) }}>{questions.map((q, i) => { const mq = mv('pop', qaCues[i]); return <div key={q.id} className={mq.className} style={{ ...mq.style, borderRadius: s(20), padding: `${s(14)}px ${s(18)}px`, background: 'rgba(1,43,54,.5)', border: `1px solid ${C.line}` }}>
-    <p style={{ fontSize: s(14), letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>{sanitizeUserText(q.question, 300)}</p>
-    {q.type === 'image_upload' ? <div style={{ display: 'grid', gridTemplateColumns: imageAnswerGrid(answerImageUrls(data.answers[q.key]), cols), gap: s(6), marginTop: s(6) }}>{answerImageUrls(data.answers[q.key]).slice(0, Math.max(1, q.image_count || 1)).map((url, idx) => <img key={`${q.id}-${idx}`} src={safeExternalUrl(url) || undefined} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: s(12), border: `1px solid ${C.line}` }} />)}</div> : q.type === 'select_multiple' && Array.isArray(data.answers[q.key]) ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6), marginTop: s(6) }}>{(data.answers[q.key] as unknown[]).map((v, idx) => { const raw = String(v); const value = decodeOtherAnswer(raw).value || raw; return <span key={`${q.id}-${idx}`} style={{ borderRadius: 999, padding: `${s(6)}px ${s(10)}px`, background: 'rgba(34,211,238,.12)', border: `1px solid ${C.line}`, color: C.ink, fontSize: s(14), fontWeight: 700 }}>{sanitizeUserText(value, 180)}</span>; })}</div> : <p style={{ fontSize: s(24), fontWeight: 600, marginTop: s(4), color: C.ink, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sanitizeUserText(answerText(data.answers[q.key]), 1200)}</p>}
+  const qaCols = cols === 2 && w / h > 1.5 ? 4 : 3;
+  // CSS columns pack tiles of different heights top-to-bottom with no empty gaps (masonry).
+  const qa = questions.length > 0 ? <div style={{ columnCount: qaCols, columnGap: s(10), width: '100%' }}>{questions.map((q, i) => { const mq = mv('pop', qaCues[i]); return <div key={q.id} className={mq.className} style={{ ...mq.style, breakInside: 'avoid', display: 'block', marginBottom: s(10), borderRadius: s(20), padding: `${s(14)}px ${s(16)}px`, background: 'rgba(1,43,54,.5)', border: `1px solid ${C.line}` }}>
+    <p style={{ fontSize: s(13), letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, overflowWrap: 'anywhere' }}>{sanitizeUserText(q.question, 300)}</p>
+    {q.type === 'image_upload' ? <div style={{ display: 'grid', gridTemplateColumns: imageAnswerGrid(answerImageUrls(data.answers[q.key]), 2), gap: s(6), marginTop: s(6) }}>{answerImageUrls(data.answers[q.key]).slice(0, Math.max(1, q.image_count || 1)).map((url, idx) => <img key={`${q.id}-${idx}`} src={safeExternalUrl(url) || undefined} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: s(12), border: `1px solid ${C.line}` }} />)}</div> : q.type === 'select_multiple' && Array.isArray(data.answers[q.key]) ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6), marginTop: s(6) }}>{(data.answers[q.key] as unknown[]).map((v, idx) => { const raw = String(v); const value = decodeOtherAnswer(raw).value || raw; return <span key={`${q.id}-${idx}`} style={{ borderRadius: 999, padding: `${s(6)}px ${s(10)}px`, background: 'rgba(34,211,238,.12)', border: `1px solid ${C.line}`, color: C.ink, fontSize: s(14), fontWeight: 700 }}>{sanitizeUserText(value, 180)}</span>; })}</div> : <p style={{ fontSize: s(24), fontWeight: 600, marginTop: s(4), color: C.ink, overflowWrap: 'anywhere', lineHeight: 1.25 }}>{sanitizeUserText(answerText(data.answers[q.key]), 1200)}</p>}
   </div>; })}</div> : null;
 
   const ig = cleanInstagram(data.instagram);
@@ -396,13 +425,16 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
       </div>
 
       {/* Body (everything in here is auto-fitted) */}
-      <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: cols === 2 ? '1fr 1fr' : '1fr', gap: s(18) }}>
+      <div data-fit style={{ ...colStyle, flex: 1, gap: s(14) }}>
         {cols === 2
           ? <>
-            <div data-fit style={colStyle}>{metrics}{journey}</div>
-            <div data-fit style={colStyle}>{shelf}{qa}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: s(18), alignItems: 'start' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: s(14), minWidth: 0 }}>{metrics}{journey}</div>
+              <div style={{ minWidth: 0 }}>{shelf}</div>
+            </div>
+            {qa}
           </>
-          : <div data-fit style={colStyle}>{metrics}{journey}{shelf}{qa}</div>}
+          : <>{metrics}{journey}{shelf}{qa}</>}
       </div>
 
       {/* Footer: socials on the left, brand lockup (wordmark, then logo) on the right, vertically centred */}

@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 
 export interface NotificationItem {
   id: string;
-  kind: 'review_submitted' | 'review_published' | 'account_created' | 'username_updated' | 'reservation_requested' | 'reservation_accepted' | 'reservation_rejected' | 'system';
+  kind: 'review_submitted' | 'review_published' | 'account_created' | 'username_updated' | 'reservation_requested' | 'reservation_accepted' | 'reservation_rejected' | 'grievance_submitted' | 'user_blacklisted' | 'system';
   title: string;
   body: string;
   review_id: string | null;

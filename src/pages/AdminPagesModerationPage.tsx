@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, FileText, Save, ExternalLink, Plus, Trash2, ChevronUp, ChevronDown, GripVertical, Eye, ListChecks, LayoutTemplate, Pencil, FolderPlus, X, ImagePlus } from 'lucide-react';
+import { Lock, ArrowLeft, FileText, Save, ExternalLink, Plus, Trash2, ChevronUp, ChevronDown, GripVertical, Eye, ListChecks, LayoutTemplate, Pencil, FolderPlus, X, ImagePlus } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { fetchEditablePage, saveEditablePage, PAGE_DEFAULTS } from '@/lib/adminConfig';
 import { AdminReviewGuidelinesEditor } from '@/components/AdminReviewGuidelinesEditor';
@@ -14,6 +14,7 @@ import {
   type ProfileQuestionType,
   type ProfileQuestionSection,
 } from '@/lib/profileQuestions';
+import { CORE_FIELDS, fetchCoreOverrides, saveCoreOverride, resetCoreOverride, type CoreFieldKey, type CoreOverrides } from '@/lib/profileCoreFields';
 
 const PAGE_KEYS = ['review-guidelines', 'about', 'privacy', 'terms', 'cookies', 'cookie-banner'] as const;
 const QUESTION_TYPES: { value: ProfileQuestionType; label: string }[] = [
@@ -43,6 +44,11 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   const [questions, setQuestions] = useState<ProfileQuestion[]>([]);
   const [sections, setSections] = useState<ProfileQuestionSection[]>([]);
   const [editing, setEditing] = useState<ProfileQuestion | null>(null);
+  const [coreOverrides, setCoreOverrides] = useState<CoreOverrides>({});
+  const [editingCore, setEditingCore] = useState<CoreFieldKey | null>(null);
+  const [coreLabelDraft, setCoreLabelDraft] = useState('');
+  const [corePlaceholderDraft, setCorePlaceholderDraft] = useState('');
+  const [coreVisibleDraft, setCoreVisibleDraft] = useState(true);
   const [question, setQuestion] = useState('');
   const [placeholder, setPlaceholder] = useState('');
   const [section, setSection] = useState('');
@@ -89,6 +95,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
 
   useEffect(() => { if (isAdmin) void loadPage(active); }, [isAdmin, active]);
   useEffect(() => { if (isAdmin) void loadProfileBuilder(); }, [isAdmin]);
+  useEffect(() => { if (isAdmin) void fetchCoreOverrides().then(setCoreOverrides).catch(() => undefined); }, [isAdmin]);
 
   if (loading) return <div className="pt-32 container-prose text-center">Loading…</div>;
   if (!user || !isAdmin) return <div className="pt-32 container-prose text-center">Admin access required.</div>;
@@ -105,7 +112,38 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     }
   };
 
+  const editCore = (key: CoreFieldKey) => {
+    const def = CORE_FIELDS.find(f => f.key === key)!;
+    if (def.locked) return;
+    const o = coreOverrides[key] || {};
+    setEditing(null);
+    setEditingCore(key);
+    setCoreLabelDraft(o.label ?? def.label);
+    setCorePlaceholderDraft(o.placeholder ?? def.placeholder);
+    setCoreVisibleDraft(o.defaultVisible ?? def.defaultVisible);
+    requestAnimationFrame(() => editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+  };
+
+  const saveCore = async () => {
+    if (!editingCore) return;
+    if (!coreLabelDraft.trim()) { setMsg('Enter a field label first.'); return; }
+    try {
+      setQuestionSaving(true);
+      setCoreOverrides(await saveCoreOverride(editingCore, { label: coreLabelDraft.trim(), placeholder: corePlaceholderDraft, defaultVisible: coreVisibleDraft }));
+      setMsg('Built-in field updated.');
+      setEditingCore(null);
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not save built-in field.'); }
+    finally { setQuestionSaving(false); }
+  };
+
+  const restoreCore = async () => {
+    if (!editingCore) return;
+    try { setCoreOverrides(await resetCoreOverride(editingCore)); setMsg('Built-in field restored to default.'); setEditingCore(null); }
+    catch (e) { setMsg(e instanceof Error ? e.message : 'Could not restore field.'); }
+  };
+
   const resetQuestion = () => {
+    setEditingCore(null);
     setEditing(null);
     setQuestion('');
     setPlaceholder('');
@@ -125,6 +163,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   const editQuestion = (q: ProfileQuestion) => {
     setAdminView('profile');
     setProfilePreview(false);
+    setEditingCore(null);
     setEditing(q);
     setQuestion(q.question);
     setPlaceholder(q.placeholder || '');
@@ -348,6 +387,21 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
 
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
           <div className="space-y-3">
+            <div className="rounded-2xl p-4" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
+              <p className="text-sm font-semibold">Built-in profile fields</p>
+              <p className="text-xs mt-1 mb-3" style={{ color: 'var(--color-text-muted)' }}>These ship with every profile. Edit their label, placeholder and default visibility. Name and Email are locked.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {CORE_FIELDS.map(f => { const o = coreOverrides[f.key] || {}; return <div key={f.key} className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', outline: editingCore === f.key ? '2px solid var(--color-cyan-dark)' : 'none' }}>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'var(--color-teal-dark)' }}>{f.section} · {f.type}</p>
+                    <p className="font-semibold text-sm truncate">{o.label || f.label}</p>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{(o.defaultVisible ?? f.defaultVisible) ? 'Public by default' : 'Private by default'}</p>
+                  </div>
+                  {f.locked ? <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: 'var(--color-text-muted)' }} title="Locked: account identity field"><Lock className="w-3.5 h-3.5" /> Locked</span>
+                    : <button type="button" onClick={() => editCore(f.key)} className="btn-ghost !w-auto !px-3 text-xs">Edit</button>}
+                </div>; })}
+              </div>
+            </div>
             {questions.length === 0 ? <div className="py-10 text-center" style={{ color: 'var(--color-text-muted)' }}>No profile questions yet.</div> : questions.map((q, i) => <div key={q.id} className="rounded-2xl p-4" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
               <div className="flex gap-3">
                 <GripVertical className="w-4 h-4 mt-1" style={{ color: 'var(--color-text-muted)' }} />
@@ -375,6 +429,15 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
           </div>
 
           <div ref={editorRef} className="rounded-2xl p-5 h-fit lg:sticky lg:top-24" style={{ background: 'linear-gradient(160deg,rgba(8,145,178,.08),rgba(94,234,212,.08))', border: '1px solid var(--color-border)' }}>
+            {editingCore && (() => { const def = CORE_FIELDS.find(f => f.key === editingCore)!; return <div className="space-y-3">
+              <div className="flex items-center justify-between mb-1"><div><p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-teal-dark)' }}>Edit built-in field</p><h3 className="font-serif text-xl font-semibold">{def.label}</h3></div><button type="button" className="p-2 rounded-lg" aria-label="Close" onClick={() => setEditingCore(null)}><X className="w-4 h-4" /></button></div>
+              <div><label className="label">Field label</label><input value={coreLabelDraft} onChange={e => setCoreLabelDraft(e.target.value)} maxLength={80} className="input-field" /></div>
+              <div><label className="label">Placeholder</label><input value={corePlaceholderDraft} onChange={e => setCorePlaceholderDraft(e.target.value)} maxLength={120} className="input-field" /></div>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={coreVisibleDraft} onChange={e => setCoreVisibleDraft(e.target.checked)} /> Visible by default (readers can still change it with their eye control)</label>
+              <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Section ({def.section}) and answer type ({def.type}) are fixed for built-in fields. Default visibility applies to readers who haven&apos;t saved a visibility choice yet.</p>
+              <div className="flex gap-2"><button type="button" className="btn-primary flex-1" disabled={questionSaving} onClick={saveCore}><Save className="w-4 h-4" />{questionSaving ? 'Saving…' : 'Update field'}</button><button type="button" className="btn-ghost !w-auto" onClick={restoreCore}>Restore default</button></div>
+            </div>; })()}
+            <div className={editingCore ? 'hidden' : ''}>
             <div className="flex items-center justify-between mb-4"><div><p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-teal-dark)' }}>{editing ? 'Edit question' : 'New question'}</p><h3 className="font-serif text-xl font-semibold">Question editor</h3></div>{editing && <button type="button" className="text-xs underline" onClick={resetQuestion}>Cancel</button>}</div>
             <div className="space-y-3">
               <div><label className="label">Section</label><select value={section} onChange={e => setSection(e.target.value)} className="input-field"><option value="">Choose a section…</option>{orderedSections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div>
@@ -399,6 +462,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={publicDefault} onChange={e => setPublicDefault(e.target.checked)} /> Visible by default</label>
               <label className="flex items-center gap-2 text-sm rounded-xl p-3" style={{ background: 'rgba(0,151,178,.08)' }}><input type="checkbox" checked={showInCard} onChange={e => setShowInCard(e.target.checked)} /> Show answer on profile card</label>
               <button type="button" className="btn-primary w-full" disabled={questionSaving} onClick={saveQuestion}><Save className="w-4 h-4" />{questionSaving ? (editing ? 'Updating…' : 'Saving…') : (editing ? 'Update question' : 'Add question')}</button>
+            </div>
             </div>
           </div>
         </div>
