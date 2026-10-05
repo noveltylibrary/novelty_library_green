@@ -5,17 +5,23 @@ import { Star } from 'lucide-react';
  * Keep this mapping in one place so the Home/Analytics/review-card displays
  * always use the same correspondence as the submission poster preview.
  */
+/** Original R/W -> star bands (from Star_Rating.xlsx). `to` is inclusive, one decimal place. */
+export const RW_STAR_BANDS: ReadonlyArray<{ from: number; to: number; stars: number }> = [
+  { from: 0, to: 1.5, stars: 0.5 },
+  { from: 1.6, to: 2.5, stars: 1 },
+  { from: 2.6, to: 3.5, stars: 1.5 },
+  { from: 3.6, to: 4.5, stars: 2 },
+  { from: 4.6, to: 5.5, stars: 2.5 },
+  { from: 5.6, to: 6.5, stars: 3 },
+  { from: 6.6, to: 7.5, stars: 3.5 },
+  { from: 7.6, to: 8.5, stars: 4 },
+  { from: 8.6, to: 10, stars: 4.5 },
+];
+
 export function rwRatingToStars(rating: number): number {
   const value = Math.max(0, Math.min(10, Math.round(Number(rating || 0) * 10) / 10));
-  if (value <= 1.5) return 0.5;
-  if (value <= 2.5) return 1;
-  if (value <= 3.5) return 1.5;
-  if (value <= 4.5) return 2;
-  if (value <= 5.5) return 2.5;
-  if (value <= 6.5) return 3;
-  if (value <= 7.5) return 3.5;
-  if (value <= 8.5) return 4;
-  return 4.5;
+  const band = RW_STAR_BANDS.find((b) => value <= b.to);
+  return band ? band.stars : 4.5;
 }
 
 interface RwStarRatingProps {

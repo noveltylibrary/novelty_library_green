@@ -1,9 +1,10 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
 import { ArrowLeft, ChevronDown, X, ZoomIn } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { fetchReviewGuidelineSections, type ReviewGuidelineSection } from '@/lib/reviewGuidelines';
 import { GUIDE_CSS } from '@/components/ReviewGuidelinesModal';
 import AdsterraAdSlot from '@/components/AdsterraAdSlot';
+import { RatingGuideCard, RATING_GUIDE_CSS } from '@/components/RatingGuideCard';
 
 interface ReviewGuidelinesPageProps {
   navigate: (path: string) => void;
@@ -61,6 +62,54 @@ const PAGE_CSS = `
   .ng-zoom-badge { position: absolute; right: 10px; top: 10px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: rgba(2,20,26,.7); color: #cffafe; opacity: .85; }
   .ng-figure figcaption { margin-top: 8px; text-align: center; font-size: .74rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--novelty-teal-dark); opacity: .8; line-height: 1.4; }
 
+  /* ---------- Dynamic poster layer ---------- */
+  .ng-tilt { perspective: 1100px; }
+  .ng-tilt-in { position: relative; transform: rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)); transition: transform .35s cubic-bezier(.2,.8,.2,1); will-change: transform; transform-style: preserve-3d; }
+  .ng-tilt.is-hot .ng-tilt-in { transition: transform .08s linear; }
+  .ng-glare { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s; background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,.28), transparent 45%); mix-blend-mode: soft-light; border-radius: inherit; }
+  .ng-tilt.is-hot .ng-glare { opacity: 1; }
+
+  .ng-header-frame { animation: ng-float 7s ease-in-out infinite; }
+  @keyframes ng-float { 50% { transform: translateY(-4px); } }
+  .ng-header-frame::before { content: ""; position: absolute; inset: -30%; z-index: 1; pointer-events: none; mix-blend-mode: screen; opacity: .55; background: radial-gradient(40% 35% at 20% 30%, rgba(34,211,238,.45), transparent 70%), radial-gradient(35% 30% at 80% 70%, rgba(94,234,212,.4), transparent 70%); animation: ng-aurora 11s ease-in-out infinite alternate; }
+  @keyframes ng-aurora { from { transform: translate3d(-4%,-2%,0) rotate(0deg); } to { transform: translate3d(5%,3%,0) rotate(12deg); } }
+  .ng-sheen { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+  .ng-sheen::after { content: ""; position: absolute; top: -20%; bottom: -20%; left: -40%; width: 22%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.28), transparent); transform: skewX(-18deg); animation: ng-sweep 7s ease-in-out infinite; }
+  @keyframes ng-sweep { 0%, 60% { left: -40%; } 100% { left: 140%; } }
+  .ng-sparkles { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+  .ng-sparkles span { position: absolute; left: var(--x); top: var(--y); width: var(--z); height: var(--z); border-radius: 50%; background: #cffafe; box-shadow: 0 0 10px 2px rgba(103,232,249,.8); opacity: 0; animation: ng-twinkle var(--d) ease-in-out infinite; animation-delay: var(--dl); }
+  @keyframes ng-twinkle { 0%, 100% { opacity: 0; transform: translateY(6px) scale(.4); } 50% { opacity: .9; transform: translateY(-10px) scale(1); } }
+
+  .ng-reveal { opacity: 0; transform: translateY(26px) scale(.97); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); transition-delay: var(--rd,0ms); }
+  .ng-reveal[data-in="1"] { opacity: 1; transform: none; }
+
+  .ng-glow { position: relative; padding: 2px; border-radius: 22px; overflow: hidden; background: rgba(8,145,178,.18); }
+  .ng-glow::before { content: ""; position: absolute; inset: -80%; background: conic-gradient(from 0deg, transparent 0 62%, #22d3ee 78%, #5eead4 88%, transparent 100%); animation: ng-spin 7s linear infinite; }
+  @keyframes ng-spin { to { transform: rotate(360deg); } }
+  .ng-glow .novelty-img-container { position: relative; z-index: 1; margin: 0; border: 0; background: var(--novelty-card-bg); border-radius: 20px; }
+  .ng-zoom { overflow: hidden; border-radius: 14px; }
+  .ng-zoom img { transition: transform .6s cubic-bezier(.2,.8,.2,1); }
+  .ng-zoom:hover img { transform: scale(1.035); }
+  .ng-zoom::after { content: ""; position: absolute; top: 0; bottom: 0; left: -50%; width: 30%; pointer-events: none; background: linear-gradient(100deg, transparent, rgba(255,255,255,.3), transparent); transform: skewX(-18deg); transition: left 0s; }
+  .ng-zoom:hover::after { left: 130%; transition: left .9s ease; }
+  .ng-figure figcaption { display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .ng-figure figcaption::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 0 0 rgba(34,211,238,.7); animation: ng-ping 2s ease-out infinite; }
+  @keyframes ng-ping { 70% { box-shadow: 0 0 0 9px rgba(34,211,238,0); } 100% { box-shadow: 0 0 0 0 rgba(34,211,238,0); } }
+  .novelty-section[open] .novelty-content { animation: ng-open .45s cubic-bezier(.2,.8,.2,1); }
+  @keyframes ng-open { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+  /* Ad strip inside each dropdown: collapses to one slim line when there is no ad */
+  .ng-ad { display: flex; justify-content: center; padding: 6px 22px 14px; background: rgba(255,255,255,.66); }
+  .dark .novelty-guide-outer-wrapper .ng-ad { background: rgba(3,20,27,.44); }
+  .ng-ad .adsterra-slot { margin: 0 auto; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ng-header-frame, .ng-header-frame::before, .ng-sheen::after, .ng-sparkles span, .ng-glow::before, .ng-figure figcaption::before, .novelty-section[open] .novelty-content { animation: none !important; }
+    .ng-reveal { opacity: 1; transform: none; transition: none; }
+    .ng-tilt-in { transform: none !important; }
+  }
+  @media (hover: none) { .ng-tilt-in { transform: none !important; } }
+
   .ng-lightbox { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 16px; background: rgba(2,10,14,.88); backdrop-filter: blur(6px); animation: fadeIn .2s ease-out; }
   .ng-lightbox img { max-width: 96vw; max-height: 92vh; width: auto; height: auto; border-radius: 16px; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
   .ng-lightbox button { position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.14); color: #fff; border: 0; cursor: pointer; }
@@ -71,6 +120,75 @@ function sectionImages(section: ReviewGuidelineSection): GuideImage[] {
   // First matching rule wins (form guide is checked before the generic "features" rule).
   const rule = SECTION_IMAGES.find(r => r.match.test(hay));
   return rule ? rule.images : [];
+}
+
+
+const SPARKLES = Array.from({ length: 14 }, (_, i) => ({
+  x: `${(i * 37 + 7) % 96}%`, y: `${(i * 53 + 11) % 90}%`, z: `${3 + (i % 3) * 2}px`,
+  d: `${3.2 + (i % 5) * 0.8}s`, dl: `${(i % 7) * 0.45}s`,
+}));
+
+/** Pointer-driven 3D tilt + glare. Mouse only; touch and reduced-motion users get the static poster. */
+function Tilt({ children, max = 5, className = '' }: { children: ReactNode; max?: number; className?: string }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const move = (e: RPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'mouse') return;
+    const el = ref.current; if (!el) return;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+    el.style.setProperty('--ry', `${(px - 0.5) * 2 * max}deg`);
+    el.style.setProperty('--rx', `${-(py - 0.5) * 2 * max}deg`);
+    el.style.setProperty('--mx', `${px * 100}%`);
+    el.style.setProperty('--my', `${py * 100}%`);
+    el.classList.add('is-hot');
+  };
+  const leave = () => {
+    const el = ref.current; if (!el) return;
+    el.style.setProperty('--rx', '0deg'); el.style.setProperty('--ry', '0deg');
+    el.classList.remove('is-hot');
+  };
+  return <div ref={ref} className={`ng-tilt ${className}`} onPointerMove={move} onPointerLeave={leave}>
+    <div className="ng-tilt-in">{children}<span className="ng-glare" aria-hidden="true" /></div>
+  </div>;
+}
+
+/** Fades/slides content in the first time it scrolls into view. */
+function Reveal({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') { setShown(true); return; }
+    const io = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setShown(true); io.disconnect(); } }, { threshold: 0.12 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return <div ref={ref} className={`ng-reveal ${className}`} data-in={shown ? '1' : '0'} style={{ ['--rd' as string]: `${delay}ms` }}>{children}</div>;
+}
+
+function GuideSection({ section, index, navigate, showRating, onZoom }: { section: ReviewGuidelineSection; index: number; navigate: (path: string) => void; showRating: boolean; onZoom: (img: GuideImage) => void }) {
+  // The ad is only requested once the dropdown has been opened, and lives inside it.
+  const [everOpen, setEverOpen] = useState(index === 0);
+  const [open, setOpen] = useState(index === 0);
+  const imgs = sectionImages(section);
+  return <details className="novelty-section" id={`guide-section-${section.id}`} open={index === 0} onToggle={(e) => { const o = (e.currentTarget as HTMLDetailsElement).open; setOpen(o); if (o) setEverOpen(true); }}>
+    <summary><span style={{ display:'flex', alignItems:'center', gap:10 }}><span>{section.title}</span></span><svg className="arrow-icon" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg></summary>
+    <div className="novelty-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(section.content_html, { ADD_ATTR: ['target', 'rel'], FORBID_TAGS: ['script','iframe','object','embed'] }) }} />
+    {index === 0 && <div className="novelty-content" style={{ paddingTop: 0 }}><div className="rounded-3xl p-5" style={{background:'linear-gradient(135deg,rgba(8,145,178,.12),rgba(34,211,238,.06))',border:'1px solid rgba(8,145,178,.24)'}}>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0"><p className="text-xs uppercase tracking-[.18em] font-bold" style={{color:'var(--color-teal-dark)'}}>Ready when you are</p><h3 className="font-serif text-2xl font-semibold mt-1">Reserve a book or submit your review</h3><p className="text-sm mt-1" style={{color:'var(--color-text-muted)'}}>Reservations are requests only until an admin accepts them. Reviews are checked by Novelty Library before acceptance and publication.</p></div>
+        <div className="flex flex-wrap gap-2"><button type="button" className="btn-ghost !w-auto" onClick={()=>navigate('/submit#reserve')}>Reserve a Book</button><button type="button" className="btn-primary !w-auto" onClick={()=>navigate('/submit')}>Submit Review</button></div>
+      </div>
+    </div></div>}
+    {showRating && <div className="novelty-content" style={{ paddingTop: 0 }}><Reveal><RatingGuideCard /></Reveal></div>}
+    {imgs.length > 0 && <div className={`ng-figures${imgs.length > 1 ? ' ng-multi' : ''}`}>
+      {imgs.map((img, i) => <Reveal key={img.file} delay={i * 120} className="ng-figure-wrap"><figure className="ng-figure">
+        <Tilt max={4}><div className="ng-glow"><div className="novelty-img-container"><button type="button" className="ng-zoom" onClick={() => onZoom(img)} aria-label={`Enlarge image: ${img.caption}`}><img src={ASSET(img.file)} width={1600} height={840} alt={img.alt} loading="lazy" decoding="async" /><span className="ng-zoom-badge" aria-hidden="true"><ZoomIn className="w-4 h-4" /></span></button></div></div></Tilt>
+        <figcaption>{img.caption}</figcaption>
+      </figure></Reveal>)}
+    </div>}
+    {everOpen && <div className="ng-ad"><AdsterraAdSlot active={open} /></div>}
+  </details>;
 }
 
 export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
@@ -101,17 +219,28 @@ export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
 
   const safeSections = useMemo(() => sections.filter(s => s.active).sort((a,b) => a.sort_order - b.sort_order), [sections]);
 
+  // Show the R/W star explainer once, in the form-guide (Ratings Breakdown) section.
+  const ratingIndex = useMemo(() => {
+    const hay = (x: ReviewGuidelineSection) => `${x.slug} ${x.title}`;
+    const i = safeSections.findIndex(x => /form[\s-]*guide|step[\s-]*by[\s-]*step|rating/i.test(hay(x)));
+    return i >= 0 ? i : safeSections.findIndex(x => /core[\s-]*rules|at a glance/i.test(hay(x)));
+  }, [safeSections]);
+
   return <div className="pt-20 sm:pt-24 pb-20 px-3 sm:px-5 animate-fade-in">
-    <style dangerouslySetInnerHTML={{ __html: GUIDE_CSS + PAGE_CSS }} />
+    <style dangerouslySetInnerHTML={{ __html: GUIDE_CSS + PAGE_CSS + RATING_GUIDE_CSS }} />
     <div className="max-w-6xl mx-auto">
       <button type="button" onClick={() => navigate('/submit')} className="inline-flex items-center gap-1.5 text-sm mb-5" style={{ color: 'var(--color-text-muted)' }}><ArrowLeft className="w-4 h-4" /> Back to Submit Reviews</button>
       <div className="novelty-guide-outer-wrapper">
         <div className="novelty-guide-wrapper">
           <header className="ng-header">
-            <div className="ng-header-frame">
-              <img src={ASSET('guide-header')} width={1600} height={840} alt="Novelty Library review guidelines: free, unlimited, no deadline" fetchPriority="high" decoding="async" />
-              <a className="ng-submit-cta" href="#/submit" aria-label="Submit now: open the Submit Reviews page" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); navigate('/submit'); }}><span className="ng-sr-only">Submit now</span></a>
-            </div>
+            <Tilt max={3} className="w-full">
+              <div className="ng-header-frame">
+                <img src={ASSET('guide-header')} width={1600} height={840} alt="Novelty Library review guidelines: free, unlimited, no deadline" fetchPriority="high" decoding="async" />
+                <span className="ng-sheen" aria-hidden="true" />
+                <span className="ng-sparkles" aria-hidden="true">{SPARKLES.map((p, i) => <span key={i} style={{ ['--x' as string]: p.x, ['--y' as string]: p.y, ['--z' as string]: p.z, ['--d' as string]: p.d, ['--dl' as string]: p.dl }} />)}</span>
+                <a className="ng-submit-cta" href="#/submit" aria-label="Submit now: open the Submit Reviews page" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); navigate('/submit'); }}><span className="ng-sr-only">Submit now</span></a>
+              </div>
+            </Tilt>
           </header>
 
           {error && <div className="mb-4 rounded-2xl px-4 py-3 text-xs" style={{ background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.16)', color: '#b91c1c' }}>The saved guide could not be loaded, so the built-in guide is being shown.</div>}
@@ -124,30 +253,7 @@ export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
             </select>
           </div>
 
-          {safeSections.map((section, index) => <Fragment key={section.id}><details className="novelty-section" id={`guide-section-${section.id}`} open={index === 0}>
-            <summary><span style={{ display:'flex', alignItems:'center', gap:10 }}><span>{section.title}</span></span><svg className="arrow-icon" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg></summary>
-            <div className="novelty-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(section.content_html, { ADD_ATTR: ['target', 'rel'], FORBID_TAGS: ['script','iframe','object','embed'] }) }} />
-            {index === 0 && <div className="mt-5 rounded-3xl p-5" style={{background:'linear-gradient(135deg,rgba(8,145,178,.12),rgba(34,211,238,.06))',border:'1px solid rgba(8,145,178,.24)'}}>
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div><p className="text-xs uppercase tracking-[.18em] font-bold" style={{color:'var(--color-teal-dark)'}}>Ready when you are</p><h3 className="font-serif text-2xl font-semibold mt-1">Reserve a book or submit your review</h3><p className="text-sm mt-1" style={{color:'var(--color-text-muted)'}}>Reservations are requests only until an admin accepts them. Reviews are checked by Novelty Library before acceptance and publication.</p></div>
-                <div className="flex flex-wrap gap-2"><button type="button" className="btn-ghost !w-auto" onClick={()=>navigate('/submit#reserve')}>Reserve a Book</button><button type="button" className="btn-primary !w-auto" onClick={()=>navigate('/submit')}>Submit Review</button></div>
-              </div>
-            </div>}
-            {(section.slug + ' ' + section.title).match(/rating|form|core-rules/i) && <div className="mt-5 rounded-3xl p-5 overflow-x-auto" style={{background:'var(--color-paper)',border:'1px solid var(--color-border)'}}>
-              <p className="text-xs uppercase tracking-[.18em] font-bold mb-2" style={{color:'var(--color-teal-dark)'}}>Star rating explained</p>
-              <h3 className="font-serif text-xl font-semibold mb-3">How the 5-star book rating relates to R/W</h3>
-              <table className="w-full text-sm"><thead><tr style={{borderBottom:'1px solid var(--color-border)'}}><th className="text-left p-2">Stars</th><th className="text-left p-2">Meaning</th><th className="text-left p-2">R/W equivalent</th></tr></thead><tbody>
-                {[['★','Very poor','1–2 / 10'],['★★','Below average','3–4 / 10'],['★★★','Good / average','5–6 / 10'],['★★★★','Very good','7–8 / 10'],['★★★★★','Excellent','9–10 / 10']].map(([stars,meaning,rw])=><tr key={stars} style={{borderBottom:'1px solid var(--color-border)'}}><td className="p-2 font-bold tracking-widest" style={{color:'var(--color-teal-dark)'}}>{stars}</td><td className="p-2">{meaning}</td><td className="p-2 font-semibold">{rw}</td></tr>)}
-              </tbody></table><p className="text-xs mt-3" style={{color:'var(--color-text-muted)'}}>Goodreads and Amazon ratings remain 5-point platform ratings. R/W is the reviewer's personal score out of 10 and is not an average of those platform scores.</p>
-            </div>}
-            {(() => { const imgs = sectionImages(section); return imgs.length ? <div className={`ng-figures${imgs.length > 1 ? ' ng-multi' : ''}`}>
-              {imgs.map(img => <figure className="ng-figure" key={img.file}>
-                <div className="novelty-img-container"><button type="button" className="ng-zoom" onClick={() => setZoom(img)} aria-label={`Enlarge image: ${img.caption}`}><img src={ASSET(img.file)} width={1600} height={840} alt={img.alt} loading="lazy" decoding="async" /><span className="ng-zoom-badge" aria-hidden="true"><ZoomIn className="w-4 h-4" /></span></button></div>
-                <figcaption>{img.caption}</figcaption>
-              </figure>)}
-            </div> : null; })()}
-          </details>
-          <div className="flex justify-center py-4"><AdsterraAdSlot /></div></Fragment>)}
+          {safeSections.map((section, index) => <GuideSection key={section.id} section={section} index={index} navigate={navigate} showRating={index === ratingIndex} onZoom={setZoom} />)}
         </div>
       </div>
     </div>

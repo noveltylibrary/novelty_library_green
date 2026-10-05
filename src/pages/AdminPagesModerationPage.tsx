@@ -3,6 +3,7 @@ import { Lock, ArrowLeft, FileText, Save, ExternalLink, Plus, Trash2, ChevronUp,
 import { useAuth } from '@/lib/auth';
 import { fetchEditablePage, saveEditablePage, PAGE_DEFAULTS } from '@/lib/adminConfig';
 import { AdminReviewGuidelinesEditor } from '@/components/AdminReviewGuidelinesEditor';
+import { AdminAboutEditor } from '@/components/AdminAboutEditor';
 import {
   fetchProfileQuestions,
   fetchProfileSections,
@@ -94,6 +95,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   };
 
   useEffect(() => { if (isAdmin) void loadPage(active); }, [isAdmin, active]);
+  useEffect(() => { editorRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }, [editing, editingCore]);
   useEffect(() => { if (isAdmin) void loadProfileBuilder(); }, [isAdmin]);
   useEffect(() => { if (isAdmin) void fetchCoreOverrides().then(setCoreOverrides).catch(() => undefined); }, [isAdmin]);
 
@@ -316,7 +318,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
           </div>
         </aside>
 
-        {active === 'review-guidelines' ? <AdminReviewGuidelinesEditor /> : <section className="surface-card p-6">
+        {active === 'review-guidelines' ? <AdminReviewGuidelinesEditor /> : active === 'about' ? <AdminAboutEditor /> : <section className="surface-card p-6">
           <div className="flex items-center justify-between gap-3 mb-5">
             <div><p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--color-teal-dark)' }}>Editing</p><h2 className="font-serif text-2xl font-semibold">{title}</h2></div>
             <button className="btn-primary !w-auto" disabled={saving} onClick={save}><Save className="w-4 h-4" />{saving ? 'Saving…' : 'Save Page'}</button>
@@ -385,8 +387,8 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
-          <div className="space-y-3">
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6 xl:items-start">
+          <div className="space-y-3 min-w-0 nl-admin-col" tabIndex={-1} aria-label="Questions list">
             <div className="rounded-2xl p-4" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
               <p className="text-sm font-semibold">Built-in profile fields</p>
               <p className="text-xs mt-1 mb-3" style={{ color: 'var(--color-text-muted)' }}>These ship with every profile. Edit their label, placeholder and default visibility. Name and Email are locked.</p>
@@ -428,7 +430,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
             </div>)}
           </div>
 
-          <div ref={editorRef} className="rounded-2xl p-5 h-fit lg:sticky lg:top-24" style={{ background: 'linear-gradient(160deg,rgba(8,145,178,.08),rgba(94,234,212,.08))', border: '1px solid var(--color-border)' }}>
+          <div ref={editorRef} className="rounded-2xl p-5 h-fit min-w-0 nl-admin-col" aria-label="Question editor" style={{ background: 'linear-gradient(160deg,rgba(8,145,178,.08),rgba(94,234,212,.08))', border: '1px solid var(--color-border)' }}>
             {editingCore && (() => { const def = CORE_FIELDS.find(f => f.key === editingCore)!; return <div className="space-y-3">
               <div className="flex items-center justify-between mb-1"><div><p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-teal-dark)' }}>Edit built-in field</p><h3 className="font-serif text-xl font-semibold">{def.label}</h3></div><button type="button" className="p-2 rounded-lg" aria-label="Close" onClick={() => setEditingCore(null)}><X className="w-4 h-4" /></button></div>
               <div><label className="label">Field label</label><input value={coreLabelDraft} onChange={e => setCoreLabelDraft(e.target.value)} maxLength={80} className="input-field" /></div>

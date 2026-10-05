@@ -37,6 +37,8 @@ const FORMATS = [
   { key: '1:1', width: 1080, height: 1080 },
 ] as const;
 export type FormatKey = (typeof FORMATS)[number]['key'];
+export const FORMAT_OPTIONS = FORMATS;
+export function asFormatKey(v: unknown): FormatKey | null { return FORMATS.some((f) => f.key === v) ? (v as FormatKey) : null; }
 const PREVIEW_FORMAT: FormatKey = '4:5';
 
 /** A 1x1 transparent gif used when a remote image refuses to be exported (no CORS). */
@@ -100,11 +102,11 @@ const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() 
 
 function imageAnswerGrid(urls: string[], cols: number): string { return urls.length <= 1 ? '1fr' : cols === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)'; }
 
-export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUpload, onViewPublicProfile, initialFormat = PREVIEW_FORMAT, publicFormat = PREVIEW_FORMAT, onPublicFormatChange, toolbarRight }: { data: ProfileCardData; download?: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void; onViewPublicProfile?: () => void; initialFormat?: FormatKey; publicFormat?: FormatKey; onPublicFormatChange?: (format: FormatKey) => void; toolbarRight?: ReactNode }) {
+export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUpload, onViewPublicProfile, layout = 'inline', initialFormat, publicFormat, onPublicFormatChange }: { data: ProfileCardData; download?: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void; onViewPublicProfile?: () => void; layout?: 'inline' | 'rows'; initialFormat?: FormatKey; publicFormat?: FormatKey; onPublicFormatChange?: (f: FormatKey) => void | Promise<void> }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [format, setFormat] = useState<FormatKey>(initialFormat);
-  useEffect(() => { setFormat(initialFormat); }, [initialFormat]);
+  const [format, setFormat] = useState<FormatKey>(initialFormat || PREVIEW_FORMAT);
+  const [publicSaved, setPublicSaved] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [boxWidth, setBoxWidth] = useState(0);
@@ -167,44 +169,33 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
   };
 
   return <div className="w-full">
-    {(download || onViewPublicProfile || toolbarRight) && <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {onViewPublicProfile && <button type="button" onClick={onViewPublicProfile} className="btn-ghost !w-auto !px-3 !py-2 text-sm"><ExternalLink className="w-4 h-4" /> View public profile</button>}
-        {download && <label className="inline-flex items-center gap-2 btn-ghost !w-auto !px-3 !py-2 text-sm">
-          <span className="sr-only">View profile card format</span><span>View card</span>
-          <select value={format} onChange={(e) => setFormat(e.target.value as FormatKey)} className="bg-transparent border-0 outline-none text-sm font-semibold cursor-pointer">
-            {FORMATS.map((f) => <option key={f.key} value={f.key}>{f.key} · {f.width}×{f.height}</option>)}
-          </select>
-        </label>}
-        {download && onPublicFormatChange && <label className="inline-flex items-center gap-2 btn-ghost !w-auto !px-3 !py-2 text-sm">
-          <span>Public view</span>
-          <select value={publicFormat} onChange={(e) => onPublicFormatChange(e.target.value as FormatKey)} className="bg-transparent border-0 outline-none text-sm font-semibold cursor-pointer">
-            {FORMATS.map((f) => <option key={f.key} value={f.key}>{f.key}</option>)}
-          </select>
-        </label>}
-        {download && <button type="button" onClick={() => setReplay((n) => n + 1)} className="btn-ghost !w-auto !px-3 !py-2 text-sm" title="Replay animation" aria-label="Replay animation"><RotateCcw className="w-4 h-4" /></button>}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {toolbarRight}
-        {download && <div className="relative">
-          <button type="button" onClick={() => setDownloadMenuOpen(v => !v)} disabled={downloading} className="btn-primary !w-auto disabled:opacity-50"><Download className="w-4 h-4" /> {downloading ? 'Preparing…' : 'Download Profile Card'} <ChevronDown className="w-4 h-4" /></button>
-          {downloadMenuOpen && <div className="absolute right-0 top-full mt-2 z-30 min-w-[210px] rounded-2xl p-1.5 shadow-2xl" style={{background:'var(--color-surface)',border:'1px solid var(--color-border)'}}>
-            {FORMATS.map((f) => <button key={f.key} type="button" onClick={() => { setFormat(f.key); setDownloadMenuOpen(false); window.setTimeout(() => void downloadCard(f.key), 0); }} className="w-full text-left rounded-xl px-3 py-2.5 text-sm hover:bg-black/5 dark:hover:bg-white/5">{f.key} <span className="opacity-60">· {f.width}×{f.height}</span>{format===f.key && <span className="float-right font-bold">✓</span>}</button>)}
-          </div>}
+    {layout === 'rows' && (download || onViewPublicProfile) && <div className="nl-pc-rows" style={{ maxWidth: selected.width > selected.height ? 560 : 380 }}>
+      {onViewPublicProfile && <button type="button" onClick={onViewPublicProfile} className="nl-pc-row"><span className="nl-pc-row-main"><ExternalLink className="w-4 h-4" /> View public profile</span></button>}
+      {download && <label className="nl-pc-row nl-pc-row-select"><span className="nl-pc-row-main">View card</span><span className="nl-pc-select"><select value={format} onChange={(e) => setFormat(e.target.value as FormatKey)} aria-label="Card format to preview">{FORMATS.map((f) => <option key={f.key} value={f.key}>{f.key} · {f.width}×{f.height}</option>)}</select><ChevronDown className="w-4 h-4" aria-hidden="true" /></span></label>}
+      {onPublicFormatChange && <label className="nl-pc-row nl-pc-row-select"><span className="nl-pc-row-main">Set public view{publicSaved && <em className="nl-pc-saved">✓ Saved</em>}</span><span className="nl-pc-select"><select value={publicFormat || PREVIEW_FORMAT} onChange={async (e) => { await onPublicFormatChange(e.target.value as FormatKey); setPublicSaved(true); window.setTimeout(() => setPublicSaved(false), 2200); }} aria-label="Card format other readers see on your public profile">{FORMATS.map((f) => <option key={f.key} value={f.key}>{f.key}</option>)}</select><ChevronDown className="w-4 h-4" aria-hidden="true" /></span></label>}
+      {download && <button type="button" onClick={() => setReplay((n) => n + 1)} className="nl-pc-row" aria-label="Replay animation"><span className="nl-pc-row-main"><RotateCcw className="w-4 h-4" /> Replay animation</span></button>}
+      {download && <div className="relative">
+        <button type="button" onClick={() => setDownloadMenuOpen(v => !v)} disabled={downloading} className="nl-pc-row nl-pc-row-primary disabled:opacity-50"><span className="nl-pc-row-main"><Download className="w-4 h-4" /> {downloading ? 'Preparing…' : 'Download Profile Card'}</span><ChevronDown className="w-4 h-4" /></button>
+        {downloadMenuOpen && <div className="absolute left-0 right-0 top-full mt-2 z-30 rounded-2xl p-1.5 shadow-2xl" style={{background:'var(--color-surface)',border:'1px solid var(--color-border)'}}>
+          {FORMATS.map((f) => <button key={f.key} type="button" onClick={() => { setFormat(f.key); setDownloadMenuOpen(false); window.setTimeout(() => void downloadCard(f.key), 0); }} className="w-full text-left rounded-xl px-3 py-2.5 text-sm hover:bg-black/5 dark:hover:bg-white/5">{f.key} <span className="opacity-60">· {f.width}×{f.height}</span>{format===f.key && <span className="float-right font-bold">✓</span>}</button>)}
         </div>}
-      </div>
+      </div>}
+    </div>}
+
+    {layout !== 'rows' && (download || onAvatarUpload || onHeaderUpload || onViewPublicProfile) && <div className="flex flex-wrap items-center justify-end gap-2 mb-3">
+      {onViewPublicProfile && <button type="button" onClick={onViewPublicProfile} className="btn-ghost !w-auto !px-3 !py-2 text-sm"><ExternalLink className="w-4 h-4" /> View public profile</button>}
+      {download && <button type="button" onClick={() => setReplay((n) => n + 1)} className="btn-ghost !w-auto !px-3 !py-2 text-sm" title="Replay animation" aria-label="Replay animation"><RotateCcw className="w-4 h-4" /></button>}
+      {download && <div className="relative">
+        <button type="button" onClick={() => setDownloadMenuOpen(v => !v)} disabled={downloading} className="btn-primary !w-auto disabled:opacity-50"><Download className="w-4 h-4" /> {downloading ? 'Preparing…' : 'Download Profile Card'} <ChevronDown className="w-4 h-4" /></button>
+        {downloadMenuOpen && <div className="absolute right-0 top-full mt-2 z-30 min-w-[190px] rounded-2xl p-1.5 shadow-2xl" style={{background:'var(--color-surface)',border:'1px solid var(--color-border)'}}>
+          {FORMATS.map((f) => <button key={f.key} type="button" onClick={() => { setFormat(f.key); setDownloadMenuOpen(false); window.setTimeout(() => void downloadCard(f.key), 0); }} className="w-full text-left rounded-xl px-3 py-2.5 text-sm hover:bg-black/5 dark:hover:bg-white/5">{f.key} <span className="opacity-60">· {f.width}×{f.height}</span>{format===f.key && <span className="float-right font-bold">✓</span>}</button>)}
+        </div>}
+      </div>}
     </div>}
 
     {/* The preview is the exact export canvas, scaled down to fit the page. What you see is what you download. */}
     <div ref={wrapRef} className="relative w-full mx-auto overflow-hidden rounded-[24px] nl-pc-preview" style={{ height: selected.height * scale, maxWidth: selected.width > selected.height ? 560 : 380, boxShadow: '0 26px 60px rgba(0,80,95,.28)', border: '1px solid rgba(8,145,178,.3)' }}>
-      <CardCanvas key={`${format}-${replay}`} canvasRef={canvasRef} data={data} width={selected.width} height={selected.height} scale={scale} play={inView} still={downloading} />
-      {(onHeaderUpload || onAvatarUpload) && <div className="absolute inset-0 z-10 pointer-events-none">
-        {onHeaderUpload && <div className="absolute top-3 right-3 pointer-events-auto flex items-center gap-1.5 rounded-full px-2 py-1.5 shadow-lg backdrop-blur-sm" style={{background:'rgba(255,255,255,.9)',color:'var(--color-teal-dark)'}}>
-          <span className="text-[10px] font-bold tracking-wide">1500 × 500 px</span>
-          <button type="button" onClick={onHeaderUpload} disabled={!onHeaderUpload} className="grid place-items-center w-7 h-7 rounded-full" style={{background:'var(--color-teal-dark)',color:'white'}} title="Add or change banner" aria-label="Add or change banner"><ImagePlus className="w-3.5 h-3.5" /></button>
-        </div>}
-        {onAvatarUpload && <button type="button" onClick={onAvatarUpload} className="absolute pointer-events-auto grid place-items-center w-9 h-9 rounded-full shadow-lg" style={{left:'8%',top:'15%',background:'white',color:'var(--color-teal-dark)',border:'2px solid rgba(92,225,230,.8)'}} title="Add or change profile picture" aria-label="Add or change profile picture"><Camera className="w-4 h-4" /></button>}
-      </div>}
+      <CardCanvas key={`${format}-${replay}`} canvasRef={canvasRef} data={data} width={selected.width} height={selected.height} scale={scale} play={inView} still={downloading} onAvatarUpload={onAvatarUpload} onHeaderUpload={onHeaderUpload} />
     </div>
   </div>;
 }
@@ -239,7 +230,7 @@ function Cover({ url, w, h, radius, iconSize }: { url: string | null; w: number;
   </div>;
 }
 
-function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }: { canvasRef: RefObject<HTMLDivElement>; data: ProfileCardData; width: number; height: number; scale: number; play: boolean; still: boolean }) {
+function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, onAvatarUpload, onHeaderUpload }: { canvasRef: RefObject<HTMLDivElement>; data: ProfileCardData; width: number; height: number; scale: number; play: boolean; still: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void }) {
   const cols = w / h >= 0.95 ? 2 : 1;
   const compactSquare = w / h <= 1.05;
   const signature = `${w}x${h}|${data.publishedReviews.length}|${data.questions.length}|${JSON.stringify(data.answers).length}|${data.name}|${data.favoriteBook}|${data.favoriteAuthor}|${data.favoriteGenre}|${data.socialLinks.length}`;
@@ -273,6 +264,8 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
     ? { className: '', style: {} }
     : { className: `nl-pc-a nl-pc-${kind}`, style: { ['--d' as string]: `${delay.toFixed(2)}s` } as CSSProperties };
 
+  // On-screen edit controls keep a constant ~28px size whatever the preview scale; they never render into the export.
+  const ui = (px: number) => px / Math.max(scale, 0.2);
   const u = Math.min(w / 1080, h / 1000) * fit.m;
   const s = (n: number) => n * u;
   const pad = w * 0.055;
@@ -399,6 +392,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
           <NlLogo className={still ? '' : 'nl-pc-loop nl-pc-float'} style={{ position: 'absolute', right: pad, top: '50%', marginTop: -bannerH * 0.36, height: bannerH * 0.72, width: bannerH * 0.72, color: '#fff', opacity: 0.16 }} />
         </>}
       <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, rgba(1,43,54,.05) 30%, rgba(1,43,54,.55) 100%)` }} />
+      {!still && onHeaderUpload && <button type="button" onClick={(e) => { e.stopPropagation(); onHeaderUpload(); }} title="Change banner (1500 × 500 px)" aria-label="Change banner image, 1500 by 500 pixels" className="nl-pc-edit-chip" style={{ top: ui(10), right: ui(10), height: ui(28), padding: `0 ${ui(5)}px 0 ${ui(11)}px`, gap: ui(7), fontSize: ui(11) }}>1500 × 500 px<span className="nl-pc-edit-dot" style={{ width: ui(20), height: ui(20) }}><ImagePlus width={ui(12)} height={ui(12)} /></span></button>}
     </div>
 
     {/* One-off light sweep across the whole card (screen only) */}
@@ -416,6 +410,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still }
                 : <div className="font-serif" style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: avatar * 0.42, fontWeight: 700, color: '#fff', background: `linear-gradient(135deg,${C.teal},${C.cyan})` }}>{sanitizeUserText(data.name || data.username || 'R', 120).slice(0, 1).toUpperCase()}</div>}
             </div>
           </div>
+          {!still && onAvatarUpload && <button type="button" onClick={(e) => { e.stopPropagation(); onAvatarUpload(); }} title="Change profile picture" aria-label="Change profile picture" className="nl-pc-cam" style={{ width: ui(26), height: ui(26), left: avatar * 0.853 - ui(26) / 2, top: avatar * 0.853 - ui(26) / 2 }}><Camera width={ui(13)} height={ui(13)} /></button>}
         </div>
         <div style={{ minWidth: 0, flex: 1, paddingTop: avatar / 2 + s(6) }}>
           <p className={eyebrow.className} style={{ ...eyebrow.style, fontSize: s(15), letterSpacing: '.22em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: s(6) }}>Novelty Library · Reader</p>

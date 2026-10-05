@@ -653,11 +653,10 @@ input:not(:-webkit-autofill) {
 }
 .dark .preview-rating .calculated-stars { color: #67e8f9; }
 
-/* Adsterra 300x250 slot: fixed dimensions prevent layout shift. */
+/* Adsterra 300x250 slot: collapsed (single "Sponsored" line) until an ad has actually loaded. */
 .adsterra-slot {
   width: 300px;
-  min-width: 300px;
-  max-width: 300px;
+  max-width: 100%;
   margin: 2rem auto;
   display: flex;
   flex-direction: column;
@@ -666,17 +665,31 @@ input:not(:-webkit-autofill) {
 }
 
 .adsterra-label {
-  width: 300px;
+  width: 100%;
   height: 18px;
   margin-bottom: 4px;
-  overflow: hidden;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   color: var(--color-text-muted);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: .16em;
   line-height: 18px;
 }
+.adsterra-label::before, .adsterra-label::after { content: ""; flex: 1; height: 1px; background: var(--color-border); }
+
+.adsterra-frame {
+  width: 300px;
+  max-width: 100%;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: height .45s cubic-bezier(.2,.8,.2,1), opacity .45s ease;
+}
+.adsterra-slot[data-state="filled"] .adsterra-frame { height: 250px; opacity: 1; }
+.adsterra-slot:not([data-state="filled"]) { margin-top: .6rem !important; margin-bottom: .6rem !important; }
+.adsterra-slot:not([data-state="filled"]) .adsterra-label { margin-bottom: 0; }
 
 @media (max-width: 640px) {
   .adsterra-slot { margin: 1.5rem auto; }
@@ -1434,3 +1447,38 @@ a.nl-an-handle:hover { text-decoration: underline; }
 .nl-reply-thread { margin-top: .6rem; padding-left: .85rem; border-left: 2px solid rgba(0,151,178,.22); display: grid; gap: .7rem; }
 .nl-reply { min-width: 0; }
 .nl-reply-form { padding: .2rem 0; }
+
+
+/* ---------- Profile card: option rows + on-card edit controls ---------- */
+.nl-pc-rows { display: grid; gap: 8px; width: 100%; margin: 0 auto 14px; }
+.nl-pc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 46px; padding: 0 16px; border-radius: 16px; background: var(--color-paper); border: 1px solid var(--color-border); color: var(--color-text); font-size: .9rem; font-weight: 600; text-align: left; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.nl-pc-row:hover { transform: translateY(-1px); border-color: rgba(8,145,178,.35); box-shadow: 0 8px 18px rgba(0,80,95,.10); }
+.nl-pc-row:focus-visible { outline: 2px solid var(--color-cyan-dark); outline-offset: 2px; }
+.nl-pc-row-main { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
+.nl-pc-row-primary { background: linear-gradient(135deg, #013a46, #0097b2); border-color: transparent; color: #fff; }
+.nl-pc-row-select { cursor: default; }
+.nl-pc-select { position: relative; display: inline-flex; align-items: center; }
+.nl-pc-select select { appearance: none; -webkit-appearance: none; background: rgba(8,145,178,.08); border: 1px solid rgba(8,145,178,.2); border-radius: 12px; color: var(--color-teal-dark); font: inherit; font-size: .82rem; font-weight: 700; padding: 7px 30px 7px 12px; cursor: pointer; }
+.nl-pc-select svg { position: absolute; right: 9px; pointer-events: none; color: var(--color-teal-dark); }
+.nl-pc-saved { font-style: normal; font-size: .7rem; font-weight: 800; color: var(--color-cyan-dark); animation: fadeIn .3s ease-out; }
+
+.nl-pc-cam { position: absolute; z-index: 5; display: grid; place-items: center; border-radius: 50%; border: 0; padding: 0; background: #fff; color: #0e7490; cursor: pointer; box-shadow: 0 3px 10px rgba(0,25,35,.45); transition: transform .18s ease; }
+.nl-pc-cam:hover { transform: scale(1.14); }
+.nl-pc-edit-chip { position: absolute; z-index: 5; display: inline-flex; align-items: center; border: 0; border-radius: 999px; background: rgba(255,255,255,.92); color: #0e7490; font-weight: 800; letter-spacing: .02em; cursor: pointer; box-shadow: 0 3px 10px rgba(0,25,35,.3); opacity: .9; transition: opacity .18s, transform .18s; }
+.nl-pc-edit-chip:hover { opacity: 1; transform: scale(1.04); }
+.nl-pc-edit-dot { display: grid; place-items: center; border-radius: 50%; background: #0e9ab5; color: #fff; }
+
+/* ---------- Profile page: two-column workspace ---------- */
+.nl-profile-work { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (min-width: 1024px) { .nl-profile-work { grid-template-columns: minmax(340px, 440px) minmax(0, 1fr); } .nl-profile-story-col { position: sticky; top: 96px; } }
+.nl-story-drop { display: grid; place-items: center; text-align: center; gap: 8px; width: 100%; min-height: 190px; padding: 18px; border-radius: 22px; border: 2px dashed rgba(8,145,178,.35); background: linear-gradient(145deg, rgba(8,145,178,.07), rgba(94,234,212,.12)); color: var(--color-teal-dark); cursor: pointer; transition: transform .2s ease, border-color .2s ease, background .2s ease; }
+.nl-story-drop:hover { transform: translateY(-2px); border-color: #0e9ab5; }
+.nl-story-drop strong { font-size: .95rem; }
+.nl-story-drop small { color: var(--color-text-muted); font-size: .75rem; }
+
+/* Admin builder: each column scrolls on its own so the list and the editor never fight for one scrollbar. */
+@media (min-width: 1280px) {
+  .nl-admin-col { position: sticky; top: 96px; max-height: calc(100vh - 120px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(8,145,178,.4) transparent; padding-right: 6px; }
+  .nl-admin-col::-webkit-scrollbar { width: 8px; }
+  .nl-admin-col::-webkit-scrollbar-thumb { background: rgba(8,145,178,.35); border-radius: 999px; }
+}

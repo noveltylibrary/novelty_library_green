@@ -1,8 +1,24 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCookieConsent } from '@/lib/cookieConsent';
 
 interface AdsterraAdSlotProps {
   className?: string;
+  /** When false the ad is not requested yet (e.g. inside a closed dropdown). Default true. */
+  active?: boolean;
+}
+
+type SlotState = 'loading' | 'filled' | 'empty';
+
+const FILL_TIMEOUT_MS = 8000;
+const POLL_MS = 350;
+
+/** True once the ad script has put visible content into the iframe document. */
+function iframeHasAd(doc: Document | null | undefined): boolean {
+  const body = doc?.body;
+  if (!body) return false;
+  const nodes = body.querySelectorAll('iframe,img,ins,a,object,embed,video,canvas,svg');
+  if (nodes.length > 0) return true;
+  return Array.from(body.children).some((el) => el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE' && (el.textContent || '').trim().length > 0);
 }
 
 const AD_KEY = '94338a299763bb951992d9cd078429e9';
@@ -24,14 +40,18 @@ type AdWindow = Window & {
  * which blocks inline scripts. The only script written into the iframe is the
  * external Adsterra one from bauval.org, which the policy allows.
  */
-export function AdsterraAdSlot({ className = '' }: AdsterraAdSlotProps) {
+export function AdsterraAdSlot({ className = '', active = true }: AdsterraAdSlotProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const consent = useCookieConsent();
+  const [state, setState] = useState<SlotState>('loading');
 
   useEffect(() => {
-    if (consent !== 'all') return; // ads (third-party cookies) load only after "Accept all"
+    if (consent !== 'all' || !active) return; // ads (third-party cookies) load only after "Accept all"
     const container = containerRef.current;
     if (!container) return;
+    setState('loading');
+    let poll: number | undefined;
+    const startedAt = Date.now();
 
     container.innerHTML = '';
 
@@ -64,19 +84,36 @@ export function AdsterraAdSlot({ className = '' }: AdsterraAdSlotProps) {
           `</head><body><script src="${AD_SCRIPT_SRC}"></script></body></html>`,
       );
       doc.close();
+
+      // Watch for the ad to appear; if nothing shows up, collapse to a single "Sponsored" line.
+      poll = window.setInterval(() => {
+        if (iframeHasAd(iframe.contentDocument)) {
+          window.clearInterval(poll);
+          setState('filled');
+        } else if (Date.now() - startedAt > FILL_TIMEOUT_MS) {
+          window.clearInterval(poll);
+          setState('empty');
+        }
+      }, POLL_MS);
+    } else {
+      setState('empty');
     }
 
     return () => {
+      if (poll) window.clearInterval(poll);
       container.innerHTML = '';
     };
-  }, [consent]);
+  }, [consent, active]);
 
   if (consent !== 'all') return null;
 
   return (
-    <div className={`adsterra-slot ${className}`} aria-label="Advertisement">
-      <div className="adsterra-label">SPONSORED</div>
-      <div ref={containerRef} className="w-[300px] h-[250px] overflow-hidden" />
+    <div className={`adsterra-slot ${className}`} data-state={state} aria-label="Advertisement">
+      <div className="adsterra-label"><span>SPONSORED</span></div>
+      {/* The frame stays at 0 height until an ad is really there, so there is never a blank box. */}
+      <div className="adsterra-frame">
+        <div ref={containerRef} className="w-[300px] h-[250px] overflow-hidden" />
+      </div>
     </div>
   );
 }
