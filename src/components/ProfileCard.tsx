@@ -29,12 +29,16 @@ export type ProfileCardData = {
 };
 
 const LOGO = '/novelty-library-logo.png';
+const SB_FRAME = '/superblitz-frame.png';
+const SB_LOGO = '/superblitz-logo.png';
 const FORMATS = [
   { key: '9:16', width: 1080, height: 1920 },
   { key: '16:9', width: 1600, height: 900 },
   { key: '3:4', width: 1200, height: 1600 },
   { key: '4:5', width: 1080, height: 1350 },
   { key: '1:1', width: 1080, height: 1080 },
+  // Framed card built from the SuperBlitz artwork (/superblitz-frame.png, 1080 x 1080).
+  { key: 'SuperBlitz', width: 1080, height: 1080 },
 ] as const;
 export type FormatKey = (typeof FORMATS)[number]['key'];
 export const FORMAT_OPTIONS = FORMATS;
@@ -195,7 +199,7 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
 
     {/* The preview is the exact export canvas, scaled down to fit the page. What you see is what you download. */}
     <div ref={wrapRef} className="relative w-full mx-auto overflow-hidden rounded-[24px] nl-pc-preview" style={{ height: selected.height * scale, maxWidth: selected.width > selected.height ? 560 : 380, boxShadow: '0 26px 60px rgba(0,80,95,.28)', border: '1px solid rgba(8,145,178,.3)' }}>
-      <CardCanvas key={`${format}-${replay}`} canvasRef={canvasRef} data={data} width={selected.width} height={selected.height} scale={scale} play={inView} still={downloading} onAvatarUpload={onAvatarUpload} onHeaderUpload={onHeaderUpload} />
+      <CardCanvas key={`${format}-${replay}`} canvasRef={canvasRef} data={data} width={selected.width} height={selected.height} superBlitz={format === 'SuperBlitz'} scale={scale} play={inView} still={downloading} onAvatarUpload={onAvatarUpload} onHeaderUpload={onHeaderUpload} />
     </div>
   </div>;
 }
@@ -230,7 +234,7 @@ function Cover({ url, w, h, radius, iconSize }: { url: string | null; w: number;
   </div>;
 }
 
-function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, onAvatarUpload, onHeaderUpload }: { canvasRef: RefObject<HTMLDivElement>; data: ProfileCardData; width: number; height: number; scale: number; play: boolean; still: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void }) {
+function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, scale, play, still, onAvatarUpload, onHeaderUpload }: { canvasRef: RefObject<HTMLDivElement>; data: ProfileCardData; width: number; height: number; superBlitz?: boolean; scale: number; play: boolean; still: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void }) {
   /*
    * One information architecture, responsive composition.
    * The card keeps the same reading order at every aspect ratio, but the
@@ -276,7 +280,8 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, 
     : { className: `nl-pc-a nl-pc-${kind}`, style: { ['--d' as string]: `${delay.toFixed(2)}s` } as CSSProperties };
 
   const ui = (px: number) => px / Math.max(scale, 0.2);
-  const u = Math.min(w / 1080, h / 1350) * fit.m;
+  // SuperBlitz keeps type close to 1:1 pixel scale: its content panel is only ~560px wide.
+  const u = superBlitz ? Math.min(1.1, fit.m) : Math.min(w / 1080, h / 1350) * fit.m;
   const s = (n: number) => n * u;
   const pad = Math.max(w * 0.045, s(isTall ? 34 : 48));
   const bannerH = Math.round(isWide ? h * 0.25 : isLandscape ? h * 0.19 : isTall ? h * 0.13 : h * 0.16);
@@ -318,8 +323,8 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, 
   });
   const fixedMeta = new Set(['bio', 'about me', 'about', 'reader bio', 'city', 'town', 'location', 'residence', 'state', 'province', 'country', 'gender', 'languages read', 'language read', 'languages', 'language', 'preferred genres', 'preferred genre', 'favourite genres', 'favorite genres', 'genres']);
   const isFixedQuestion = (q: ProfileQuestion) => Array.from(fixedMeta).some(term => `${q.key} ${q.question}`.toLowerCase().includes(term));
-  const tagQuestions = answeredQuestions.filter(q => q.profile_card_mode === 'tag' && !isFixedQuestion(q));
-  const answerQuestions = answeredQuestions.filter(q => q.profile_card_mode !== 'tag' && !isFixedQuestion(q));
+  const tagQuestions = answeredQuestions.filter(q => (q.profile_card_mode === 'tag' || q.profile_card_mode === 'tag_no_question') && !isFixedQuestion(q));
+  const answerQuestions = answeredQuestions.filter(q => q.profile_card_mode !== 'tag' && q.profile_card_mode !== 'tag_no_question' && !isFixedQuestion(q));
   const sortValues = (q: ProfileQuestion, value: unknown) => {
     const values = Array.isArray(value) ? value.map(String) : [answerText(value)];
     return q.alphabetical_sort ? values.filter(Boolean).sort((a,b) => a.localeCompare(b, undefined, { sensitivity: 'base' })) : values.filter(Boolean);
@@ -342,12 +347,12 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, 
   ];
 
   const statCues = stats.map(() => cue(0.08));
-  const statColumns = isTall ? 2 : 4;
+  const statColumns = isTall || isWide ? 2 : 4;
   const metrics = <div style={{ display: 'grid', gridTemplateColumns: `repeat(${statColumns}, minmax(0, 1fr))`, gap: s(isTall ? 8 : 10) }}>
     {stats.map((st, i) => {
       const m = mv('pop', statCues[i]);
       return <div key={st.label} className={m.className} style={{ ...m.style, minWidth: 0, textAlign: 'center', borderRadius: s(18), padding: `${s(isTall ? 10 : 13)}px ${s(8)}px`, background: 'linear-gradient(150deg,rgba(255,255,255,.15),rgba(255,255,255,.07))', border: `1px solid ${C.line}`, boxShadow: '0 10px 26px rgba(0,25,35,.22), inset 0 1px 0 rgba(255,255,255,.16)' }}>
-        <p className="font-serif" style={{ fontSize: s(isTall ? 32 : isWide ? 42 : 38), fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
+        <p className="font-serif" style={{ fontSize: s(isTall ? 32 : 38), fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(5), marginTop: s(6), color: C.mint }}>{st.icon}<span style={{ fontSize: s(9), letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 800, color: C.soft }}>{st.label}</span></div>
       </div>;
     })}
@@ -399,7 +404,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, 
   const details = (fixedTags.some(Boolean) || bio || tagQuestions.length || answerQuestions.length) ? <div className={metaMv.className} style={{ ...metaMv.style, minWidth: 0, display: 'flex', flexDirection: 'column', gap: s(8) }}>
     {fixedTags.some(Boolean) && <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6) }}>{fixedTags.map((tag, i) => tag ? topTag(tag, (i >= 3 && i < 3 + languages.length) ? 'language' : (i >= 3 + languages.length ? 'genre' : 'neutral')) : null)}</div>}
     {bio && <div style={{ borderRadius: s(10), padding: `${s(6)}px ${s(9)}px`, background: 'rgba(255,255,255,.055)', border: `1px solid rgba(255,255,255,.12)`, color: C.soft, fontSize: s(8), lineHeight: 1.3 }}><b style={{ color: C.mint }}>Bio:</b> {sanitizeUserText(String(bio), 180)}</div>}
-    {!isFourFive && tagQuestions.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6) }}>{tagQuestions.map(q => { if (q.type === 'image_upload') return null; const values = sortValues(q, data.answers[q.key]); return values.map((v,i) => <span key={`${q.id}-${i}`} style={{ maxWidth: '100%', borderRadius: 999, padding: `${s(5)}px ${s(9)}px`, background: 'rgba(255,255,255,.10)', border: `1px solid rgba(255,255,255,.18)`, color: C.soft, fontSize: s(8), lineHeight: 1.2 }}><b style={{ color: C.mint }}>{sanitizeUserText(q.question, 54)}:</b> {sanitizeUserText(v, 120)}</span>); })}</div>}
+    {!isFourFive && tagQuestions.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6) }}>{tagQuestions.map(q => { if (q.type === 'image_upload') return null; const values = sortValues(q, data.answers[q.key]); return values.map((v,i) => <span key={`${q.id}-${i}`} style={{ maxWidth: '100%', borderRadius: 999, padding: `${s(5)}px ${s(9)}px`, background: 'rgba(255,255,255,.10)', border: `1px solid rgba(255,255,255,.18)`, color: C.soft, fontSize: s(8), lineHeight: 1.2 }}>{q.profile_card_mode !== 'tag_no_question' && <b style={{ color: C.mint }}>{sanitizeUserText(q.question, 54)}: </b>}{sanitizeUserText(v, 120)}</span>); })}</div>}
   </div> : null;
 
   // On 4:5, question-tags are deliberately collected after the published shelf
@@ -408,11 +413,11 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, 
   const questionTags = tagQuestions.length > 0 ? <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: s(6), width: '100%' }}>
     {tagQuestions.flatMap((q) => {
       if (q.type === 'image_upload') return [];
-      return sortValues(q, data.answers[q.key]).map((v, i) => <span key={`${q.id}-${i}`} style={{ maxWidth: '100%', borderRadius: 999, padding: `${s(5)}px ${s(9)}px`, background: 'rgba(255,255,255,.10)', border: `1px solid rgba(255,255,255,.18)`, color: C.soft, fontSize: s(8), lineHeight: 1.2, textAlign: 'center' }}>{q.profile_card_mode !== 'answer_no_question' && <b style={{ color: C.mint }}>{sanitizeUserText(q.question, 54)}: </b>}{sanitizeUserText(v, 120)}</span>);
+      return sortValues(q, data.answers[q.key]).map((v, i) => <span key={`${q.id}-${i}`} style={{ maxWidth: '100%', borderRadius: 999, padding: `${s(5)}px ${s(9)}px`, background: 'rgba(255,255,255,.10)', border: `1px solid rgba(255,255,255,.18)`, color: C.soft, fontSize: s(8), lineHeight: 1.2, textAlign: 'center' }}>{q.profile_card_mode !== 'tag_no_question' && q.profile_card_mode !== 'answer_no_question' && <b style={{ color: C.mint }}>{sanitizeUserText(q.question, 54)}: </b>}{sanitizeUserText(v, 120)}</span>);
     })}
   </div> : null;
 
-  const extra = answerQuestions.length > 0 ? <div style={{ display: 'grid', gridTemplateColumns: isFourFive ? 'repeat(3,minmax(0,1fr))' : isWide ? 'repeat(2,minmax(0,1fr))' : '1fr', gap: s(isFourFive ? 7 : 7), width: '100%' }}>
+  const extra = answerQuestions.length > 0 ? <div style={{ display: 'grid', gridTemplateColumns: isFourFive ? 'repeat(3,minmax(0,1fr))' : isWide ? '1fr' : 'repeat(2,minmax(0,1fr))', gap: s(isFourFive ? 7 : 7), width: '100%' }}>
     {answerQuestions.map((q) => {
       if (q.type === 'image_upload') return null;
       const values = sortValues(q, data.answers[q.key]);
@@ -425,6 +430,50 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, 
     {questionTags}
     {extra}
   </div> : null;
+
+  // ---- SuperBlitz: content laid out inside the notched panel of /superblitz-frame.png (1080 x 1080). ----
+  if (superBlitz) {
+    // Safe area of the panel (frame pixel coordinates): x 300-858, y 215-800 is clear of every notch;
+    // the lower band x 470-858, y 815-905 is clear of the bottom-left notch.
+    const X = 300, W = 558;
+    const sbAvatar = 150;
+    const sbStats = <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: s(8) }}>
+      {stats.map((st, i) => { const m = mv('pop', statCues[i]); return <div key={st.label} className={m.className} style={{ ...m.style, minWidth: 0, textAlign: 'center', borderRadius: s(14), padding: `${s(9)}px ${s(4)}px`, background: 'rgba(1,43,54,.30)', border: `1px solid ${C.line}` }}>
+        <p className="font-serif" style={{ fontSize: s(32), fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
+        <p style={{ marginTop: s(5), fontSize: s(8), letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 800, color: C.soft, lineHeight: 1.2 }}>{st.label}</p>
+      </div>; })}
+    </div>;
+    return <div ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: w, height: h, overflow: 'hidden', transform: `scale(${scale})`, transformOrigin: 'top left', background: '#0097b2', color: C.ink }}>
+      <img src={SB_FRAME} alt="" crossOrigin="anonymous" style={{ position: 'absolute', inset: 0, width: w, height: h, display: 'block' }} />
+      <img src={SB_LOGO} alt="Novelty Library" style={{ position: 'absolute', left: X, top: 76, height: 112, width: 'auto', display: 'block', opacity: .95 }} />
+
+      <div className={avatarMv.className} style={{ ...avatarMv.style, position: 'absolute', left: X, top: 215, width: sbAvatar, height: sbAvatar }}>
+        <div style={{ width: '100%', height: '100%', borderRadius: '50%', padding: 6, background: '#fff', boxShadow: '0 10px 26px rgba(0,25,35,.35)' }}><div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', background: C.deep2, display: 'grid', placeItems: 'center', color: C.mint, fontWeight: 800, fontSize: 56 }}>{data.avatarUrl ? <img src={safeExternalUrl(data.avatarUrl) || undefined} alt="" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : sanitizeUserText((data.name || 'N').trim().charAt(0).toUpperCase(), 2)}</div></div>
+        {!still && onAvatarUpload && <button type="button" onClick={(e) => { e.stopPropagation(); onAvatarUpload(); }} title="Change profile picture" aria-label="Change profile picture" className="nl-pc-cam" style={{ width: ui(26), height: ui(26), left: sbAvatar * .80 - ui(13), top: sbAvatar * .80 - ui(13) }}><Camera width={ui(13)} height={ui(13)} /></button>}
+      </div>
+      <div className={heroMv.className} style={{ ...heroMv.style, position: 'absolute', left: X + sbAvatar + 22, right: 1080 - 800, top: 215, height: sbAvatar, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+        <p style={{ fontSize: 12, letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: 6 }}>Novelty Library · Reader</p>
+        <h2 className="font-serif" style={{ fontSize: 44 * nameScale(data.name || 'Novelty Reader'), fontWeight: 700, lineHeight: 1.05, color: C.ink, overflow: 'hidden', overflowWrap: 'anywhere', maxHeight: 96 }}>{sanitizeUserText(data.name || 'Novelty Reader', 120)}</h2>
+        <p style={{ alignSelf: 'flex-start', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 16, fontWeight: 700, marginTop: 8, padding: '3px 11px', borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader', 80)}</p>
+      </div>
+
+      <div data-fit style={{ position: 'absolute', left: X, width: W, top: 392, height: 408, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(11) }}>
+        {details}
+        {sbStats}
+        {journey}
+        {shelf}
+        {extra}
+      </div>
+
+      <div className={footerMv.className} style={{ ...footerMv.style, position: 'absolute', left: 470, width: 858 - 470, top: 816, height: 88, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          {ig && <a href={safeExternalUrl(`https://instagram.com/${ig}`) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', borderRadius: 999, padding: '5px 10px', background: 'linear-gradient(135deg,#feda75 0%,#fa7e1e 28%,#d62976 58%,#962fbf 82%,#4f5bd5 100%)', color: '#fff', fontWeight: 800, fontSize: 12, textDecoration: 'none' }}><Instagram width={13} height={13} />@{sanitizeUserText(ig, 40)}</a>}
+          {otherSocials.map((link) => <a key={link.platform} href={normalizeUrl(link.url)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 999, padding: '5px 9px', fontSize: 11, fontWeight: 700, background: C.glassStrong, color: '#fff', border: `1px solid ${C.line}`, textDecoration: 'none' }}>{platformIcon(link.platform, 12)}{sanitizeUserText(platformLabel(link.platform), 40)}</a>)}
+        </div>
+        <p style={{ fontSize: 9, letterSpacing: '.14em', textTransform: 'uppercase', fontWeight: 900, color: C.mint }}>Readers&apos; personal archive · Novelty Library</p>
+      </div>
+    </div>;
+  }
 
   return <div ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: w, height: h, overflow: 'hidden', transform: `scale(${scale})`, transformOrigin: 'top left', background: `linear-gradient(150deg,${C.deep} 0%,${C.deep2} 26%,#00687f 52%,${C.teal} 76%,#3fd3d9 100%)`, color: C.ink }}>
     <div className={still ? '' : 'nl-pc-loop nl-pc-drift'} style={{ position: 'absolute', right: -w * 0.25, top: -h * 0.12, width: w * 0.9, height: w * 0.9, borderRadius: '50%', background: 'radial-gradient(circle, rgba(92,225,230,.42) 0%, rgba(92,225,230,0) 62%)' }} />
@@ -439,7 +488,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, 
 
     <div style={{ position: 'absolute', left: pad, right: pad, top: Math.max(bannerH - avatar * .45, s(26)), bottom: pad * .7, display: 'flex', flexDirection: 'column', gap: s(isTall ? 11 : 15) }}>
       {/* Hero identity: same semantic order everywhere, composition changes with ratio. */}
-      <div className={heroMv.className} style={{ ...heroMv.style, display: isTall ? 'block' : 'grid', gridTemplateColumns: isWide ? '1.05fr .95fr' : 'minmax(0,1fr) minmax(0,.82fr)', gap: s(18), alignItems: 'center', flexShrink: 0 }}>
+      {(() => { const hero = <div className={heroMv.className} style={{ ...heroMv.style, display: isTall ? 'block' : 'grid', gridTemplateColumns: isWide ? '1fr' : 'minmax(0,1fr) minmax(0,.82fr)', gap: s(18), alignItems: isWide ? 'start' : 'center', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: s(18), minWidth: 0 }}>
           <div className={avatarMv.className} style={{ ...avatarMv.style, position: 'relative', width: avatar, height: avatar, flexShrink: 0 }}>
             {!still && <div className="nl-pc-a nl-pc-ring" style={{ ['--d' as string]: `${(tAvatar + .5).toFixed(2)}s`, position: 'absolute', inset: 0, borderRadius: '50%' } as CSSProperties} />}
@@ -454,15 +503,26 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, 
           </div>
         </div>
         {details}
-      </div>
+      </div>;
 
-      {/* Main reading order: stats -> journey -> shelf -> optional secondary answers. */}
-      <div data-fit style={{ position: 'relative', minHeight: 0, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(isTall ? 10 : 13), flex: 1 }}>
+      const body = <div data-fit style={{ position: 'relative', minHeight: 0, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(isTall ? 10 : 13), flex: 1 }}>
         {metrics}
         {journey}
         {shelf}
         {isFourFive ? fourFiveQuestions : <>{extra}</>}
-      </div>
+      </div>;
+
+      // 16:9 only: split into two side-by-side sections instead of one
+      // stacked column — left holds the top identity content, right holds
+      // everything that normally follows underneath it. Every other format
+      // keeps the original single-column flow.
+      return isWide
+        ? <div style={{ display: 'flex', flexDirection: 'row', gap: s(22), flex: 1, minHeight: 0 }}>
+            <div style={{ flex: '1 1 46%', minWidth: 0, display: 'flex', flexDirection: 'column' }}>{hero}</div>
+            <div style={{ flex: '1 1 54%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>{body}</div>
+          </div>
+        : <>{hero}{body}</>;
+      })()}
 
       <div className={footerMv.className} style={{ ...footerMv.style, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(12), flexShrink: 0, minHeight: s(isTall ? 52 : 66) }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: s(6), minWidth: 0 }}>
@@ -470,7 +530,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, scale, play, still, 
           {otherSocials.map((link) => <a key={link.platform} href={normalizeUrl(link.url)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(5), borderRadius: 999, padding: `${s(6)}px ${s(9)}px`, fontSize: s(10), fontWeight: 700, background: C.glassStrong, color: '#fff', border: `1px solid ${C.line}`, textDecoration: 'none' }}>{platformIcon(link.platform,s(12))}{sanitizeUserText(platformLabel(link.platform),40)}</a>)}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: s(10), flexShrink: 0, minWidth: isWide ? '42%' : '48%', borderRadius: s(16), padding: `${s(8)}px ${s(11)}px`, background: 'linear-gradient(135deg,rgba(255,255,255,.92),rgba(206,255,255,.78))', border: `1px solid rgba(159,243,245,.72)`, boxShadow: '0 12px 28px rgba(0,25,35,.25),inset 0 1px 0 rgba(255,255,255,.85)' }}>
-          <div style={{ display: 'grid', placeItems: 'center', width: s(42), height: s(42), borderRadius: s(12), flexShrink: 0, background: `linear-gradient(135deg,${C.deep2},${C.teal})`, boxShadow: '0 6px 14px rgba(0,65,80,.28)' }}><img src={LOGO} alt="Novelty Library" style={{ width: s(30), height: s(30), objectFit: 'contain', display: 'block', filter: 'brightness(0) invert(1)' }} /></div>
+          <div style={{ display: 'grid', placeItems: 'center', width: s(42), height: s(42), borderRadius: s(12), flexShrink: 0, background: '#ffffff', boxShadow: '0 6px 14px rgba(0,65,80,.28)' }}><img src={LOGO} alt="Novelty Library" style={{ width: s(30), height: s(30), objectFit: 'contain', display: 'block' }} /></div>
           <div style={{ minWidth: 0 }}><p className="font-serif" style={{ fontSize: s(17), fontWeight: 800, lineHeight: 1, color: C.deep2 }}>Novelty Library</p><p style={{ fontSize: s(7), letterSpacing: '.12em', textTransform: 'uppercase', marginTop: s(4), color: C.teal, fontWeight: 900 }}>Readers&apos; personal archive · branding tool</p></div>
         </div>
       </div>

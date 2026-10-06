@@ -1,4 +1,3 @@
-import { RwStarRating } from '@/components/RwStarRating';
 import { PosterImage } from '@/components/PosterImage';
 import { EngagementBar } from '@/components/EngagementBar';
 import { computeNlRating, type EngagementStats } from '@/lib/engagement';
@@ -32,7 +31,7 @@ interface CommunityReviewCardProps {
   onReview: () => void;
 }
 
-/** Community review card. The poster stays square; R/W is the reviewer score and NL is the cumulative community rating in the engagement row. */
+/** Community review card. The poster stays square; NL is the cumulative community rating (reader ratings only) in the engagement row. */
 export function CommunityReviewCard({ item, onClick, onPrefetch, index = 0, stats, liked, onLike, onRate, onReview }: CommunityReviewCardProps) {
   const nl = computeNlRating(item.rwRating, stats);
   const safeTitle = sanitizeUserText(item.title, 200);
@@ -41,14 +40,6 @@ export function CommunityReviewCard({ item, onClick, onPrefetch, index = 0, stat
     <article className="community-review-card group" style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }} onPointerEnter={onPrefetch} onTouchStart={onPrefetch} onFocus={onPrefetch}>
       <div className="community-review-poster" onClick={onClick} role="link" aria-label={`Open review of ${safeTitle}`}>
         <PosterImage src={item.coverImage} alt={safeTitle} />
-
-        {item.rwRating !== null && (
-          <div className="absolute top-2 right-2 z-[2]" title="R/W Rating">
-            <span className="nl-chip community-rw-badge" title={`R/W ${item.rwRating.toFixed(1)}/10`}>
-              <RwStarRating value={item.rwRating} size={12} className="text-current" />
-            </span>
-          </div>
-        )}
 
       </div>
 
