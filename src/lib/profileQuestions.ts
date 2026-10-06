@@ -17,7 +17,7 @@ export type ProfileQuestion = {
   required: boolean;
   public_default: boolean;
   show_in_profile_card: boolean;
-  profile_card_mode?: 'tag' | 'tag_no_question' | 'answer' | 'answer_no_question';
+  profile_card_mode?: 'tag' | 'answer' | 'answer_no_question';
   max_selections?: number | null;
   alphabetical_sort?: boolean;
   sort_order: number;
@@ -149,43 +149,15 @@ export async function saveProfileQuestion(input: Partial<ProfileQuestion> & Pick
   });
   if (error) throw error;
   if (!data) throw new Error('Profile question was not returned after saving.');
-  // Always persist the complete editable definition after the admin RPC. Some
-  // deployments still have an older RPC implementation which can return the row
-  // without applying newer/changed question fields (question text, options,
-  // placeholder, visibility, presentation, sorting, etc.). The direct update is
-  // intentionally the source of truth for the current admin editor.
-  const savedId = (data as ProfileQuestion).id || input.id;
-  if (!savedId) throw new Error('Profile question was saved without an id.');
-  const { data: updated, error: updateError } = await supabase
-    .from('profile_questions')
-    .update({
-      section: payload.section,
-      section_order: payload.section_order,
-      question: payload.question,
-      key: payload.key,
-      type: payload.type,
-      options: payload.options,
-      placeholder: payload.placeholder,
-      allow_other: payload.allow_other,
-      image_count: payload.image_count,
-      image_max_mb: payload.image_max_mb,
-      image_max_width: payload.image_max_width,
-      image_max_height: payload.image_max_height,
-      required: payload.required,
-      public_default: payload.public_default,
-      show_in_profile_card: payload.show_in_profile_card,
-      profile_card_mode: payload.profile_card_mode,
-      max_selections: payload.max_selections,
-      alphabetical_sort: payload.alphabetical_sort,
-      sort_order: payload.sort_order,
-      active: payload.active,
-    })
-    .eq('id', savedId)
-    .select('*')
-    .single();
+  // The admin RPC may predate the newer presentation fields. Persist them directly
+  // as well when the columns exist; this keeps older RPC implementations compatible.
+  const { data: updated, error: updateError } = await supabase.from('profile_questions').update({
+    profile_card_mode: payload.profile_card_mode,
+    max_selections: payload.max_selections,
+    alphabetical_sort: payload.alphabetical_sort,
+  }).eq('id', (data as ProfileQuestion).id).select('*').single();
   if (updateError) throw updateError;
-  if (!updated) throw new Error('Profile question could not be refreshed after saving.');
-  return updated as ProfileQuestion;
+  return (updated || data) as ProfileQuestion;
 }
 
 export async function deleteProfileQuestion(id: string): Promise<void> {

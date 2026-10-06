@@ -66,7 +66,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   const [required, setRequired] = useState(false);
   const [publicDefault, setPublicDefault] = useState(true);
   const [showInCard, setShowInCard] = useState(true);
-  const [profileCardMode, setProfileCardMode] = useState<'tag' | 'answer'>('answer');
+  const [profileCardMode, setProfileCardMode] = useState<'tag' | 'answer' | 'answer_no_question'>('answer');
   const [showQuestionInCard, setShowQuestionInCard] = useState(true);
   const [maxSelections, setMaxSelections] = useState<number | null>(null);
   const [alphabeticalSort, setAlphabeticalSort] = useState(false);
@@ -204,8 +204,8 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     setRequired(q.required);
     setPublicDefault(q.public_default);
     setShowInCard(q.show_in_profile_card !== false);
-    setProfileCardMode(q.profile_card_mode === 'tag' || q.profile_card_mode === 'tag_no_question' ? 'tag' : 'answer');
-    setShowQuestionInCard(q.profile_card_mode !== 'answer_no_question' && q.profile_card_mode !== 'tag_no_question');
+    setProfileCardMode(q.profile_card_mode === 'tag' ? 'tag' : q.profile_card_mode === 'answer_no_question' ? 'answer_no_question' : 'answer');
+    setShowQuestionInCard(q.profile_card_mode !== 'answer_no_question');
     setMaxSelections(q.max_selections == null ? null : Math.max(1, Number(q.max_selections) || 1));
     setAlphabeticalSort(!!q.alphabetical_sort);
     requestAnimationFrame(() => questionInputRef.current?.focus({ preventScroll: true }));
@@ -237,7 +237,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
         required,
         public_default: publicDefault,
         show_in_profile_card: showInCard,
-        profile_card_mode: cardModeFor(profileCardMode, showQuestionInCard),
+        profile_card_mode: profileCardMode === 'tag' ? 'tag' : showQuestionInCard ? 'answer' : 'answer_no_question',
         max_selections: type === 'select_multiple' ? maxSelections : null,
         alphabetical_sort: (type === 'select_multiple' || type === 'select_single' || type === 'select') ? alphabeticalSort : false,
         sort_order: editing?.sort_order ?? questions.length,
@@ -495,7 +495,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
                     <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full" style={{ background: 'rgba(8,145,178,.09)', color: 'var(--color-teal-dark)' }}>{q.section}</span>
                     <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>{questionTypeLabel(q.type)}</span>
                     {q.required && <span className="text-[10px] font-bold">Required</span>}
-                    {q.show_in_profile_card !== false && <span className="text-[10px] font-bold" style={{ color: 'var(--color-teal-dark)' }}>{q.profile_card_mode === 'answer_no_question' ? 'Answer only' : q.profile_card_mode === 'tag_no_question' ? 'Profile card · Tag (answer only)' : q.profile_card_mode === 'tag' ? 'Profile card · Tag' : 'Profile card · Q + A'}</span>}
+                    {q.show_in_profile_card !== false && <span className="text-[10px] font-bold" style={{ color: 'var(--color-teal-dark)' }}>{q.profile_card_mode === 'answer_no_question' ? 'Answer only' : q.profile_card_mode === 'tag' ? 'Profile card · Tag' : 'Profile card · Q + A'}</span>}
                   </div>
                   <p className="font-semibold mt-2">{q.question}</p>
                   {q.options.length > 0 && <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Options: {q.options.join(' · ')}</p>}
@@ -532,7 +532,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
                 <input value={placeholder} onChange={e => setPlaceholder(e.target.value)} placeholder={type === 'long_text' ? 'Write a few lines about your reading life…' : type === 'number' ? 'e.g. 12' : type === 'year' ? 'e.g. 2018' : type === 'url' ? 'https://example.com/your-profile' : 'e.g. The book that changed everything'} className="input-field" />
                 <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>Shown inside the answer field to guide users. It disappears once they type an answer.</p>
               </div>}
-              <QuestionCardAppearancePreview profileCardMode={cardModeFor(profileCardMode, showQuestionInCard)} type={type} question={question} options={options.filter(Boolean)} allowOther={allowOther} imageCount={imageCount} placeholder={placeholder} imageMaxWidth={imageMaxWidth} imageMaxHeight={imageMaxHeight} />
+              <QuestionCardAppearancePreview profileCardMode={profileCardMode === 'tag' ? 'tag' : showQuestionInCard ? 'answer' : 'answer_no_question'} type={type} question={question} options={options.filter(Boolean)} allowOther={allowOther} imageCount={imageCount} placeholder={placeholder} imageMaxWidth={imageMaxWidth} imageMaxHeight={imageMaxHeight} />
               <div><label className="label">Question type</label><select value={type} onChange={e => setType(e.target.value as ProfileQuestionType)} className="input-field">{QUESTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
               {(type === 'select' || type === 'select_single' || type === 'select_multiple') && <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3"><div><label className="label">Dropdown options</label><p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Each option has its own field. Add as many as needed.</p></div><div className="flex gap-2"><button type="button" className="btn-ghost !w-auto !px-3 text-xs" onClick={() => setOptions(v => [...v, ''])}><Plus className="w-3.5 h-3.5"/> Add option</button><button type="button" className="btn-ghost !w-auto !px-3 text-xs" onClick={() => setOptions(v => [...v].sort((a,b) => a.localeCompare(b, undefined, { sensitivity: 'base' })))}>A–Z</button></div></div>
@@ -547,7 +547,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
               </div>}
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={required} onChange={e => setRequired(e.target.checked)} /> Required</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={publicDefault} onChange={e => setPublicDefault(e.target.checked)} /> Visible by default</label>
-              <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(0,151,178,.08)' }}><p className="text-sm font-semibold">Profile card presentation</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><label className="flex items-center gap-2 text-sm rounded-lg p-2 border"><input type="radio" name="profile-card-mode" checked={profileCardMode === 'tag'} onChange={() => setProfileCardMode('tag')} /> Tag</label><label className="flex items-center gap-2 text-sm rounded-lg p-2 border"><input type="radio" name="profile-card-mode" checked={profileCardMode !== 'tag'} onChange={() => setProfileCardMode('answer')} /> Answer</label></div><label className="flex items-center gap-2 text-sm rounded-lg p-2 border mt-2"><input type="checkbox" checked={showQuestionInCard} onChange={e => setShowQuestionInCard(e.target.checked)} /> <span><strong>Show question</strong> on the profile card (turn off to show only the answer, as a tag or as an answer)</span></label><p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Use this control to show or hide the question label while keeping the saved answer visible. “Show answer on profile card” still controls whether the question is included at all.</p></div>
+              <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(0,151,178,.08)' }}><p className="text-sm font-semibold">Profile card presentation</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><label className="flex items-center gap-2 text-sm rounded-lg p-2 border"><input type="radio" name="profile-card-mode" checked={profileCardMode === 'tag'} onChange={() => { setProfileCardMode('tag'); setShowQuestionInCard(true); }} /> Tag</label><label className="flex items-center gap-2 text-sm rounded-lg p-2 border"><input type="radio" name="profile-card-mode" checked={profileCardMode !== 'tag'} onChange={() => setProfileCardMode(showQuestionInCard ? 'answer' : 'answer_no_question')} /> Answer</label></div><label className="flex items-center gap-2 text-sm rounded-lg p-2 border mt-2"><input type="checkbox" checked={showQuestionInCard} disabled={profileCardMode === 'tag'} onChange={e => { const checked = e.target.checked; setShowQuestionInCard(checked); setProfileCardMode(checked ? 'answer' : 'answer_no_question'); }} /> <span><strong>Show question</strong> on the profile card when displaying the answer</span></label><p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Use this control to show or hide the question label while keeping the saved answer visible. “Show answer on profile card” still controls whether the question is included at all.</p></div>
               <button type="button" className="btn-primary w-full" disabled={questionSaving} onClick={saveQuestion}><Save className="w-4 h-4" />{questionSaving ? (editing ? 'Updating…' : 'Saving…') : (editing ? 'Update question' : 'Add question')}</button>
             </div>
             </div>
@@ -578,7 +578,6 @@ function questionTypeLabel(type: ProfileQuestion['type']): string {
   return QUESTION_TYPES.find(x => x.value === type)?.label || type.replace(/_/g, ' ');
 }
 
-const cardModeFor = (kind: 'tag' | 'answer', showQuestion: boolean): NonNullable<ProfileQuestion['profile_card_mode']> => kind === 'tag' ? (showQuestion ? 'tag' : 'tag_no_question') : (showQuestion ? 'answer' : 'answer_no_question');
 function QuestionCardAppearancePreview({
   profileCardMode,
   type,
@@ -613,7 +612,7 @@ function QuestionCardAppearancePreview({
       <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-100">Live</span>
     </div>
     <div className="mt-3 rounded-2xl border border-white/10 bg-black/10 p-4">
-      {profileCardMode !== 'answer_no_question' && profileCardMode !== 'tag_no_question' && <p className="text-xs font-bold uppercase tracking-[.12em] text-cyan-200">{title}</p>}
+      {profileCardMode !== 'answer_no_question' && <p className="text-xs font-bold uppercase tracking-[.12em] text-cyan-200">{title}</p>}
       {type === 'image_upload' ? <div className={`mt-3 grid gap-2 ${imageCount > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
         {Array.from({ length: Math.min(imageCount || 1, 3) }).map((_, i) => <div key={i} className="aspect-square rounded-xl border border-dashed border-cyan-200/30 bg-white/[0.05] grid place-items-center text-[10px] text-white/40">Image {i + 1}</div>)}{imageMaxWidth && imageMaxHeight && <p className="col-span-full text-[10px] text-white/45">Up to {imageMaxWidth} × {imageMaxHeight}px</p>}
       </div> : type === 'select_multiple' ? <div className="mt-3 flex flex-wrap gap-1.5">
