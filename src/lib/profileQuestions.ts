@@ -146,7 +146,13 @@ export async function fetchProfileQuestions(includeInactive = false): Promise<Pr
 }
 
 export async function saveProfileQuestion(input: Partial<ProfileQuestion> & Pick<ProfileQuestion, 'question' | 'type' | 'section'>): Promise<ProfileQuestion> {
-  const key = input.key?.trim() || `q_${Date.now().toString(36)}`;
+  let existingKey = input.key?.trim();
+  if (!existingKey && input.id && !String(input.id).startsWith('local-')) {
+    // Never mint a new key for an existing question: readers' answers are stored under the key.
+    const { data: row } = await supabase.from('profile_questions').select('key').eq('id', input.id).maybeSingle();
+    existingKey = row?.key ? String(row.key) : undefined;
+  }
+  const key = existingKey || `q_${Date.now().toString(36)}`;
   const sections = await fetchProfileSections(true);
   const matchedSection = sections.find(s => s.name === input.section);
   const sectionOrder = matchedSection?.sort_order ?? 999;

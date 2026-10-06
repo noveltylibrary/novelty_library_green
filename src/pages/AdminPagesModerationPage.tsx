@@ -91,13 +91,25 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   const [dragQ, setDragQ] = useState<string | null>(null);
   const [dragSec, setDragSec] = useState<string | null>(null);
   const [overKey, setOverKey] = useState<string | null>(null);
+  const [secPreview, setSecPreview] = useState<string[] | null>(null);
+  const [qPreview, setQPreview] = useState<ProfileQuestion[] | null>(null);
+  // The 'profile_questions' layout entry only holds the heading shown above the section tiles
+  // (it is not a tile), so it is edited separately and never takes part in ordering.
+  const hubItem = useMemo(() => allSectionLayout.find(x => x.key === 'profile_questions') || null, [allSectionLayout]);
+  const sortableSections = useMemo(() => allSectionLayout.filter(x => x.key !== 'profile_questions'), [allSectionLayout]);
+  const shownSections = useMemo(() => {
+    if (!secPreview) return sortableSections;
+    const byKey = new Map(sortableSections.map(x => [x.key, x]));
+    return secPreview.map(k => byKey.get(k)).filter((x): x is ProfileSectionLayoutItem => !!x);
+  }, [secPreview, sortableSections]);
   const questionGroups = useMemo(() => {
     const byOrder = (a: ProfileQuestion, b: ProfileQuestion) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0);
-    const groups = orderedSections.map(sec => ({ name: sec.name, header: sec.header || sec.name, active: sec.active, items: questions.filter(q => q.section === sec.name).sort(byOrder) }));
+    const source = qPreview ?? questions;
+    const groups = orderedSections.map(sec => ({ name: sec.name, header: sec.header || sec.name, active: sec.active, items: source.filter(q => q.section === sec.name).sort(byOrder) }));
     const known = new Set(orderedSections.map(x => x.name));
-    [...new Set(questions.filter(q => !known.has(q.section)).map(q => q.section))].forEach(name => groups.push({ name, header: `${name} (no section)`, active: false, items: questions.filter(q => q.section === name).sort(byOrder) }));
+    [...new Set(source.filter(q => !known.has(q.section)).map(q => q.section))].forEach(name => groups.push({ name, header: `${name} (no section)`, active: false, items: source.filter(q => q.section === name).sort(byOrder) }));
     return groups;
-  }, [orderedSections, questions]);
+  }, [orderedSections, questions, qPreview]);
   const activeSections = useMemo(() => orderedSections.filter(s => s.active), [orderedSections]);
 
   const loadPage = async (slug: typeof PAGE_KEYS[number]) => {
@@ -235,6 +247,8 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
       setQuestionSaving(true);
       const saved = await saveProfileQuestion({
         id: editing?.id,
+        // Answers are stored under the question key, so an edit must never change it.
+        key: editing?.key,
         question,
         placeholder,
         section,
@@ -275,24 +289,46 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     }
   };
 
-  const dropQuestion = async (sectionName: string, beforeId: string | null) => {
-    const id = dragQ; setDragQ(null); setOverKey(null);
-    if (!id || id === beforeId) return;
-    const moving = questions.find(q => q.id === id);
-    if (!moving) return;
-    const lists = new Map<string, ProfileQuestion[]>(questionGroups.map(g => [g.name, g.items.filter(q => q.id !== id)]));
-    const target = lists.get(sectionName) ?? [];
-    const idx = beforeId ? target.findIndex(q => q.id === beforeId) : -1;
-    const moved = { ...moving, section: sectionName };
-    if (idx < 0) target.push(moved); else target.splice(idx, 0, moved);
-    lists.set(sectionName, target);
-    const flat = questionGroups.flatMap(g => lists.get(g.name) ?? []);
+  // Moves question `id` into `sectionName`, taking the slot of `targetId` (or going to the end).
+  // Dragging downwards lands it after the target, upwards before it, so it always replaces the one it is dragged onto.
+  const moveInList = (base: ProfileQuestion[], id: string, sectionName: string, targetId: string | null): ProfileQuestion[] => {
+    const moving = base.find(q => q.id === id);
+    if (!moving) return base;
+    const byOrder = (x: ProfileQuestion, y: ProfileQuestion) => (Number(x.sort_order) || 0) - (Number(y.sort_order) || 0);
+    const names = questionGroups.map(g => g.name);
+    const lists = new Map<string, ProfileQuestion[]>(names.map(n => [n, base.filter(q => q.section === n).sort(byOrder)]));
+    const src = lists.get(moving.section) ?? [];
+    const oi = src.findIndex(q => q.id === id);
+    lists.set(moving.section, src.filter(q => q.id !== id));
+    const tgt = lists.get(sectionName) ?? [];
+    let idx = tgt.length;
+    if (targetId) {
+      const found = tgt.findIndex(q => q.id === targetId);
+      if (found >= 0) {
+        idx = found;
+        if (moving.section === sectionName && oi >= 0 && oi < src.findIndex(q => q.id === targetId)) idx += 1;
+      }
+    }
+    tgt.splice(idx, 0, { ...moving, section: sectionName });
+    lists.set(sectionName, tgt);
+    return names.flatMap(n => lists.get(n) ?? []).map((q, i) => ({ ...q, sort_order: i }));
+  };
+
+  const previewQuestion = (sectionName: string, targetId: string | null) => {
+    if (!dragQ || dragQ === targetId) return;
+    setQPreview(moveInList(qPreview ?? questions, dragQ, sectionName, targetId));
+  };
+
+  const persistQuestions = async (next: ProfileQuestion[], id: string) => {
+    const before = questions.find(q => q.id === id);
+    const after = next.find(q => q.id === id);
+    if (!before || !after) return;
     const previous = questions;
-    setQuestions(flat.map((q, i) => ({ ...q, sort_order: i })));
+    setQuestions(next);
     try {
-      if (moving.section !== sectionName) await saveProfileQuestion({ ...moving, section: sectionName });
-      await reorderProfileQuestions(flat.map(q => q.id));
-      setMsg(moving.section !== sectionName ? `Moved to “${sectionName}” and order saved.` : 'Question order saved.');
+      if (before.section !== after.section) await saveProfileQuestion({ ...before, section: after.section });
+      await reorderProfileQuestions(next.map(q => q.id));
+      setMsg(before.section !== after.section ? `Moved to “${after.section}” and order saved.` : 'Question order saved.');
       await loadProfileBuilder();
     } catch (e) {
       setQuestions(previous);
@@ -300,14 +336,19 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     }
   };
 
+  const commitQuestions = async () => {
+    const next = qPreview; const id = dragQ;
+    setQPreview(null); setDragQ(null); setOverKey(null);
+    if (next && id) await persistQuestions(next, id);
+  };
+
+  const cancelQuestionDrag = () => { setQPreview(null); setDragQ(null); setOverKey(null); };
+
   const move = async (q: ProfileQuestion, direction: -1 | 1) => {
     const group = questionGroups.find(g => g.name === q.section);
-    if (!group) return;
-    const i = group.items.findIndex(x => x.id === q.id);
-    const t = group.items[i + direction];
-    if (!t) return;
-    if (direction === -1) { setDragQ(q.id); await dropQuestion(q.section, t.id); }
-    else { const after = group.items[i + 2]; setDragQ(q.id); await dropQuestion(q.section, after ? after.id : null); }
+    const target = group?.items[(group?.items.findIndex(x => x.id === q.id) ?? 0) + direction];
+    if (!group || !target) return;
+    await persistQuestions(moveInList(questions, q.id, q.section, target.id), q.id);
   };
 
   const openBuiltInSection = (item: ProfileSectionLayoutItem) => {
@@ -340,19 +381,29 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     setSectionEditorOpen(true);
   };
 
-  const dropSection = async (targetKey: string) => {
-    const from = dragSec; setDragSec(null); setOverKey(null);
+  const previewSection = (targetKey: string) => {
+    const from = dragSec;
     if (!from || from === targetKey || from === 'reader_identity' || targetKey === 'reader_identity') return;
-    const next = [...allSectionLayout];
-    const fi = next.findIndex(x => x.key === from); const ti = next.findIndex(x => x.key === targetKey);
+    const keys = [...(secPreview ?? sortableSections.map(x => x.key))];
+    const fi = keys.indexOf(from); const ti = keys.indexOf(targetKey);
     if (fi < 0 || ti < 0) return;
-    const [item] = next.splice(fi, 1);
-    next.splice(ti, 0, item);
+    keys.splice(fi, 1);
+    keys.splice(ti, 0, from); // takes the slot of the section it is dragged onto
+    setSecPreview(keys);
+  };
+
+  const commitSections = async () => {
+    const keys = secPreview;
+    setSecPreview(null); setDragSec(null); setOverKey(null);
+    if (!keys) return;
+    const byKey = new Map(sortableSections.map(x => [x.key, x]));
+    const next = keys.map(k => byKey.get(k)).filter((x): x is ProfileSectionLayoutItem => !!x);
+    if (next.map(x => x.key).join('|') === sortableSections.map(x => x.key).join('|')) return;
     await persistSectionOrder(next);
   };
 
   const moveSection = async (index: number, direction: -1 | 1) => {
-    const next = [...allSectionLayout];
+    const next = [...sortableSections];
     const target = index + direction;
     if (target < 1 || index < 1 || target >= next.length) return;
     [next[index], next[target]] = [next[target], next[index]];
@@ -364,7 +415,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     try {
       // Built-in sections keep their order in the layout; question sections keep it in
       // profile_question_sections.sort_order (which also re-syncs their questions).
-      const builtIns = renumbered.filter(x => !String(x.key).startsWith('custom:'));
+      const builtIns = [...renumbered.filter(x => !String(x.key).startsWith('custom:')), ...(hubItem ? [hubItem] : [])];
       setSectionLayout(await saveProfileSectionLayout(builtIns));
       for (const item of renumbered) {
         if (!String(item.key).startsWith('custom:')) continue;
@@ -524,14 +575,17 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
             <div><p className="text-sm font-semibold">Profile question sections</p><p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Every profile-question section is configurable here: internal name, reader-facing heading, text under the heading, order and visibility. Add as many sections as your profile needs.</p></div>
             <button type="button" className="btn-primary !w-auto" onClick={openAddSection}><FolderPlus className="w-4 h-4" /> Add section</button>
           </div>
+          {hubItem && <button type="button" className="btn-ghost !w-auto text-xs mb-3" onClick={() => openBuiltInSection(hubItem)}><Pencil className="w-3.5 h-3.5" /> Edit profile page heading &amp; description</button>}
           <div className="flex flex-col gap-2 max-w-2xl" role="list" aria-label="Profile sections, top to bottom">
-            {allSectionLayout.map((item, index) => {
+            {shownSections.map((item, index) => {
               const builtIn = item.key === 'reader_identity' || item.key === 'profile_questions' || item.key === 'reading_journey';
               const custom = !builtIn ? orderedSections.find(s => item.key === `custom:${s.id}`) : null;
               const locked = item.key === 'reader_identity';
-              return <div key={item.key} draggable={!locked} onDragStart={e => { setDragSec(item.key); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', item.key); }} onDragOver={e => { if (dragSec && !locked) { e.preventDefault(); setOverKey(`sec:${item.key}`); } }} onDragLeave={() => setOverKey(k => k === `sec:${item.key}` ? null : k)} onDrop={e => { e.preventDefault(); void dropSection(item.key); }} onDragEnd={() => { setDragSec(null); setOverKey(null); }} className={`rounded-2xl px-3 py-3 flex items-center gap-2 shadow-sm transition hover:shadow-md hover:-translate-y-px ${locked ? '' : 'cursor-grab active:cursor-grabbing'}`} style={{ background: 'var(--color-background)', border: overKey === `sec:${item.key}` ? '2px dashed var(--color-cyan-dark)' : '1px solid var(--color-border)', opacity: dragSec === item.key ? .45 : 1 }}>
+              const dragging = dragSec === item.key;
+              return <div key={item.key} draggable={!locked} onDragStart={e => { setDragSec(item.key); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', item.key); }} onDragEnter={() => previewSection(item.key)} onDragOver={e => { if (dragSec) e.preventDefault(); }} onDrop={e => { e.preventDefault(); void commitSections(); }} onDragEnd={() => { setSecPreview(null); setDragSec(null); setOverKey(null); }} className={`rounded-2xl px-3 py-3 flex items-center gap-2 transition-all duration-150 ${locked ? 'shadow-sm' : 'cursor-grab active:cursor-grabbing hover:shadow-md'}`} style={{ background: 'var(--color-background)', border: dragging ? '2px solid var(--color-cyan-dark)' : '1px solid var(--color-border)', boxShadow: dragging ? '0 14px 30px rgba(0,80,95,.28)' : undefined, transform: dragging ? 'scale(1.025)' : undefined, position: 'relative', zIndex: dragging ? 5 : 0 }}>
+
                 {locked ? <Lock className="w-4 h-4 shrink-0" style={{ color: 'var(--color-teal-dark)' }} aria-label="Locked at the top" /> : <GripVertical className="w-4 h-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} aria-hidden="true" />}
-                <div className="flex flex-col"><button type="button" disabled={locked || index<=1} onClick={()=>void moveSection(index,-1)} className="p-1 rounded disabled:opacity-30" title="Move section up"><ChevronUp className="w-4 h-4"/></button><button type="button" disabled={locked || index===allSectionLayout.length-1} onClick={()=>void moveSection(index,1)} className="p-1 rounded disabled:opacity-30" title="Move section down"><ChevronDown className="w-4 h-4"/></button></div>
+                <div className="flex flex-col"><button type="button" disabled={locked || index<=1} onClick={()=>void moveSection(index,-1)} className="p-1 rounded disabled:opacity-30" title="Move section up"><ChevronUp className="w-4 h-4"/></button><button type="button" disabled={locked || index===shownSections.length-1} onClick={()=>void moveSection(index,1)} className="p-1 rounded disabled:opacity-30" title="Move section down"><ChevronDown className="w-4 h-4"/></button></div>
                 <button type="button" onClick={() => custom ? openRenameSection(custom) : openBuiltInSection(item)} className="min-w-0 flex-1 text-left" title="Click to edit this section"><p className="font-semibold text-sm truncate">{item.header || item.key}</p><p className="text-[11px] mt-1 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>{item.description || 'No helper text set.'}</p><p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: 'var(--color-text-muted)' }}>{locked ? 'Locked at the top' : builtIn ? 'Built-in section' : 'Custom section'} · Order {index+1} · {item.active ? 'Visible' : 'Hidden'}</p></button>
                 {custom ? <button type="button" className="p-2 rounded-lg" title={`Edit ${custom.name}`} aria-label={`Edit ${custom.name}`} onClick={() => openRenameSection(custom)}><Pencil className="w-3.5 h-3.5" /></button> : <button type="button" className="p-2 rounded-lg" title="Edit built-in section heading and text" aria-label="Edit built-in section" onClick={() => openBuiltInSection(item)}><Pencil className="w-3.5 h-3.5" /></button>}
               </div>;
@@ -554,10 +608,10 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
             {questions.length === 0 ? <div className="py-10 text-center" style={{ color: 'var(--color-text-muted)' }}>No profile questions yet.</div> : <>
               <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Drag a question by its card to reorder it, or drop it into another section column to move it there.</p>
               <div className="flex flex-col gap-4">
-                {questionGroups.map(group => <section key={group.name} onDragOver={e => { if (dragQ) { e.preventDefault(); setOverKey(`g:${group.name}`); } }} onDrop={e => { e.preventDefault(); void dropQuestion(group.name, null); }} className="rounded-2xl p-3 space-y-2 min-w-0" style={{ background: 'var(--color-background)', border: overKey === `g:${group.name}` ? '2px dashed var(--color-cyan-dark)' : '1px solid var(--color-border)' }}>
+                {questionGroups.map(group => <section key={group.name} onDragOver={e => { if (dragQ) e.preventDefault(); }} onDragEnter={() => { const cur = (qPreview ?? questions).find(q => q.id === dragQ)?.section; if (dragQ && cur !== group.name) previewQuestion(group.name, null); }} onDrop={e => { e.preventDefault(); void commitQuestions(); }} className="rounded-2xl p-3 space-y-2 min-w-0" style={{ background: 'var(--color-background)', border: dragQ && (qPreview ?? questions).find(q => q.id === dragQ)?.section === group.name ? '1px solid var(--color-cyan-dark)' : '1px solid var(--color-border)' }}>
                   <div className="flex items-center justify-between gap-2 px-1"><p className="text-xs uppercase tracking-wider font-bold truncate" style={{ color: 'var(--color-teal-dark)' }}>{group.header}</p><span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{group.items.length} question{group.items.length === 1 ? '' : 's'}{group.active ? '' : ' · hidden'}</span></div>
                   {group.items.length === 0 && <div className="rounded-xl py-6 text-center text-xs" style={{ border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)' }}>Drop a question here</div>}
-                  {group.items.map((q, i) => <div key={q.id} draggable onDragStart={e => { e.stopPropagation(); setDragQ(q.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', q.id); }} onDragOver={e => { if (dragQ) { e.preventDefault(); e.stopPropagation(); setOverKey(`q:${q.id}`); } }} onDrop={e => { e.preventDefault(); e.stopPropagation(); void dropQuestion(group.name, q.id); }} onDragEnd={() => { setDragQ(null); setOverKey(null); }} className="rounded-2xl p-3 cursor-grab active:cursor-grabbing" style={{ background: 'var(--color-paper)', border: overKey === `q:${q.id}` ? '2px dashed var(--color-cyan-dark)' : '1px solid var(--color-border)', opacity: dragQ === q.id ? .45 : 1 }}>
+                  {group.items.map((q, i) => <div key={q.id} data-qcard draggable onDragStart={e => { e.stopPropagation(); setDragQ(q.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', q.id); }} onDragEnter={e => { e.stopPropagation(); previewQuestion(group.name, q.id); }} onDragOver={e => { if (dragQ) { e.preventDefault(); e.stopPropagation(); } }} onDrop={e => { e.preventDefault(); e.stopPropagation(); void commitQuestions(); }} onDragEnd={cancelQuestionDrag} className="rounded-2xl p-3 cursor-grab active:cursor-grabbing transition-all duration-150" style={{ background: 'var(--color-paper)', border: dragQ === q.id ? '2px solid var(--color-cyan-dark)' : '1px solid var(--color-border)', boxShadow: dragQ === q.id ? '0 14px 30px rgba(0,80,95,.28)' : undefined, transform: dragQ === q.id ? 'scale(1.02)' : undefined, position: 'relative', zIndex: dragQ === q.id ? 5 : 0 }}>
               <div className="flex gap-3">
                 <GripVertical className="w-4 h-4 mt-1" style={{ color: 'var(--color-text-muted)' }} />
                 <div className="min-w-0 flex-1">
