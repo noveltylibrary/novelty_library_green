@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react';
-import { BookOpen, Users, Heart, Sparkles, PenTool, ArrowRight, ChevronDown, Globe2, ShieldCheck, Languages, Sparkle, Library, Compass, Wand2 } from 'lucide-react';
+import { BookOpen, Users, Heart, Sparkles, PenTool, ArrowRight, ChevronDown, Globe2, ShieldCheck, Languages, Sparkle, Library, Compass, Wand2, BarChart3 } from 'lucide-react';
 import type { AboutSection } from '@/lib/aboutSections';
 
 const ICONS: Record<string, ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
@@ -49,6 +49,10 @@ export function AboutSectionBlock({ section, email, navigate }: { section: About
         </div>}
         <h1 className="font-serif text-4xl sm:text-5xl font-semibold leading-tight tracking-tight mb-6 text-balance" style={{ color: 'var(--color-text)' }}>{section.title}</h1>
         {paragraphs(section.body).map((p, i) => <p key={i} className="text-lg leading-relaxed mb-3" style={{ color: 'var(--color-text-muted)' }}>{p}</p>)}
+        <div className="nl-about-actions" role="group" aria-label="Quick links">
+          <button type="button" className="nl-action-btn" onClick={() => navigate('/reviews')}><BookOpen aria-hidden="true" /><span>Reviews</span></button>
+          <button type="button" className="nl-action-btn" onClick={() => navigate('/analytics')}><BarChart3 aria-hidden="true" /><span>Analytics</span></button>
+        </div>
       </div>;
 
     case 'pillars':

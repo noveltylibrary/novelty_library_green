@@ -6,6 +6,8 @@ import type { FeedbackEntry } from '@/lib/engagement';
 import type { Profile } from '@/types/review';
 import { addFeedbackReply, deleteFeedbackReply, fetchFeedbackReplies, type FeedbackReply } from '@/lib/feedbackReplies';
 import { sanitizeUserText } from '@/lib/sanitize';
+import { UserAvatar } from '@/components/UserAvatar';
+import { useUserAvatars } from '@/lib/userAvatars';
 
 interface FeedbackListProps {
   entries: FeedbackEntry[];
@@ -32,6 +34,8 @@ export function FeedbackList({ entries, currentUserId, user = null, profile = nu
     fetchFeedbackReplies(ids).then(setReplies).catch(() => setReplies([]));
   }, [idsKey]);
   useEffect(() => { load(); }, [load]);
+
+  const avatars = useUserAvatars([...entries.map((e) => e.user_id), ...replies.map((r) => r.user_id)], { id: user?.id ?? currentUserId, avatarUrl: profile?.avatar_url });
 
   const byFeedback = useMemo(() => {
     const map = new Map<string, FeedbackReply[]>();
@@ -73,7 +77,7 @@ export function FeedbackList({ entries, currentUserId, user = null, profile = nu
   const renderReply = (reply: FeedbackReply, depth: number) => (
     <div key={reply.id} className="nl-reply" style={{ marginLeft: depth ? 'clamp(10px, 3vw, 22px)' : 0 }}>
       <div className="flex items-center gap-2">
-        <span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 nl-chip">{(reply.user_name || 'R').charAt(0).toUpperCase()}</span>
+        <UserAvatar name={reply.user_name} url={avatars[reply.user_id]} size={24} />
         <span className="text-xs font-semibold truncate" style={{ color: 'var(--color-text)' }}>{sanitizeUserText(reply.user_name, 120)}</span>
         <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{formatShortDate(reply.created_at)}</span>
       </div>
@@ -97,7 +101,7 @@ export function FeedbackList({ entries, currentUserId, user = null, profile = nu
         return (
           <li key={e.id} className="surface-card p-4">
             <div className="flex items-center gap-3 mb-2">
-              <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 nl-chip">{(e.user_name || 'R').charAt(0).toUpperCase()}</span>
+              <UserAvatar name={e.user_name} url={avatars[e.user_id]} size={32} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>{sanitizeUserText(e.user_name, 120)}{mine && <span className="ml-1.5 text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-teal-dark)' }}>You</span>}</p>
                 <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{formatShortDate(e.updated_at || e.created_at)}</p>

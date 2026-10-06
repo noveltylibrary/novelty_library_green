@@ -1342,11 +1342,8 @@ a.nl-an-handle:hover { text-decoration: underline; }
 @keyframes nlStoryPulse { 0%,100% { box-shadow:0 0 0 0 rgba(8,145,178,.18); transform:scale(1); } 50% { box-shadow:0 0 0 8px rgba(8,145,178,.08); transform:scale(1.03); } }
 @media(max-width:640px){ .nl-profile-card-export { min-height:520px; border-radius:22px; } }
 
-@media (max-width: 900px) {
-  .home-action-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
-}
+/* Home action buttons stay in ONE row of 4 on every screen size (the tiles shrink on phones). */
 @media (max-width: 520px) {
-  .home-action-grid { grid-template-columns: 1fr; }
   .community-review-card { border-radius: 1rem; }
   .community-review-poster { aspect-ratio: 1 / 1; }
   .community-rw-badge { transform: scale(.88); transform-origin: top right; }
@@ -1623,7 +1620,10 @@ a.nl-an-handle:hover { text-decoration: underline; }
   .nl-action-btn:hover svg { animation-duration: .8s; }
   .nl-action-btn span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @keyframes nl-act-ico { 0%, 60%, 100% { transform: translateY(0) rotate(0) scale(1); } 15% { transform: translateY(-3px) rotate(-12deg) scale(1.18); } 30% { transform: translateY(0) rotate(10deg) scale(.95); } 45% { transform: translateY(-1px) rotate(-5deg) scale(1.08); } }
-  @media (max-width: 520px) { .nl-reviews-actions { gap: .4rem; } .nl-action-btn { flex-direction: column; gap: .3rem; padding: .7rem .3rem; border-radius: 1.1rem; font-size: .74rem; } }
+  @media (max-width: 520px) { .nl-reviews-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .35rem; }
+    .nl-action-btn { flex-direction: column; gap: .25rem; padding: .6rem .2rem; border-radius: 1rem; border-width: 2px; font-size: .68rem; letter-spacing: 0; }
+    .nl-action-btn svg { width: 1.05rem; height: 1.05rem; }
+    .nl-action-btn span { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; } }
   @media (prefers-reduced-motion: reduce) { .nl-action-btn svg { animation: none; } .nl-action-btn { transition: none; } }
 }
 
@@ -1637,3 +1637,17 @@ a.nl-an-handle:hover { text-decoration: underline; }
 @media (max-width: 767px) {
   .nl-hdr-solid { background-color: var(--color-bg) !important; opacity: 1 !important; box-shadow: 0 1px 0 var(--color-border); }
 }
+
+/* About hero: Reviews + Analytics shortcut buttons */
+.nl-about-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; max-width: 22rem; margin: 1.4rem auto 0; position: relative; z-index: 1; }
+
+/* About page: never let decorative blobs widen the page on phones (that pushes the fixed header's menu off-screen). */
+.nl-about-shell { overflow-x: clip; max-width: 100vw; }
+html, body { overflow-x: clip; }
+header.fixed { max-width: 100vw; z-index: 60; }
+.nl-about-mobilenav { display: flex; gap: .4rem; margin: 0 auto 1.2rem; max-width: 56rem; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.nl-about-mobilenav::-webkit-scrollbar { display: none; }
+.nl-about-mobilenav button { flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: .35rem; padding: .55rem .8rem; border-radius: 999px; font-size: .78rem; font-weight: 700; color: var(--color-text); background: var(--color-paper); border: 1px solid var(--color-border); white-space: nowrap; }
+.nl-about-mobilenav button:first-child { color: #fff; background: #00829a; border-color: #00829a; }
+.dark .nl-about-mobilenav button:first-child { color: #03272d; background: #5ce1e6; border-color: #5ce1e6; }
+.nl-about-mobilenav svg { width: 1rem; height: 1rem; }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type ChangeEvent, type FormEvent, type CSSProperties } from 'react';
-import { ArrowLeft, Camera, CheckCircle, Eye, EyeOff, Globe, Instagram, Link2, Mail, Save, Upload, User, BookOpen, Library, Minus, Plus, Users, X, Lock, Unlock, ImagePlus, Clock3, Download, Sparkles, ExternalLink, ChevronRight, Layers, Fingerprint, Glasses } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle, Eye, EyeOff, Globe, Instagram, Link2, Mail, Save, Upload, User, BookOpen, Library, Minus, Plus, Users, X, Lock, Unlock, ImagePlus, Clock3, Download, Sparkles, ExternalLink, ChevronRight, Layers, Fingerprint, BookMarked, Compass, Feather, Lightbulb, Heart, Coffee, Smile } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { fetchMyAcceptedReviews, fetchMyPublishedReviews, updateProfile, uploadAvatarImage, uploadProfileHeaderImage, type AcceptedReviewCard } from '@/lib/reviews';
 import { RwStarRating } from '@/components/RwStarRating';
@@ -149,12 +149,15 @@ function PrivacyTile({label,privateState,onClick}:{label:string;privateState:boo
 function NumberField({value,onChange,placeholder,min=0}:{value:string;onChange:(v:string)=>void;placeholder?:string;min?:number}){const safe=Math.max(min,Number(value)||0);return <div className="nl-number-field"><input value={value} onChange={e=>onChange(e.target.value.replace(/\D/g,''))} inputMode="numeric" placeholder={placeholder} className="input-field nl-number-input"/><div className="nl-number-stepper"><button type="button" onClick={()=>onChange(String(Math.max(min,safe-1)))} disabled={safe<=min}><Minus className="w-3.5 h-3.5"/></button><button type="button" onClick={()=>onChange(String(safe+1))}><Plus className="w-3.5 h-3.5"/></button></div></div>}
 function AcceptedCard({review,navigate,live=false,publishedNos}:{review:AcceptedReviewCard;navigate?:(path:string)=>void;live?:boolean;publishedNos?:Set<string>}){const rating=Number(review.reviewers_rating);const isPublished=live||publishedNos?.has(String(review.review_no||''));const clickable=!!navigate&&!!isPublished;const path=`/review/${encodeURIComponent(`${review.book_title||'review'}-${review.review_no||''}`)}`;return <article className="rounded-2xl p-4 flex gap-4 transition-all hover:-translate-y-0.5" onClick={()=>clickable&&navigate?.(path)} style={{background:'var(--color-paper)',border:'1px solid var(--color-border)',cursor:clickable?'pointer':'default'}}><div className="w-20 h-28 rounded-xl overflow-hidden shrink-0">{review.book_cover?<img src={review.book_cover} alt="" className="w-full h-full object-cover"/>:<div className="w-full h-full grid place-items-center"><BookOpen className="w-7 h-7"/></div>}</div><div className="min-w-0"><div className="flex items-center gap-2"><p className="text-xs font-bold" style={{color:'var(--color-cyan-dark)'}}>Review #{review.review_no||'—'}</p>{isPublished&&<span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full" style={{background:'rgba(0,151,178,.1)',color:'var(--color-teal-dark)'}}>Published · Open</span>}</div><h3 className="font-serif text-lg font-semibold mt-1">{review.book_title}</h3><p className="text-sm mt-1" style={{color:'var(--color-text-muted)'}}>{review.author}</p>{Number.isFinite(rating)&&rating>0&&<RwStarRating value={rating} size={15} className="mt-2"/>}<p className="text-xs mt-2 line-clamp-3" style={{color:'var(--color-text-muted)'}}>{review.review}</p>{isPublished&&<p className="text-[11px] mt-2 font-semibold" style={{color:'var(--color-cyan-dark)'}}>View published review →</p>}</div></article>}
 
-// Dedicated icons for the named question sections; any other section keeps the alternating Layers/Sparkles pair.
+// Every question section gets its OWN icon. Named sections get a fitting one; the rest cycle through a pool,
+// so no two tiles share an icon (and none repeat the Identity / Reading-journey icons).
 function sectionIcon(name:string,index:number):ReactNode{
-  const n=name.trim().toLowerCase();
-  if(/personal/.test(n)) return <Fingerprint className="w-5 h-5"/>;
-  if(/basic\s*reader|reader\s*basics?/.test(n)) return <Glasses className="w-5 h-5"/>;
-  return index%2===0?<Layers className="w-5 h-5"/>:<Sparkles className="w-5 h-5"/>;
+  const n=name.trim().toLowerCase(); const c="w-5 h-5";
+  if(/personal/.test(n)) return <Fingerprint className={c}/>;
+  if(/basic|reader\s*(info|detail|profile)|about\s*(the\s*)?reader/.test(n)) return <BookMarked className={c}/>;
+  if(/beyond|outside|hobb|interest|life/.test(n)) return <Compass className={c}/>;
+  const pool=[<Layers className={c}/>,<Sparkles className={c}/>,<Feather className={c}/>,<Lightbulb className={c}/>,<Heart className={c}/>,<Coffee className={c}/>,<Smile className={c}/>];
+  return pool[index%pool.length];
 }
 type HubItem = { key: string; order: number; eyebrow: string; title: string; hint: string; icon: ReactNode; body: ReactNode; saveKey?: string; form?: boolean; live?: boolean };
 function SectionHub({items,title,description,onOpen}:{items:HubItem[];title:string;description:string;onOpen:(key:string)=>void}){

@@ -208,7 +208,10 @@ Sign-in with Google
 If you choose "Continue with Google", Google may set its own cookies while you sign in. Their use is governed by Google's privacy policy.
 
 Advertising and third-party cookies
-Novelty Library may show ads from third-party networks. These providers may set cookies to serve and measure ads. We only load advertising content after you select "Accept all". If you choose "Essential only", no advertising cookies are requested by us.
+Novelty Library shows ads from third-party networks to help cover running costs. What you see depends on your choice:
+- "Essential only": you still see ads, but they are non-personalised. We load them in a restricted frame that gives the ad provider no cookies or storage and no referring page, so ads are not tailored to your browsing.
+- "Accept all": the ad provider may use cookies and similar technologies to tailor ads to your activity and to measure them. Your consent is optional and is never required to use the site.
+We do not sell your personal data. Readers under 18 should choose "Essential only".
 
 Managing your choice
 You can change your decision at any time by using "Cookie settings" in the footer, or by clearing cookies and site data in your browser settings.
@@ -221,7 +224,7 @@ We may update this policy periodically to reflect platform improvements.`,
   },
   'cookie-banner': {
     title: 'Cookie bar message',
-    content: `We use cookies to keep you signed in, remember your preferences and, if you allow it, show ads. Read our Cookie Policy for details.`,
+    content: `We use cookies to keep you signed in and remember your preferences. "Essential only" shows non-personalised ads; "Accept all" lets our ad partner use cookies to personalise ads. You can change this anytime. Read our Cookie Policy for details.`,
   },
   terms: {
     title: 'Terms of Service & Fair Use',

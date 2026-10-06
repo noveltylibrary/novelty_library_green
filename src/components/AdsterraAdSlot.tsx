@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useCookieConsent } from '@/lib/cookieConsent';
 
 interface AdsterraAdSlotProps {
@@ -9,66 +9,51 @@ interface AdsterraAdSlotProps {
 
 type SlotState = 'loading' | 'filled' | 'empty';
 
-const FILL_TIMEOUT_MS = 8000;
-
 const AD_KEY = '94338a299763bb951992d9cd078429e9';
 const AD_SCRIPT_SRC = import.meta.env.VITE_ADSTERRA_SCRIPT_URL || `https://bauval.org/22/${AD_KEY}`;
 
-type AdWindow = Window & {
-  atOptions?: { key: string; format: string; height: number; width: number; params: Record<string, unknown> };
-};
-
+/**
+ * Two ad modes, chosen by the reader's cookie choice:
+ *  - 'essential' (Essential only): non-personalised ads. The frame is sandboxed WITHOUT allow-same-origin and sends
+ *    no referrer, so the ad code gets no cookies/storage and cannot recognise the reader (contextual / random ads).
+ *  - 'all' (Accept all): personalised ads. The frame may keep the ad network's cookies/storage so it can tailor ads.
+ * The ad runs inside its own iframe (srcDoc). Adsterra's invoke script uses document.write and
+ * sets a global `atOptions`; isolating it in an iframe keeps both away from the app's page, and the
+ * 'essential' sandbox has NO allow-same-origin, so third-party ad code can never read the app's storage or login.
+ * NOTE: a srcDoc iframe inherits the page's Content-Security-Policy, so vercel.json must allow the ad
+ * network's scripts (inline + https:) or the creative is silently blocked.
+ */
 export function AdsterraAdSlot({ className = '', active = true }: AdsterraAdSlotProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const consent = useCookieConsent();
   const [state, setState] = useState<SlotState>('loading');
+  const personalised = consent === 'all';
 
-  useEffect(() => {
-    if (consent !== 'all' || !active) return;
-    const container = containerRef.current;
-    if (!container) return;
-    setState('loading');
-    container.innerHTML = '';
+  const srcDoc = useMemo(() => `<!doctype html><html><head><meta charset="utf-8"><base target="_blank"><style>html,body{margin:0;padding:0;overflow:hidden;background:transparent}</style></head><body><script>atOptions={'key':'${AD_KEY}','format':'iframe','height':250,'width':300,'params':{}};<\/script><script src="${AD_SCRIPT_SRC}"><\/script></body></html>`, []);
 
-    // Adsterra's publisher code is designed to be pasted into the page itself.
-    // The previous implementation created a synthetic iframe document, which can
-    // prevent the publisher script/creative from initializing correctly.
-    const win = window as AdWindow;
-    const previous = win.atOptions;
-    win.atOptions = { key: AD_KEY, format: 'iframe', height: 250, width: 300, params: {} };
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = AD_SCRIPT_SRC;
-    script.async = false;
-    script.onload = () => {
-      window.setTimeout(() => setState('filled'), 250);
-    };
-    script.onerror = () => setState('empty');
-    container.appendChild(script);
+  useEffect(() => { if (consent && active) setState('loading'); }, [consent, active]);
 
-    const timeout = window.setTimeout(() => {
-      // Keep the slot available for slow creatives; only collapse when the script
-      // itself failed. Successful scripts can render after the normal timeout.
-      if (!container.querySelector('iframe, img, ins, a, object, embed, video, canvas, svg')) {
-        setState('filled');
-      }
-    }, FILL_TIMEOUT_MS);
-
-    return () => {
-      window.clearTimeout(timeout);
-      container.innerHTML = '';
-      if (previous) win.atOptions = previous;
-      else delete win.atOptions;
-    };
-  }, [consent, active]);
-
-  if (consent !== 'all') return null;
+  // No ads until the reader has made a cookie choice (the banner is still showing).
+  if (!consent || !active) return null;
 
   return (
     <div className={`adsterra-slot ${className}`} data-state={state} aria-label="Advertisement">
       <div className="adsterra-label"><span>SPONSORED</span></div>
       <div className="adsterra-frame">
-        <div ref={containerRef} className="w-[300px] h-[250px] overflow-hidden" />
+        <iframe
+          key={personalised ? 'personalised' : 'basic'}
+          data-ad-mode={personalised ? 'personalised' : 'non-personalised'}
+          title="Advertisement"
+          srcDoc={srcDoc}
+          width={300}
+          height={250}
+          scrolling="no"
+          loading="lazy"
+          referrerPolicy={personalised ? 'no-referrer-when-downgrade' : 'no-referrer'}
+          sandbox={`allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation${personalised ? ' allow-same-origin' : ''}`}
+          style={{ border: 0, display: 'block', width: 300, height: 250, maxWidth: '100%' }}
+          onLoad={() => window.setTimeout(() => setState('filled'), 400)}
+          onError={() => setState('empty')}
+        />
       </div>
     </div>
   );

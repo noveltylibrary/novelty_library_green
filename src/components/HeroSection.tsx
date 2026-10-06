@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { animate, motion, useMotionValue, useReducedMotion, useTransform, type Variants } from 'framer-motion';
 import { ArrowRight, PenTool } from 'lucide-react';
 import { StoriesRail } from '@/components/StoriesRail';
+import { HomeActionGrid } from '@/components/HomeActionGrid';
 
 interface HeroSectionProps {
   navigate: (path: string) => void;
@@ -132,6 +133,8 @@ export function HeroSection({ navigate, live }: HeroSectionProps) {
         </motion.div>
 
         <div className="mt-10 text-left"><StoriesRail navigate={navigate} /></div>
+
+        <div className="mt-6 text-left"><HomeActionGrid navigate={navigate} /></div>
 
         {/* Animated stats strip */}
         <motion.div

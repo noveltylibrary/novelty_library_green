@@ -3,6 +3,8 @@ import { Loader2, MessageCircle, Send, Trash2, Heart, CornerDownRight } from 'lu
 import { useAuth } from '@/lib/auth';
 import { addReviewComment, deleteReviewComment, fetchReviewComments, toggleCommentLike, type ReviewComment } from '@/lib/communityComments';
 import { sanitizeUserText } from '@/lib/sanitize';
+import { UserAvatar } from '@/components/UserAvatar';
+import { useUserAvatars } from '@/lib/userAvatars';
 
 interface Props { reviewId: string; navigate: (path: string) => void; }
 
@@ -20,6 +22,8 @@ export function ReviewComments({ reviewId, navigate }: Props) {
     fetchReviewComments(reviewId, user?.id).then(setComments).catch(() => setComments([])).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, [reviewId, user?.id]);
+
+  const avatars = useUserAvatars(comments.map((c) => c.user_id), { id: user?.id, avatarUrl: profile?.avatar_url });
 
   const children = useMemo(() => {
     const map = new Map<string, ReviewComment[]>();
@@ -60,7 +64,7 @@ export function ReviewComments({ reviewId, navigate }: Props) {
   const renderComment = (comment: ReviewComment, depth = 0) => (
     <article key={comment.id} className={`rounded-2xl p-4 ${depth ? 'ml-5 md:ml-10' : ''}`} style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
       <div className="flex items-center gap-3">
-        <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: 'rgba(0,151,178,.12)', color: 'var(--color-cyan-dark)' }}>{comment.user_name.charAt(0).toUpperCase()}</span>
+        <UserAvatar name={comment.user_name} url={avatars[comment.user_id]} size={32} />
         <div className="flex-1 min-w-0"><p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{sanitizeUserText(comment.user_name, 60)}</p><p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{new Date(comment.created_at).toLocaleString()}</p></div>
       </div>
       <p className="text-sm leading-6 mt-3 whitespace-pre-wrap" style={{ color: 'var(--color-text)' }}>{sanitizeUserText(comment.comment_text, 800)}</p>
