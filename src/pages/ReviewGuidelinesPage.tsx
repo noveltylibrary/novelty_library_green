@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
 import { ArrowLeft, ChevronDown, X, ZoomIn } from 'lucide-react';
 import DOMPurify from 'dompurify';
-import { fetchReviewGuidelineSections, type ReviewGuidelineSection } from '@/lib/reviewGuidelines';
+import { fetchReviewGuidelineSections, withNlRating, type ReviewGuidelineSection } from '@/lib/reviewGuidelines';
 import { GUIDE_CSS } from '@/components/ReviewGuidelinesModal';
 import AdsterraAdSlot from '@/components/AdsterraAdSlot';
 import { RatingGuideCard, RATING_GUIDE_CSS } from '@/components/RatingGuideCard';
@@ -219,12 +219,7 @@ export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
 
   const safeSections = useMemo(() => {
     const active = sections.filter(s => s.active).sort((a,b) => a.sort_order - b.sort_order).map((section) => {
-      const html = section.content_html || '';
-      if (/NL\s*Rating/i.test(html)) return section;
-      const nlItem = '<li><strong>NL Rating:</strong> The cumulative average (out of 10) of all ratings submitted by Novelty Library readers on the respective community review post. It reflects the community\'s rating of that book and updates as readers rate the post.</li>';
-      const amazonItem = /<li[^>]*>\s*<strong>Amazon Rating:<\/strong>.*?<\/li>/i;
-      if (amazonItem.test(html)) return { ...section, content_html: html.replace(amazonItem, (m) => `${m}${nlItem}`) };
-      return section;
+      return { ...section, content_html: withNlRating(section.content_html || '') };
     });
     const hasRatingSection = active.some((x) => /understand[\s-]*(the[\s-]*)?rating|rating[\s-]*system|rating[\s-]*guide/i.test(`${x.slug} ${x.title}`));
 
@@ -238,7 +233,7 @@ export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
         title: 'UNDERSTAND THE RATING SYSTEM',
         sort_order: Math.max(30, ...active.map(x => x.sort_order + 1)),
         active: true,
-        content_html: `<p>Novelty uses the reviewer's personal R/W score out of 10. This is separate from Goodreads and Amazon platform ratings. The guide below shows exactly how an R/W score is displayed as stars on Novelty review cards and posters.</p>`
+        content_html: `<p>Novelty uses the reviewer's personal R/W score out of 10. This is separate from the Goodreads and Amazon platform ratings and from the NL Rating, the cumulative average (out of 10) of the R/W score plus all Novelty Library reader ratings on the community review post. The guide below shows exactly how an R/W score is displayed as stars on Novelty review cards and posters.</p>`
       });
     }
     return active.sort((a,b) => a.sort_order - b.sort_order);

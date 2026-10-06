@@ -224,6 +224,7 @@ const GUIDE_HTML = `<div class="novelty-guide-outer-wrapper">
             <li><span class="novelty-highlight">Reviewer's Rating:</span> Scored out of 10 (up to one decimal place).</li>
             <li><strong>Goodreads Rating:</strong> Scored out of 5 (As on date of publishing of post).</li>
             <li><strong>Amazon Rating:</strong> Optional, scored out of 5.</li>
+            <li><strong>NL Rating:</strong> The cumulative average (out of 10) of the reviewer's R/W rating and all ratings submitted by Novelty Library readers on the respective community review post. Updates as readers rate the post.</li>
           </ul>
         </li>
         <li><strong>Traits / Keywords:</strong> Add minimum 1 descriptive trait or keyword for the genre (e.g., Emotional, Plot Twist). 5 keywords are preferred that describe the true potential of the book being reviewed.</li>

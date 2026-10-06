@@ -25,15 +25,18 @@ export async function fetchProfileSectionLayout(): Promise<ProfileSectionLayoutI
     const saved = Array.isArray(parsed.sections) ? parsed.sections : [];
     const byKey = new Map(saved.map(x => [x.key, x]));
     const builtIns = BUILT_IN_PROFILE_SECTIONS.map(def => ({ ...def, ...(byKey.get(def.key) || {}) }));
-    const customs = saved.filter(x => String(x.key).startsWith('custom:'));
-    return [...builtIns, ...customs].sort((a, b) => a.order - b.order || a.key.localeCompare(b.key));
+    // Question sections (custom:*) are owned by the profile_question_sections table;
+    // copies stored here were stale and overrode the admin's edits, so they are ignored.
+    return builtIns.sort((a, b) => a.order - b.order || a.key.localeCompare(b.key));
   } catch {
     return BUILT_IN_PROFILE_SECTIONS.map(x => ({ ...x }));
   }
 }
 
 export async function saveProfileSectionLayout(sections: ProfileSectionLayoutItem[]): Promise<ProfileSectionLayoutItem[]> {
-  const normalized = sections.map((s, i) => ({ ...s, order: i * 10 + 10 }));
+  // Only built-in sections live here; the given order values are kept as-is so they
+  // share one numeric scale with the question sections' sort_order.
+  const normalized = sections.filter(s => !String(s.key).startsWith('custom:'));
   const { error } = await supabase.from('editable_pages').upsert({
     slug: SLUG,
     title: 'Profile section layout',

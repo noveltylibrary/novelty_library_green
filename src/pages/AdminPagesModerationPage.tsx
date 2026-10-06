@@ -15,7 +15,7 @@ import {
   type ProfileQuestionType,
   type ProfileQuestionSection,
 } from '@/lib/profileQuestions';
-import { CORE_FIELDS, fetchCoreOverrides, saveCoreOverride, resetCoreOverride, fetchCoreFieldOrder, saveCoreFieldOrder, type CoreFieldKey, type CoreOverrides, type CoreFieldOrder } from '@/lib/profileCoreFields';
+import { CORE_FIELDS, coreActive, fetchCoreOverrides, saveCoreOverride, resetCoreOverride, fetchCoreFieldOrder, saveCoreFieldOrder, type CoreFieldKey, type CoreOverrides, type CoreFieldOrder } from '@/lib/profileCoreFields';
 import { BUILT_IN_PROFILE_SECTIONS, fetchProfileSectionLayout, saveProfileSectionLayout, type ProfileSectionLayoutItem } from '@/lib/profileLayout';
 
 const PAGE_KEYS = ['review-guidelines', 'about', 'privacy', 'terms', 'cookies', 'cookie-banner'] as const;
@@ -53,6 +53,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   const [coreLabelDraft, setCoreLabelDraft] = useState('');
   const [corePlaceholderDraft, setCorePlaceholderDraft] = useState('');
   const [coreVisibleDraft, setCoreVisibleDraft] = useState(true);
+  const [coreActiveDraft, setCoreActiveDraft] = useState(true);
   const [question, setQuestion] = useState('');
   const [placeholder, setPlaceholder] = useState('');
   const [section, setSection] = useState('');
@@ -66,7 +67,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   const [required, setRequired] = useState(false);
   const [publicDefault, setPublicDefault] = useState(true);
   const [showInCard, setShowInCard] = useState(true);
-  const [profileCardMode, setProfileCardMode] = useState<'tag' | 'answer' | 'answer_no_question'>('answer');
+  const [profileCardMode, setProfileCardMode] = useState<'tag' | 'answer'>('answer');
   const [showQuestionInCard, setShowQuestionInCard] = useState(true);
   const [maxSelections, setMaxSelections] = useState<number | null>(null);
   const [alphabeticalSort, setAlphabeticalSort] = useState(false);
@@ -82,12 +83,20 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
 
   const orderedSections = useMemo(() => [...sections].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)), [sections]);
   const allSectionLayout = useMemo(() => {
-    const custom = orderedSections.map((s) => ({ key: `custom:${s.id}` as const, order: s.sort_order, active: s.active, header: s.header || s.name, description: s.description || '', custom: s }));
-    const built = sectionLayout.map(s => ({ ...s }));
-    const byKey = new Map(built.map(s => [s.key, s]));
-    custom.forEach(c => { if (!byKey.has(c.key)) built.push({ key: c.key, order: c.order, active: c.active, header: c.header, description: c.description }); });
-    return built.sort((a,b)=>a.order-b.order || a.key.localeCompare(b.key));
+    const custom = orderedSections.map((s): ProfileSectionLayoutItem => ({ key: `custom:${s.id}` as const, order: s.sort_order, active: s.active, header: s.header || s.name, description: s.description || '' }));
+    const built = sectionLayout.filter(s => !String(s.key).startsWith('custom:')).map(s => ({ ...s }));
+    return [...built, ...custom].sort((a,b)=>a.order-b.order || a.key.localeCompare(b.key));
   }, [orderedSections, sectionLayout]);
+  const [dragQ, setDragQ] = useState<string | null>(null);
+  const [dragSec, setDragSec] = useState<string | null>(null);
+  const [overKey, setOverKey] = useState<string | null>(null);
+  const questionGroups = useMemo(() => {
+    const byOrder = (a: ProfileQuestion, b: ProfileQuestion) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0);
+    const groups = orderedSections.map(sec => ({ name: sec.name, header: sec.header || sec.name, active: sec.active, items: questions.filter(q => q.section === sec.name).sort(byOrder) }));
+    const known = new Set(orderedSections.map(x => x.name));
+    [...new Set(questions.filter(q => !known.has(q.section)).map(q => q.section))].forEach(name => groups.push({ name, header: `${name} (no section)`, active: false, items: questions.filter(q => q.section === name).sort(byOrder) }));
+    return groups;
+  }, [orderedSections, questions]);
   const activeSections = useMemo(() => orderedSections.filter(s => s.active), [orderedSections]);
 
   const loadPage = async (slug: typeof PAGE_KEYS[number]) => {
@@ -143,6 +152,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     setCoreLabelDraft(o.label ?? def.label);
     setCorePlaceholderDraft(o.placeholder ?? def.placeholder);
     setCoreVisibleDraft(o.defaultVisible ?? def.defaultVisible);
+    setCoreActiveDraft(o.active !== false);
     requestAnimationFrame(() => editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
   };
 
@@ -151,7 +161,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     if (!coreLabelDraft.trim()) { setMsg('Enter a field label first.'); return; }
     try {
       setQuestionSaving(true);
-      setCoreOverrides(await saveCoreOverride(editingCore, { label: coreLabelDraft.trim(), placeholder: corePlaceholderDraft, defaultVisible: coreVisibleDraft }));
+      setCoreOverrides(await saveCoreOverride(editingCore, { label: coreLabelDraft.trim(), placeholder: corePlaceholderDraft, defaultVisible: coreVisibleDraft, active: coreActiveDraft }));
       setMsg('Built-in field updated.');
       setEditingCore(null);
     } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not save built-in field.'); }
@@ -204,8 +214,8 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     setRequired(q.required);
     setPublicDefault(q.public_default);
     setShowInCard(q.show_in_profile_card !== false);
-    setProfileCardMode(q.profile_card_mode === 'tag' ? 'tag' : q.profile_card_mode === 'answer_no_question' ? 'answer_no_question' : 'answer');
-    setShowQuestionInCard(q.profile_card_mode !== 'answer_no_question');
+    setProfileCardMode(q.profile_card_mode === 'tag' || q.profile_card_mode === 'tag_no_question' ? 'tag' : 'answer');
+    setShowQuestionInCard(q.profile_card_mode !== 'answer_no_question' && q.profile_card_mode !== 'tag_no_question');
     setMaxSelections(q.max_selections == null ? null : Math.max(1, Number(q.max_selections) || 1));
     setAlphabeticalSort(!!q.alphabetical_sort);
     requestAnimationFrame(() => questionInputRef.current?.focus({ preventScroll: true }));
@@ -237,7 +247,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
         required,
         public_default: publicDefault,
         show_in_profile_card: showInCard,
-        profile_card_mode: profileCardMode === 'tag' ? 'tag' : showQuestionInCard ? 'answer' : 'answer_no_question',
+        profile_card_mode: cardModeFor(profileCardMode, showQuestionInCard),
         max_selections: type === 'select_multiple' ? maxSelections : null,
         alphabetical_sort: (type === 'select_multiple' || type === 'select_single' || type === 'select') ? alphabeticalSort : false,
         sort_order: editing?.sort_order ?? questions.length,
@@ -264,17 +274,39 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     }
   };
 
-  const move = async (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= questions.length) return;
-    const next = [...questions];
-    [next[index], next[target]] = [next[target], next[index]];
-    setQuestions(next);
+  const dropQuestion = async (sectionName: string, beforeId: string | null) => {
+    const id = dragQ; setDragQ(null); setOverKey(null);
+    if (!id || id === beforeId) return;
+    const moving = questions.find(q => q.id === id);
+    if (!moving) return;
+    const lists = new Map<string, ProfileQuestion[]>(questionGroups.map(g => [g.name, g.items.filter(q => q.id !== id)]));
+    const target = lists.get(sectionName) ?? [];
+    const idx = beforeId ? target.findIndex(q => q.id === beforeId) : -1;
+    const moved = { ...moving, section: sectionName };
+    if (idx < 0) target.push(moved); else target.splice(idx, 0, moved);
+    lists.set(sectionName, target);
+    const flat = questionGroups.flatMap(g => lists.get(g.name) ?? []);
+    const previous = questions;
+    setQuestions(flat.map((q, i) => ({ ...q, sort_order: i })));
     try {
-      await reorderProfileQuestions(next.map(q => q.id));
+      if (moving.section !== sectionName) await saveProfileQuestion({ ...moving, section: sectionName });
+      await reorderProfileQuestions(flat.map(q => q.id));
+      setMsg(moving.section !== sectionName ? `Moved to “${sectionName}” and order saved.` : 'Question order saved.');
+      await loadProfileBuilder();
     } catch (e) {
+      setQuestions(previous);
       setMsg(e instanceof Error ? e.message : 'Could not reorder questions.');
     }
+  };
+
+  const move = async (q: ProfileQuestion, direction: -1 | 1) => {
+    const group = questionGroups.find(g => g.name === q.section);
+    if (!group) return;
+    const i = group.items.findIndex(x => x.id === q.id);
+    const t = group.items[i + direction];
+    if (!t) return;
+    if (direction === -1) { setDragQ(q.id); await dropQuestion(q.section, t.id); }
+    else { const after = group.items[i + 2]; setDragQ(q.id); await dropQuestion(q.section, after ? after.id : null); }
   };
 
   const openBuiltInSection = (item: ProfileSectionLayoutItem) => {
@@ -307,13 +339,41 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     setSectionEditorOpen(true);
   };
 
+  const dropSection = async (targetKey: string) => {
+    const from = dragSec; setDragSec(null); setOverKey(null);
+    if (!from || from === targetKey) return;
+    const next = [...allSectionLayout];
+    const fi = next.findIndex(x => x.key === from); const ti = next.findIndex(x => x.key === targetKey);
+    if (fi < 0 || ti < 0) return;
+    const [item] = next.splice(fi, 1);
+    next.splice(ti, 0, item);
+    await persistSectionOrder(next);
+  };
+
   const moveSection = async (index: number, direction: -1 | 1) => {
     const next = [...allSectionLayout];
     const target = index + direction;
     if (target < 0 || target >= next.length) return;
     [next[index], next[target]] = [next[target], next[index]];
+    await persistSectionOrder(next);
+  };
+
+  const persistSectionOrder = async (next: ProfileSectionLayoutItem[]) => {
+    const renumbered = next.map((item, i) => ({ ...item, order: i * 10 + 10 }));
     try {
-      setSectionLayout(await saveProfileSectionLayout(next));
+      // Built-in sections keep their order in the layout; question sections keep it in
+      // profile_question_sections.sort_order (which also re-syncs their questions).
+      const builtIns = renumbered.filter(x => !String(x.key).startsWith('custom:'));
+      setSectionLayout(await saveProfileSectionLayout(builtIns));
+      for (const item of renumbered) {
+        if (!String(item.key).startsWith('custom:')) continue;
+        const row = sections.find(s => `custom:${s.id}` === item.key);
+        if (row && row.sort_order !== item.order) {
+          await saveProfileQuestionSection({ id: row.id, name: row.name, header: row.header, description: row.description, sort_order: item.order, active: row.active });
+        }
+      }
+      setSections(await fetchProfileSections(true));
+      setQuestions(await fetchProfileQuestions(true));
       setMsg('Profile section order saved.');
     } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not save section order.'); }
   };
@@ -359,6 +419,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
           return next.sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
         });
         setSection(saved.name);
+        await loadProfileBuilder();
         setMsg(editingSection ? 'Section settings saved. Existing questions were updated to the new name.' : 'Section added.');
       }
       setSectionEditorOpen(false);
@@ -466,7 +527,8 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
             {allSectionLayout.map((item, index) => {
               const builtIn = item.key === 'reader_identity' || item.key === 'profile_questions' || item.key === 'reading_journey';
               const custom = !builtIn ? orderedSections.find(s => item.key === `custom:${s.id}`) : null;
-              return <div key={item.key} className="rounded-xl p-3 flex items-center gap-2" style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)' }}>
+              return <div key={item.key} draggable onDragStart={e => { setDragSec(item.key); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', item.key); }} onDragOver={e => { if (dragSec) { e.preventDefault(); setOverKey(`sec:${item.key}`); } }} onDragLeave={() => setOverKey(k => k === `sec:${item.key}` ? null : k)} onDrop={e => { e.preventDefault(); void dropSection(item.key); }} onDragEnd={() => { setDragSec(null); setOverKey(null); }} className="rounded-xl p-3 flex items-center gap-2 cursor-grab active:cursor-grabbing" style={{ background: 'var(--color-background)', border: overKey === `sec:${item.key}` ? '2px dashed var(--color-cyan-dark)' : '1px solid var(--color-border)', opacity: dragSec === item.key ? .45 : 1 }}>
+                <GripVertical className="w-4 h-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} aria-hidden="true" />
                 <div className="flex flex-col"><button type="button" disabled={index===0} onClick={()=>void moveSection(index,-1)} className="p-1 rounded disabled:opacity-30" title="Move section up"><ChevronUp className="w-4 h-4"/></button><button type="button" disabled={index===allSectionLayout.length-1} onClick={()=>void moveSection(index,1)} className="p-1 rounded disabled:opacity-30" title="Move section down"><ChevronDown className="w-4 h-4"/></button></div>
                 <div className="min-w-0 flex-1"><p className="font-semibold text-sm truncate">{item.header || item.key}</p><p className="text-[11px] mt-1 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>{item.description || 'No helper text set.'}</p><p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: 'var(--color-text-muted)' }}>{builtIn ? 'Built-in section' : 'Custom section'} · Order {index+1} · {item.active ? 'Visible' : 'Hidden'}</p></div>
                 {custom ? <button type="button" className="p-2 rounded-lg" title={`Edit ${custom.name}`} aria-label={`Edit ${custom.name}`} onClick={() => openRenameSection(custom)}><Pencil className="w-3.5 h-3.5" /></button> : <button type="button" className="p-2 rounded-lg" title="Edit built-in section heading and text" aria-label="Edit built-in section" onClick={() => openBuiltInSection(item)}><Pencil className="w-3.5 h-3.5" /></button>}
@@ -483,11 +545,17 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
               <div className="space-y-4">
                 {(['reader_identity','reading_journey'] as const).map(sectionKey => {
                   const fields = CORE_FIELDS.filter(f => (sectionKey === 'reading_journey' ? f.section === 'Reading Journey' : f.section === 'Personal Details')).sort((a,b)=>(coreFieldOrder[a.key] ?? CORE_FIELDS.indexOf(a))-(coreFieldOrder[b.key] ?? CORE_FIELDS.indexOf(b)));
-                  return <div key={sectionKey} className="rounded-2xl p-3" style={{background:'var(--color-background)',border:'1px solid var(--color-border)'}}><p className="text-xs uppercase tracking-wider font-bold mb-2" style={{color:'var(--color-teal-dark)'}}>{sectionKey === 'reading_journey' ? 'Reading Journey' : 'Build Your Reader Identity'}</p><div className="space-y-2">{fields.map((f,i)=><div key={f.key} className="rounded-xl p-3 flex items-center gap-2" style={{background:'var(--color-paper)',border:'1px solid var(--color-border)'}}><div className="flex flex-col"><button type="button" disabled={i===0} onClick={()=>void moveCoreField(f.key,-1)} className="p-1 rounded disabled:opacity-30" title="Move field up"><ChevronUp className="w-4 h-4"/></button><button type="button" disabled={i===fields.length-1} onClick={()=>void moveCoreField(f.key,1)} className="p-1 rounded disabled:opacity-30" title="Move field down"><ChevronDown className="w-4 h-4"/></button></div><div className="min-w-0 flex-1"><p className="text-[10px] uppercase tracking-wider font-bold" style={{color:'var(--color-teal-dark)'}}>{f.type}</p><p className="font-semibold text-sm truncate">{(coreOverrides[f.key]?.label || f.label)}</p><p className="text-[11px] mt-0.5" style={{color:'var(--color-text-muted)'}}>{f.key === 'name' || f.key === 'email' ? 'Built-in · locked' : 'Built-in · reorder / label controls'}</p></div>{f.locked ? <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{color:'var(--color-text-muted)'}}><Lock className="w-3.5 h-3.5"/> Locked</span> : <button type="button" onClick={()=>editCore(f.key)} className="btn-ghost !w-auto !px-3 text-xs">Edit</button>}</div>)}</div></div>;
+                  return <div key={sectionKey} className="rounded-2xl p-3" style={{background:'var(--color-background)',border:'1px solid var(--color-border)'}}><p className="text-xs uppercase tracking-wider font-bold mb-2" style={{color:'var(--color-teal-dark)'}}>{sectionKey === 'reading_journey' ? 'Reading Journey' : 'Build Your Reader Identity'}</p><div className="space-y-2">{fields.map((f,i)=><div key={f.key} className="rounded-xl p-3 flex items-center gap-2" style={{background:'var(--color-paper)',border:'1px solid var(--color-border)'}}><div className="flex flex-col"><button type="button" disabled={i===0} onClick={()=>void moveCoreField(f.key,-1)} className="p-1 rounded disabled:opacity-30" title="Move field up"><ChevronUp className="w-4 h-4"/></button><button type="button" disabled={i===fields.length-1} onClick={()=>void moveCoreField(f.key,1)} className="p-1 rounded disabled:opacity-30" title="Move field down"><ChevronDown className="w-4 h-4"/></button></div><div className="min-w-0 flex-1"><p className="text-[10px] uppercase tracking-wider font-bold" style={{color:'var(--color-teal-dark)'}}>{f.type}</p><p className="font-semibold text-sm truncate">{(coreOverrides[f.key]?.label || f.label)}</p><p className="text-[11px] mt-0.5" style={{color:'var(--color-text-muted)'}}>{f.key === 'name' || f.key === 'email' ? 'Built-in · locked' : `Built-in · ${coreActive(coreOverrides, f.key) ? 'shown on profile' : 'HIDDEN from profile'}`}</p></div>{f.locked ? <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{color:'var(--color-text-muted)'}}><Lock className="w-3.5 h-3.5"/> Locked</span> : <button type="button" onClick={()=>editCore(f.key)} className="btn-ghost !w-auto !px-3 text-xs">Edit</button>}</div>)}</div></div>;
                 })}
               </div>
             </div>
-            {questions.length === 0 ? <div className="py-10 text-center" style={{ color: 'var(--color-text-muted)' }}>No profile questions yet.</div> : questions.map((q, i) => <div key={q.id} className="rounded-2xl p-4" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
+            {questions.length === 0 ? <div className="py-10 text-center" style={{ color: 'var(--color-text-muted)' }}>No profile questions yet.</div> : <>
+              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Drag a question by its card to reorder it, or drop it into another section column to move it there.</p>
+              <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 items-start">
+                {questionGroups.map(group => <section key={group.name} onDragOver={e => { if (dragQ) { e.preventDefault(); setOverKey(`g:${group.name}`); } }} onDrop={e => { e.preventDefault(); void dropQuestion(group.name, null); }} className="rounded-2xl p-3 space-y-2 min-w-0" style={{ background: 'var(--color-background)', border: overKey === `g:${group.name}` ? '2px dashed var(--color-cyan-dark)' : '1px solid var(--color-border)' }}>
+                  <div className="flex items-center justify-between gap-2 px-1"><p className="text-xs uppercase tracking-wider font-bold truncate" style={{ color: 'var(--color-teal-dark)' }}>{group.header}</p><span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{group.items.length} question{group.items.length === 1 ? '' : 's'}{group.active ? '' : ' · hidden'}</span></div>
+                  {group.items.length === 0 && <div className="rounded-xl py-6 text-center text-xs" style={{ border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)' }}>Drop a question here</div>}
+                  {group.items.map((q, i) => <div key={q.id} draggable onDragStart={e => { e.stopPropagation(); setDragQ(q.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', q.id); }} onDragOver={e => { if (dragQ) { e.preventDefault(); e.stopPropagation(); setOverKey(`q:${q.id}`); } }} onDrop={e => { e.preventDefault(); e.stopPropagation(); void dropQuestion(group.name, q.id); }} onDragEnd={() => { setDragQ(null); setOverKey(null); }} className="rounded-2xl p-3 cursor-grab active:cursor-grabbing" style={{ background: 'var(--color-paper)', border: overKey === `q:${q.id}` ? '2px dashed var(--color-cyan-dark)' : '1px solid var(--color-border)', opacity: dragQ === q.id ? .45 : 1 }}>
               <div className="flex gap-3">
                 <GripVertical className="w-4 h-4 mt-1" style={{ color: 'var(--color-text-muted)' }} />
                 <div className="min-w-0 flex-1">
@@ -495,7 +563,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
                     <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full" style={{ background: 'rgba(8,145,178,.09)', color: 'var(--color-teal-dark)' }}>{q.section}</span>
                     <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>{questionTypeLabel(q.type)}</span>
                     {q.required && <span className="text-[10px] font-bold">Required</span>}
-                    {q.show_in_profile_card !== false && <span className="text-[10px] font-bold" style={{ color: 'var(--color-teal-dark)' }}>{q.profile_card_mode === 'answer_no_question' ? 'Answer only' : q.profile_card_mode === 'tag' ? 'Profile card · Tag' : 'Profile card · Q + A'}</span>}
+                    {q.show_in_profile_card !== false && <span className="text-[10px] font-bold" style={{ color: 'var(--color-teal-dark)' }}>{q.profile_card_mode === 'answer_no_question' ? 'Answer only' : q.profile_card_mode === 'tag_no_question' ? 'Profile card · Tag (answer only)' : q.profile_card_mode === 'tag' ? 'Profile card · Tag' : 'Profile card · Q + A'}</span>}
                   </div>
                   <p className="font-semibold mt-2">{q.question}</p>
                   {q.options.length > 0 && <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Options: {q.options.join(' · ')}</p>}
@@ -504,13 +572,16 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
                   <p className="text-xs mt-2" style={{ color: q.public_default ? 'var(--color-teal-dark)' : 'var(--color-text-muted)' }}><Eye className="inline w-3.5 h-3.5 mr-1" />{q.public_default ? 'Public by default' : 'Private by default'}</p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="p-2 rounded-lg" title="Move up"><ChevronUp className="w-4 h-4" /></button>
-                  <button type="button" onClick={() => move(i, 1)} disabled={i === questions.length - 1} className="p-2 rounded-lg" title="Move down"><ChevronDown className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => void move(q, -1)} disabled={i === 0} className="p-2 rounded-lg" title="Move up"><ChevronUp className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => void move(q, 1)} disabled={i === group.items.length - 1} className="p-2 rounded-lg" title="Move down"><ChevronDown className="w-4 h-4" /></button>
                   <button type="button" onClick={() => editQuestion(q)} className="btn-ghost !w-auto !px-3 text-xs">Edit</button>
                   <button type="button" onClick={() => removeQuestion(q.id)} className="p-2 rounded-lg" title="Delete"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
             </div>)}
+                </section>)}
+              </div>
+            </>}
           </div>
 
           <div ref={editorRef} className="rounded-2xl p-5 h-fit min-w-0 nl-admin-col" aria-label="Question editor" style={{ background: 'linear-gradient(160deg,rgba(8,145,178,.08),rgba(94,234,212,.08))', border: '1px solid var(--color-border)' }}>
@@ -518,6 +589,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
               <div className="flex items-center justify-between mb-1"><div><p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-teal-dark)' }}>Edit built-in field</p><h3 className="font-serif text-xl font-semibold">{def.label}</h3></div><button type="button" className="p-2 rounded-lg" aria-label="Close" onClick={() => setEditingCore(null)}><X className="w-4 h-4" /></button></div>
               <div><label className="label">Field label</label><input value={coreLabelDraft} onChange={e => setCoreLabelDraft(e.target.value)} maxLength={80} className="input-field" /></div>
               <div><label className="label">Placeholder</label><input value={corePlaceholderDraft} onChange={e => setCorePlaceholderDraft(e.target.value)} maxLength={120} className="input-field" /></div>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={coreActiveDraft} onChange={e => setCoreActiveDraft(e.target.checked)} /> Show this field on the reader&apos;s profile page</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={coreVisibleDraft} onChange={e => setCoreVisibleDraft(e.target.checked)} /> Visible by default (readers can still change it with their eye control)</label>
               <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Section ({def.section}) and answer type ({def.type}) are fixed for built-in fields. Default visibility applies to readers who haven&apos;t saved a visibility choice yet.</p>
               <div className="flex gap-2"><button type="button" className="btn-primary flex-1" disabled={questionSaving} onClick={saveCore}><Save className="w-4 h-4" />{questionSaving ? 'Saving…' : 'Update field'}</button><button type="button" className="btn-ghost !w-auto" onClick={restoreCore}>Restore default</button></div>
@@ -532,7 +604,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
                 <input value={placeholder} onChange={e => setPlaceholder(e.target.value)} placeholder={type === 'long_text' ? 'Write a few lines about your reading life…' : type === 'number' ? 'e.g. 12' : type === 'year' ? 'e.g. 2018' : type === 'url' ? 'https://example.com/your-profile' : 'e.g. The book that changed everything'} className="input-field" />
                 <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>Shown inside the answer field to guide users. It disappears once they type an answer.</p>
               </div>}
-              <QuestionCardAppearancePreview profileCardMode={profileCardMode === 'tag' ? 'tag' : showQuestionInCard ? 'answer' : 'answer_no_question'} type={type} question={question} options={options.filter(Boolean)} allowOther={allowOther} imageCount={imageCount} placeholder={placeholder} imageMaxWidth={imageMaxWidth} imageMaxHeight={imageMaxHeight} />
+              <QuestionCardAppearancePreview profileCardMode={cardModeFor(profileCardMode, showQuestionInCard)} type={type} question={question} options={options.filter(Boolean)} allowOther={allowOther} imageCount={imageCount} placeholder={placeholder} imageMaxWidth={imageMaxWidth} imageMaxHeight={imageMaxHeight} />
               <div><label className="label">Question type</label><select value={type} onChange={e => setType(e.target.value as ProfileQuestionType)} className="input-field">{QUESTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
               {(type === 'select' || type === 'select_single' || type === 'select_multiple') && <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3"><div><label className="label">Dropdown options</label><p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Each option has its own field. Add as many as needed.</p></div><div className="flex gap-2"><button type="button" className="btn-ghost !w-auto !px-3 text-xs" onClick={() => setOptions(v => [...v, ''])}><Plus className="w-3.5 h-3.5"/> Add option</button><button type="button" className="btn-ghost !w-auto !px-3 text-xs" onClick={() => setOptions(v => [...v].sort((a,b) => a.localeCompare(b, undefined, { sensitivity: 'base' })))}>A–Z</button></div></div>
@@ -547,7 +619,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
               </div>}
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={required} onChange={e => setRequired(e.target.checked)} /> Required</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={publicDefault} onChange={e => setPublicDefault(e.target.checked)} /> Visible by default</label>
-              <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(0,151,178,.08)' }}><p className="text-sm font-semibold">Profile card presentation</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><label className="flex items-center gap-2 text-sm rounded-lg p-2 border"><input type="radio" name="profile-card-mode" checked={profileCardMode === 'tag'} onChange={() => { setProfileCardMode('tag'); setShowQuestionInCard(true); }} /> Tag</label><label className="flex items-center gap-2 text-sm rounded-lg p-2 border"><input type="radio" name="profile-card-mode" checked={profileCardMode !== 'tag'} onChange={() => setProfileCardMode(showQuestionInCard ? 'answer' : 'answer_no_question')} /> Answer</label></div><label className="flex items-center gap-2 text-sm rounded-lg p-2 border mt-2"><input type="checkbox" checked={showQuestionInCard} disabled={profileCardMode === 'tag'} onChange={e => { const checked = e.target.checked; setShowQuestionInCard(checked); setProfileCardMode(checked ? 'answer' : 'answer_no_question'); }} /> <span><strong>Show question</strong> on the profile card when displaying the answer</span></label><p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Use this control to show or hide the question label while keeping the saved answer visible. “Show answer on profile card” still controls whether the question is included at all.</p></div>
+              <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(0,151,178,.08)' }}><p className="text-sm font-semibold">Profile card presentation</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><label className="flex items-center gap-2 text-sm rounded-lg p-2 border"><input type="radio" name="profile-card-mode" checked={profileCardMode === 'tag'} onChange={() => setProfileCardMode('tag')} /> Tag</label><label className="flex items-center gap-2 text-sm rounded-lg p-2 border"><input type="radio" name="profile-card-mode" checked={profileCardMode !== 'tag'} onChange={() => setProfileCardMode('answer')} /> Answer</label></div><label className="flex items-center gap-2 text-sm rounded-lg p-2 border mt-2"><input type="checkbox" checked={showQuestionInCard} onChange={e => setShowQuestionInCard(e.target.checked)} /> <span><strong>Show question</strong> on the profile card (turn off to show only the answer, as a tag or as an answer)</span></label><p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Use this control to show or hide the question label while keeping the saved answer visible. “Show answer on profile card” still controls whether the question is included at all.</p></div>
               <button type="button" className="btn-primary w-full" disabled={questionSaving} onClick={saveQuestion}><Save className="w-4 h-4" />{questionSaving ? (editing ? 'Updating…' : 'Saving…') : (editing ? 'Update question' : 'Add question')}</button>
             </div>
             </div>
@@ -578,6 +650,7 @@ function questionTypeLabel(type: ProfileQuestion['type']): string {
   return QUESTION_TYPES.find(x => x.value === type)?.label || type.replace(/_/g, ' ');
 }
 
+const cardModeFor = (kind: 'tag' | 'answer', showQuestion: boolean): NonNullable<ProfileQuestion['profile_card_mode']> => kind === 'tag' ? (showQuestion ? 'tag' : 'tag_no_question') : (showQuestion ? 'answer' : 'answer_no_question');
 function QuestionCardAppearancePreview({
   profileCardMode,
   type,
@@ -612,7 +685,7 @@ function QuestionCardAppearancePreview({
       <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-100">Live</span>
     </div>
     <div className="mt-3 rounded-2xl border border-white/10 bg-black/10 p-4">
-      {profileCardMode !== 'answer_no_question' && <p className="text-xs font-bold uppercase tracking-[.12em] text-cyan-200">{title}</p>}
+      {profileCardMode !== 'answer_no_question' && profileCardMode !== 'tag_no_question' && <p className="text-xs font-bold uppercase tracking-[.12em] text-cyan-200">{title}</p>}
       {type === 'image_upload' ? <div className={`mt-3 grid gap-2 ${imageCount > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
         {Array.from({ length: Math.min(imageCount || 1, 3) }).map((_, i) => <div key={i} className="aspect-square rounded-xl border border-dashed border-cyan-200/30 bg-white/[0.05] grid place-items-center text-[10px] text-white/40">Image {i + 1}</div>)}{imageMaxWidth && imageMaxHeight && <p className="col-span-full text-[10px] text-white/45">Up to {imageMaxWidth} × {imageMaxHeight}px</p>}
       </div> : type === 'select_multiple' ? <div className="mt-3 flex flex-wrap gap-1.5">

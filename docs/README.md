@@ -237,3 +237,10 @@ When behavior changes:
 - New invariant/security rule → update `RULES.md`.
 - Implementation status → update `TASKS.md`.
 - Setup/deployment changes → update `README.md`.
+
+
+## Version 1.40 profile update
+
+- Restored the 24-hour story upload UI beside the profile card using the 1.36 layout and styling.
+- Restored the follower/following privacy controls beside the profile card using the 1.36 presentation.
+- Placed the current 1.39 profile-question buttons directly below the story/privacy area while keeping their current question editing and visibility controls unchanged.

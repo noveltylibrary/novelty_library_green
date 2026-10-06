@@ -61,7 +61,7 @@ export function RatingGuideCard() {
         })}
       </ul>
 
-      <p className="rgc-note">Goodreads and Amazon ratings remain 5-point platform ratings. R/W is the reviewer&apos;s personal score out of 10 and is not an average of those platform scores.</p>
+      <p className="rgc-note">Goodreads and Amazon ratings remain 5-point platform ratings. R/W is the reviewer&apos;s personal score out of 10. NL is the cumulative average (out of 10) of the R/W score plus all Novelty Library reader ratings on the community review post.</p>
     </div>
   );
 }

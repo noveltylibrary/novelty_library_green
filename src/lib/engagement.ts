@@ -34,14 +34,17 @@ export const EMPTY_STATS: EngagementStats = { likeCount: 0, ratingCount: 0, rati
 
 /**
  * NL Rating is the cumulative community average for this book/review post.
- * It uses only ratings submitted by readers in the community review post;
- * the reviewer's R/W score is intentionally not included in this average.
- * Returns null until at least one community rating exists.
+ * It averages the reviewer's own R/W score (counted as one rating) together with
+ * every rating submitted by readers on the community review post, so every post
+ * with an R/W score has an NL rating, even before any reader has rated it.
+ * Returns null only when there is neither an R/W score nor a reader rating.
  */
-export function computeNlRating(_rwRating: number | null | undefined, stats?: EngagementStats): number | null {
-  const count = stats?.ratingCount ?? 0;
+export function computeNlRating(rwRating: number | null | undefined, stats?: EngagementStats): number | null {
+  const rw = Number(rwRating);
+  const hasRw = Number.isFinite(rw) && rw > 0;
+  const count = (stats?.ratingCount ?? 0) + (hasRw ? 1 : 0);
   if (count <= 0) return null;
-  return (stats?.ratingSum ?? 0) / count;
+  return ((stats?.ratingSum ?? 0) + (hasRw ? rw : 0)) / count;
 }
 
 export function displayNameFor(user: User, profile: Profile | null): string {
@@ -96,14 +99,39 @@ export function useEngagement() {
   const userId = user?.id;
 
   const refresh = useCallback(async () => {
+    const map: Record<string, EngagementStats> = {};
+    // Load the aggregate view first for likes/reviews and the normal counters.
     try {
       const { data } = await supabase.from('community_review_stats').select('*');
-      const map: Record<string, EngagementStats> = {};
       for (const row of (data ?? []) as Array<{ review_id: string; like_count: number; rating_count: number; rating_sum: number; review_count: number }>) {
-        map[row.review_id] = { likeCount: row.like_count, ratingCount: row.rating_count, ratingSum: row.rating_sum, reviewCount: row.review_count };
+        map[row.review_id] = { likeCount: Number(row.like_count ?? 0), ratingCount: Number(row.rating_count ?? 0), ratingSum: Number(row.rating_sum ?? 0), reviewCount: Number(row.review_count ?? 0) };
       }
-      setStats(map);
-    } catch { /* engagement tables not migrated yet: app keeps working without them */ }
+    } catch { /* fall through to the source feedback table */ }
+
+    // NL Rating is authoritative from the source reader-rating rows. Do not add
+    // these to community_review_stats: that aggregate already contains the same
+    // ratings and doing so doubles the count/sum. Rebuild only the rating fields
+    // from community_review_feedback while preserving likes/review counts.
+    try {
+      const { data: feedbackRows } = await supabase
+        .from('community_review_feedback')
+        .select('review_id,rating');
+      const ratingTotals: Record<string, { count: number; sum: number }> = {};
+      for (const row of (feedbackRows ?? []) as Array<{ review_id: string; rating: number | null }>) {
+        const rating = row.rating == null ? null : Number(row.rating);
+        if (rating == null || !Number.isFinite(rating)) continue;
+        const cur = ratingTotals[row.review_id] ?? { count: 0, sum: 0 };
+        cur.count += 1;
+        cur.sum += rating;
+        ratingTotals[row.review_id] = cur;
+      }
+      for (const [reviewId, totals] of Object.entries(ratingTotals)) {
+        const cur = map[reviewId] ?? EMPTY_STATS;
+        map[reviewId] = { ...cur, ratingCount: totals.count, ratingSum: totals.sum };
+      }
+    } catch { /* feedback table unavailable: keep the rest of engagement working */ }
+
+    setStats(map);
     if (!userId) { setLiked(new Set()); return; }
     try {
       const { data } = await supabase.from('community_review_likes').select('review_id').eq('user_id', userId);

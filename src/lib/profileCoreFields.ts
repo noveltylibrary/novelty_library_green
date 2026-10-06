@@ -33,7 +33,7 @@ export const CORE_FIELDS: CoreFieldDef[] = [
   { key: 'favorite_genre', label: 'Favourite Genre', placeholder: 'e.g. Literary Fiction', section: 'Reading Journey', type: 'Short answer', locked: false, defaultVisible: true },
 ];
 
-export type CoreOverride = { label?: string; placeholder?: string; defaultVisible?: boolean };
+export type CoreOverride = { label?: string; placeholder?: string; defaultVisible?: boolean; active?: boolean };
 export type CoreOverrides = Partial<Record<CoreFieldKey, CoreOverride>>;
 
 const SLUG = 'profile-core-fields';
@@ -52,6 +52,7 @@ export async function fetchCoreOverrides(): Promise<CoreOverrides> {
         label: typeof o.label === 'string' && o.label.trim() ? o.label.trim().slice(0, 80) : undefined,
         placeholder: typeof o.placeholder === 'string' ? o.placeholder.slice(0, 120) : undefined,
         defaultVisible: typeof o.defaultVisible === 'boolean' ? o.defaultVisible : undefined,
+        active: typeof o.active === 'boolean' ? o.active : undefined,
       };
     }
     return clean;
@@ -86,6 +87,12 @@ export function coreLabel(o: CoreOverrides, key: CoreFieldKey): string {
 }
 export function corePlaceholder(o: CoreOverrides, key: CoreFieldKey): string {
   return o[key]?.placeholder ?? CORE_FIELDS.find((f) => f.key === key)!.placeholder;
+}
+
+/** Admin can switch a built-in field off; locked fields (name, email) are always on. */
+export function coreActive(o: CoreOverrides, key: CoreFieldKey): boolean {
+  if (CORE_FIELDS.find((f) => f.key === key)?.locked) return true;
+  return o[key]?.active !== false;
 }
 
 export function useCoreOverrides(): CoreOverrides {
