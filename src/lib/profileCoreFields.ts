@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
  */
 export type CoreFieldKey =
   | 'name' | 'email' | 'instagram'
-  | 'reading_since' | 'books_read_this_month' | 'total_books_read' | 'total_books_published'
+  | 'reading_since' | 'books_read_this_month' | 'total_books_read'
   | 'favorite_book' | 'favorite_author' | 'favorite_genre';
 
 export interface CoreFieldDef {
@@ -28,17 +28,16 @@ export const CORE_FIELDS: CoreFieldDef[] = [
   { key: 'reading_since', label: 'Reading Since', placeholder: '2024', section: 'Reading Journey', type: 'Year', locked: false, defaultVisible: true },
   { key: 'books_read_this_month', label: 'Books Read This Month', placeholder: '3', section: 'Reading Journey', type: 'Number', locked: false, defaultVisible: true },
   { key: 'total_books_read', label: 'Total Books Read', placeholder: '102', section: 'Reading Journey', type: 'Number', locked: false, defaultVisible: true },
-  { key: 'total_books_published', label: 'Total Books Published', placeholder: '', section: 'Basic Reader', type: 'Read-only number', locked: false, defaultVisible: true },
   { key: 'favorite_book', label: 'Favourite Book', placeholder: 'e.g. The Midnight Library', section: 'Reading Journey', type: 'Short answer', locked: false, defaultVisible: true },
   { key: 'favorite_author', label: 'Favourite Author', placeholder: 'e.g. Madeline Miller', section: 'Reading Journey', type: 'Short answer', locked: false, defaultVisible: true },
   { key: 'favorite_genre', label: 'Favourite Genre', placeholder: 'e.g. Literary Fiction', section: 'Reading Journey', type: 'Short answer', locked: false, defaultVisible: true },
 ];
 
 /** Built-in sections that can hold built-in fields. Name and Email are always pinned in reader_identity. */
-export type CoreSectionKey = 'reader_identity' | 'basic_reader' | 'reading_journey' | `custom:${string}`;
-export const CORE_SECTION_KEYS: CoreSectionKey[] = ['reader_identity', 'basic_reader', 'reading_journey'];
+export type CoreSectionKey = 'reader_identity' | 'reading_journey' | `custom:${string}`;
+export const CORE_SECTION_KEYS: CoreSectionKey[] = ['reader_identity', 'reading_journey'];
 export const isCoreSectionKey = (v: unknown): v is CoreSectionKey =>
-  v === 'reader_identity' || v === 'basic_reader' || v === 'reading_journey' || (typeof v === 'string' && /^custom:.{1,80}$/.test(v));
+  v === 'reader_identity' || v === 'reading_journey' || (typeof v === 'string' && /^custom:.{1,80}$/.test(v));
 
 export type CoreOverride = { label?: string; placeholder?: string; defaultVisible?: boolean; active?: boolean; section?: CoreSectionKey };
 export type CoreOverrides = Partial<Record<CoreFieldKey, CoreOverride>>;
@@ -105,10 +104,7 @@ export function coreActive(o: CoreOverrides, key: CoreFieldKey): boolean {
 
 /** Default section of a built-in field (before any admin override). */
 export function coreDefaultSection(key: CoreFieldKey): CoreSectionKey {
-  const section = CORE_FIELDS.find((f) => f.key === key)?.section;
-  if (section === 'Reading Journey') return 'reading_journey';
-  if (section === 'Basic Reader') return 'basic_reader';
-  return 'reader_identity';
+  return CORE_FIELDS.find((f) => f.key === key)?.section === 'Reading Journey' ? 'reading_journey' : 'reader_identity';
 }
 
 /** Section a built-in field is shown in. Locked fields (name, email) never move. */

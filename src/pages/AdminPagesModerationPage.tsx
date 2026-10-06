@@ -122,7 +122,6 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   // Built-in fields grouped by the built-in section they currently live in (drag preview wins while dragging).
   const coreLists = useMemo<Record<CoreSectionKey, CoreFieldKey[]>>(() => fieldPreview ?? {
     reader_identity: coreFieldsInSection(coreOverrides, coreFieldOrder, 'reader_identity').map(f => f.key),
-    basic_reader: coreFieldsInSection(coreOverrides, coreFieldOrder, 'basic_reader').map(f => f.key),
     reading_journey: coreFieldsInSection(coreOverrides, coreFieldOrder, 'reading_journey').map(f => f.key),
   }, [fieldPreview, coreOverrides, coreFieldOrder]);
 
@@ -458,9 +457,9 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
 
   // Saves a new built-in field placement (section + order). Shows the result immediately and rolls back on failure.
   const persistCoreLists = async (next: Record<CoreSectionKey, CoreFieldKey[]>, key: CoreFieldKey) => {
-    const sec: CoreSectionKey = next.reader_identity.includes(key) ? 'reader_identity' : next.basic_reader.includes(key) ? 'basic_reader' : 'reading_journey';
+    const sec: CoreSectionKey = next.reader_identity.includes(key) ? 'reader_identity' : 'reading_journey';
     const order: CoreFieldOrder = {};
-    [...next.reader_identity, ...next.basic_reader, ...next.reading_journey].forEach((k, i) => { order[k] = i; });
+    [...next.reader_identity, ...next.reading_journey].forEach((k, i) => { order[k] = i; });
     const prevOverrides = coreOverrides; const prevOrder = coreFieldOrder;
     setCoreFieldOrder(order);
     setCoreOverrides({ ...coreOverrides, [key]: { ...(coreOverrides[key] ?? {}), section: sec === coreDefaultSection(key) ? undefined : sec } });
@@ -490,7 +489,6 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     const base = fieldPreview ?? coreLists;
     const next: Record<CoreSectionKey, CoreFieldKey[]> = {
       reader_identity: base.reader_identity.filter(k => k !== dragField),
-      basic_reader: base.basic_reader.filter(k => k !== dragField),
       reading_journey: base.reading_journey.filter(k => k !== dragField),
     };
     const list = next[sec];
@@ -511,7 +509,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     const next = fieldPreview; const key = dragField;
     setFieldPreview(null); setDragField(null);
     if (!next || !key) return;
-    const same = (['reader_identity', 'basic_reader', 'reading_journey'] as const).every(sec => next[sec].join('|') === coreLists[sec].join('|'));
+    const same = (['reader_identity', 'reading_journey'] as const).every(sec => next[sec].join('|') === coreLists[sec].join('|'));
     if (same) return;
     await persistCoreLists(next, key);
   };
@@ -532,7 +530,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
       setConverting(true);
       const result = await convertReadingJourneyToQuestions();
       await loadProfileBuilder();
-      setMsg(`Reading Journey is now a normal section${result.questionsCreated ? ` with ${result.questionsCreated} question${result.questionsCreated === 1 ? '' : 's'} created` : ''}${result.questionsMoved ? ` and ${result.questionsMoved} existing question${result.questionsMoved === 1 ? '' : 's'} moved` : ''}. You can edit, reorder, move or hide them like any other question.`);
+      setMsg(`Reading Journey is now a normal section${result.questionsCreated ? ` with ${result.questionsCreated} question${result.questionsCreated === 1 ? '' : 's'}` : ''}. You can edit, reorder, move or hide them like any other question.`);
     } catch (e) {
       setMsg(e instanceof Error ? `Could not convert Reading Journey: ${e.message}` : 'Could not convert Reading Journey.');
     } finally { setConverting(false); }
@@ -671,7 +669,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
           {hubItem && <button type="button" className="btn-ghost !w-auto text-xs mb-3" onClick={() => openBuiltInSection(hubItem)}><Pencil className="w-3.5 h-3.5" /> Edit profile page heading &amp; description</button>}
           <div className="flex flex-col gap-2 max-w-2xl" role="list" aria-label="Profile sections, top to bottom" onDragOver={e => { if (dragSec) e.preventDefault(); }} onDrop={e => { e.preventDefault(); void commitSections(); }}>
             {shownSections.map((item, index) => {
-              const builtIn = item.key === 'reader_identity' || item.key === 'profile_questions' || item.key === 'basic_reader' || item.key === 'reading_journey';
+              const builtIn = item.key === 'reader_identity' || item.key === 'profile_questions' || item.key === 'reading_journey';
               const custom = !builtIn ? orderedSections.find(s => item.key === `custom:${s.id}`) : null;
               const locked = item.key === 'reader_identity';
               const dragging = dragSec === item.key;
@@ -693,13 +691,13 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
               <p className="text-xs mt-1 mb-3" style={{ color: 'var(--color-text-muted)' }}>These ship with every profile and work like any other section: drag a field to reorder it or drop it into the other section, use Edit to change its label, placeholder, section and default visibility, or hide it. Name and Email are locked.</p>
               {!readingConverted && <div className="rounded-2xl p-4 mb-4 flex flex-wrap items-center justify-between gap-3" style={{ background: 'linear-gradient(135deg,rgba(0,151,178,.09),rgba(53,211,217,.12))', border: '1px solid var(--color-border)' }}><div className="min-w-0 flex-1" style={{ minWidth: 220 }}><p className="text-sm font-semibold">Turn the built-in Reading Journey into a normal section</p><p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Creates a “Reading Journey” section and replaces the six built-in reading questions with ordinary questions of the same names, so they can be edited, dragged and moved like every other question. Readers keep their existing answers. Identity stays as it is.</p></div><button type="button" className="btn-primary !w-auto" disabled={converting} onClick={() => void convertReading()}>{converting ? 'Converting…' : 'Convert to a section'}</button></div>}
               <div className="space-y-4">
-                {(['reader_identity', 'basic_reader', 'reading_journey'] as CoreSectionKey[]).filter(k => !(k === 'reading_journey' && readingConverted)).map(sectionKey => {
+                {(['reader_identity', 'reading_journey'] as CoreSectionKey[]).filter(k => !(k === 'reading_journey' && readingConverted)).map(sectionKey => {
                   const sectionItem = allSectionLayout.find(x => x.key === sectionKey);
                   const keys = coreLists[sectionKey];
                   const lockedFields = sectionKey === 'reader_identity' ? CORE_FIELDS.filter(f => f.locked) : [];
                   const dragFromHere = !!dragField && keys.includes(dragField);
                   return <section key={sectionKey} onDragOver={e => { if (dragField) e.preventDefault(); }} onDragEnter={() => { if (dragField && !keys.includes(dragField)) previewField(sectionKey, null); }} onDrop={e => { e.preventDefault(); void commitFields(); }} className="rounded-2xl p-3 min-w-0" style={{ background: 'var(--color-background)', border: dragFromHere ? '1px solid var(--color-cyan-dark)' : '1px solid var(--color-border)' }}>
-                    <div className="flex items-center justify-between gap-2 mb-2 px-1"><p className="text-xs uppercase tracking-wider font-bold truncate" style={{ color: 'var(--color-teal-dark)' }}>{sectionItem?.header || (sectionKey === 'reading_journey' ? 'Your reading life' : sectionKey === 'basic_reader' ? 'Basic Reader' : 'Identity')}</p><span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Built-in section · {keys.length + lockedFields.length} field{keys.length + lockedFields.length === 1 ? '' : 's'}</span></div>
+                    <div className="flex items-center justify-between gap-2 mb-2 px-1"><p className="text-xs uppercase tracking-wider font-bold truncate" style={{ color: 'var(--color-teal-dark)' }}>{sectionItem?.header || (sectionKey === 'reading_journey' ? 'Your reading life' : 'Build your reader identity')}</p><span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Built-in section · {keys.length + lockedFields.length} field{keys.length + lockedFields.length === 1 ? '' : 's'}</span></div>
                     <div className="space-y-2">
                       {lockedFields.map(f => <div key={f.key} className="rounded-xl p-3 flex items-center gap-2" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}><Lock className="w-4 h-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} aria-hidden="true" /><div className="min-w-0 flex-1"><p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'var(--color-teal-dark)' }}>{f.type}</p><p className="font-semibold text-sm truncate">{f.label}</p><p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Built-in · locked at the top</p></div><span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: 'var(--color-text-muted)' }}>Locked</span></div>)}
                       {keys.length === 0 && <div className="rounded-xl py-6 text-center text-xs" style={{ border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)' }}>Drop a built-in field here</div>}
@@ -761,7 +759,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
               <div className="flex items-center justify-between mb-1"><div><p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-teal-dark)' }}>Edit built-in field</p><h3 className="font-serif text-xl font-semibold">{def.label}</h3></div><button type="button" className="p-2 rounded-lg" aria-label="Close" onClick={() => setEditingCore(null)}><X className="w-4 h-4" /></button></div>
               <div><label className="label">Field label</label><input value={coreLabelDraft} onChange={e => setCoreLabelDraft(e.target.value)} maxLength={80} className="input-field" /></div>
               <div><label className="label">Placeholder</label><input value={corePlaceholderDraft} onChange={e => setCorePlaceholderDraft(e.target.value)} maxLength={120} className="input-field" /></div>
-              <div><label className="label">Section</label><select value={coreSectionDraft} onChange={e => setCoreSectionDraft(e.target.value as CoreSectionKey)} className="input-field"><option value="reader_identity">{allSectionLayout.find(x => x.key === 'reader_identity')?.header || 'Identity'}</option><option value="basic_reader">{allSectionLayout.find(x => x.key === 'basic_reader')?.header || 'Basic Reader'}</option>{!readingConverted && <option value="reading_journey">{allSectionLayout.find(x => x.key === 'reading_journey')?.header || 'Your reading life'}</option>}</select><p className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>Choose which built-in section readers see this field in. You can also drag the field between sections.</p></div>
+              <div><label className="label">Section</label><select value={coreSectionDraft} onChange={e => setCoreSectionDraft(e.target.value as CoreSectionKey)} className="input-field"><option value="reader_identity">{allSectionLayout.find(x => x.key === 'reader_identity')?.header || 'Build your reader identity'}</option>{!readingConverted && <option value="reading_journey">{allSectionLayout.find(x => x.key === 'reading_journey')?.header || 'Your reading life'}</option>}</select><p className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>Choose which built-in section readers see this field in. You can also drag the field between sections.</p></div>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={coreActiveDraft} onChange={e => setCoreActiveDraft(e.target.checked)} /> Show this field on the reader&apos;s profile page</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={coreVisibleDraft} onChange={e => setCoreVisibleDraft(e.target.checked)} /> Visible by default (readers can still change it with their eye control)</label>
               <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>The answer type ({def.type}) is fixed for built-in fields because it is tied to the reader&apos;s saved profile data. Default visibility applies to readers who haven&apos;t saved a visibility choice yet.</p>

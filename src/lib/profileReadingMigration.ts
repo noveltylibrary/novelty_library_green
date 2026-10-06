@@ -19,7 +19,7 @@ const READING_FIELDS: { key: LegacyProfileFieldKey & CoreFieldKey; type: Profile
   { key: 'favorite_genre', type: 'short_text' },
 ];
 
-export type ReadingMigrationResult = { sectionCreated: boolean; questionsCreated: number; questionsMoved: number };
+export type ReadingMigrationResult = { sectionCreated: boolean; questionsCreated: number };
 
 /**
  * One-time, idempotent conversion of the built-in "Reading Journey" fields into a real question section with
@@ -53,22 +53,11 @@ export async function convertReadingJourneyToQuestions(): Promise<ReadingMigrati
   const pos = (k: CoreFieldKey) => order[k] ?? CORE_FIELDS.findIndex(f => f.key === k);
   const todo = [...READING_FIELDS].sort((a, b) => pos(a.key) - pos(b.key));
   let questionsCreated = 0;
-  let questionsMoved = 0;
   for (let i = 0; i < todo.length; i += 1) {
     const { key, type } = todo[i];
-    const existing = questions.find(q => q.key === key);
+    if (have.has(key)) continue;
     const def = CORE_FIELDS.find(f => f.key === key)!;
     const o = overrides[key] ?? {};
-    if (existing) {
-      // Reuse the same key so every reader keeps the answer already stored in
-      // profiles. If an earlier attempt created the question elsewhere, move it
-      // into the new same-name section rather than creating a duplicate.
-      if (existing.section !== section.name || existing.sort_order !== i) {
-        await saveProfileQuestion({ ...existing, section: section.name, section_order: section.sort_order, sort_order: i });
-        questionsMoved += existing.section === section.name ? 0 : 1;
-      }
-      continue;
-    }
     await saveProfileQuestion({
       key,
       section: section.name,
@@ -88,5 +77,5 @@ export async function convertReadingJourneyToQuestions(): Promise<ReadingMigrati
 
   // Last step: retire the built-in tile. Done only after every question exists.
   await saveProfileSectionLayout(layout.map(x => x.key === 'reading_journey' ? { ...x, active: false, converted: true } : x));
-  return { sectionCreated, questionsCreated, questionsMoved };
+  return { sectionCreated, questionsCreated };
 }

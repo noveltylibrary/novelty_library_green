@@ -32,19 +32,24 @@ export function PublicProfilePage({ username, navigate }: Props) {
   const cardData:ProfileCardData|undefined=useMemo(()=>{
     if(!profile)return undefined;
     const avg=published.filter(r=>Number(r.reviewers_rating)>0);
-    const answers=Object.fromEntries(questions.map(q=>{ const raw=(profile.profile_answers||{})[q.key]; if(q.type==='image_upload') return [sanitizeUserText(q.key,120), answerImageUrls(raw).map(url=>safeExternalUrl(url)).filter((url): url is string=>!!url)]; if(q.type==='select_multiple' && Array.isArray(raw)) return [sanitizeUserText(q.key,120), raw.map(v=>sanitizeUserText(answerText(v),180)).filter(Boolean)]; return [sanitizeUserText(q.key,120),sanitizeUserText(answerText(raw),1200)]; }));
+    // Honour the owner's eye toggles. Missing key => the question's public_default (legacy fields: visible).
+    const vis=(profile.profile_visibility||{}) as Record<string,boolean>;
+    const shown=(k:string,def=true)=>(vis[k]??def)!==false;
+    const visibleQuestions=questions.filter(q=>q.active!==false&&q.show_in_profile_card!==false&&shown(`question:${q.key}`,q.public_default!==false));
+    const answers=Object.fromEntries(visibleQuestions.map(q=>{ const raw=(profile.profile_answers||{})[q.key]; if(q.type==='image_upload') return [sanitizeUserText(q.key,120), answerImageUrls(raw).map(url=>safeExternalUrl(url)).filter((url): url is string=>!!url)]; if(q.type==='select_multiple' && Array.isArray(raw)) return [sanitizeUserText(q.key,120), raw.map(v=>sanitizeUserText(answerText(v),180)).filter(Boolean)]; return [sanitizeUserText(q.key,120),sanitizeUserText(answerText(raw),1200)]; }));
     // Converted reading fields are real questions: they show only while their question is active and on the card.
     const readingConverted=questions.some(q=>isLegacyProfileFieldKey(q.key));
-    const legacyOn=(k:LegacyProfileFieldKey)=>{ if(!readingConverted) return true; const q=questions.find(x=>x.key===k); return !!q&&q.active!==false&&q.show_in_profile_card!==false; };
-    const safeQuestions=questions.filter(q=>!isLegacyProfileFieldKey(q.key)).map(q=>({...q,key:sanitizeUserText(q.key,120),question:sanitizeUserText(q.question,300)}));
+    const legacyOn=(k:LegacyProfileFieldKey)=>{ if(!shown(k)) return false; if(!readingConverted) return true; const q=questions.find(x=>x.key===k); return !!q&&q.active!==false&&q.show_in_profile_card!==false; };
+    const safeQuestions=visibleQuestions.filter(q=>!isLegacyProfileFieldKey(q.key)).map(q=>({...q,key:sanitizeUserText(q.key,120),question:sanitizeUserText(q.question,300)}));
     const socialLinks=(profile.social_links||[]).map(l=>({platform:sanitizeUserText(l.platform,40).toLowerCase(),url:safeExternalUrl(l.url)||''})).filter(l=>l.url);
     return {
-      name:sanitizeUserText(profile.name,120)||null,
+      name:shown('name')?sanitizeUserText(profile.name,120)||null:null,
       username:sanitizeUserText(profile.novelty_username,80)||null,
-      avatarUrl:safeExternalUrl(profile.avatar_url),
-      headerImageUrl:safeExternalUrl(profile.header_image_url),
+      avatarUrl:shown('avatar')?safeExternalUrl(profile.avatar_url):null,
+      headerImageUrl:shown('header_image')?safeExternalUrl(profile.header_image_url):null,
+      superBlitzBannerUrl:shown('header_image')&&typeof (profile.profile_answers||{}).__superblitz_banner==='string'?safeExternalUrl((profile.profile_answers as Record<string,unknown>).__superblitz_banner as string):null,
       socialLinks,
-      instagram:(profile.profile_visibility?.instagram===false?null:sanitizeUserText(profile.instagram_id,80)||null),
+      instagram:(!shown('instagram')?null:sanitizeUserText(profile.instagram_id,80)||null),
       booksThisMonth:legacyOn('books_read_this_month')?profile.books_read_this_month:null,totalBooksRead:legacyOn('total_books_read')?profile.total_books_read:null,publishedBooks:published.length,
       avgRating:avg.length?avg.reduce((s,r)=>s+Number(r.reviewers_rating),0)/avg.length:null,
       readingSince:legacyOn('reading_since')?profile.reading_since:null,

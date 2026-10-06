@@ -210,8 +210,8 @@ export async function uploadAvatarImage(rawFile: File, userId: string): Promise<
   return { path: fileName, publicUrl: urlData.publicUrl };
 }
 
-export async function uploadProfileHeaderImage(rawFile: File, userId: string): Promise<{ path: string; publicUrl: string }> {
-  const file = await prepareImageForUpload(rawFile);
+export async function uploadProfileHeaderImage(rawFile: File, userId: string, limits?: { maxWidth?: number; maxHeight?: number }): Promise<{ path: string; publicUrl: string }> {
+  const file = await prepareImageForUpload(rawFile, limits?.maxWidth ?? 3000, limits?.maxHeight ?? 3000);
   const ext = extForImageType(file.type);
   const fileName = `${userId}/headers/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await supabase.storage.from('avatars').upload(fileName, file, { contentType: file.type, upsert: true, cacheControl: '31536000' });

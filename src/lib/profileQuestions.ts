@@ -71,28 +71,11 @@ export async function saveProfileQuestionSection(input: {
   const name = input.name.trim();
   if (!name) throw new Error('Section name is required.');
 
-  // New sections must never reuse an occupied sort_order. The database enforces
-  // uniqueness here, and the old admin flow could collide with a seeded section
-  // (for example two sections both trying to use 20). Keep edits deterministic,
-  // but choose the next free slot for a genuinely new section.
-  let sortOrder = input.sort_order ?? 10;
-  if (!input.id) {
-    const { data: existingOrders } = await supabase
-      .from('profile_question_sections')
-      .select('sort_order')
-      .order('sort_order', { ascending: false });
-    const used = new Set((existingOrders ?? []).map(row => Number(row.sort_order)));
-    if (used.has(sortOrder)) {
-      const max = Math.max(0, ...Array.from(used).filter(Number.isFinite));
-      sortOrder = max + 10;
-    }
-  }
-
   const payload = {
     name,
     header: input.header?.trim() || name,
     description: input.description?.trim() || '',
-    sort_order: sortOrder,
+    sort_order: input.sort_order ?? 10,
     active: input.active ?? true,
   };
 

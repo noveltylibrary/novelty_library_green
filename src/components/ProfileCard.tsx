@@ -12,6 +12,8 @@ export type ProfileCardData = {
   username: string | null;
   avatarUrl: string | null;
   headerImageUrl: string | null;
+  /** Portrait banner (1336 x 2048) used only by the SuperBlitz card; stored in profile_answers.__superblitz_banner. */
+  superBlitzBannerUrl?: string | null;
   socialLinks: { platform: string; url: string }[];
   /** Instagram handle (with or without @ / URL). Shown at the bottom of the card. */
   instagram?: string | null;
@@ -29,16 +31,28 @@ export type ProfileCardData = {
 };
 
 const LOGO = '/novelty-library-logo.png';
-const SB_FRAME = '/superblitz-frame.png';
-const SB_LOGO = '/superblitz-logo.png';
+// SuperBlitz geometry (card-local px). The card is the old frame artwork cropped to the white card: 668 x 1024.
+// The white ring + notches are the banner area; PANEL is the inner profile panel (sharp vertices, rounded when drawn).
+export const SB_BANNER_SIZE = { width: 1336, height: 2048 } as const; // 2x of the 668 x 1024 card
+const SB_PANEL: [number, number, number][] = [[21,20,38],[217,20,0],[345,163,30],[553,163,0],[648,271,26],[648,1002,38],[516,1002,0],[404,884,26],[204,884,0],[104,777,30],[21,777,38]];
+function sbPanelPath(): string {
+  const pts = SB_PANEL; const n = pts.length; let d = '';
+  for (let i = 0; i < n; i++) {
+    const [x, y, r] = pts[i]; const [px, py] = pts[(i + n - 1) % n]; const [nx, ny] = pts[(i + 1) % n];
+    const l1 = Math.hypot(px - x, py - y), l2 = Math.hypot(nx - x, ny - y); const rr = Math.min(r, l1 / 2, l2 / 2);
+    const a = [x + (px - x) / l1 * rr, y + (py - y) / l1 * rr], b = [x + (nx - x) / l2 * rr, y + (ny - y) / l2 * rr];
+    d += `${i === 0 ? 'M' : 'L'}${a[0].toFixed(1)} ${a[1].toFixed(1)}${rr > 0 ? ` Q${x} ${y} ${b[0].toFixed(1)} ${b[1].toFixed(1)}` : ''}`;
+  }
+  return d + 'Z';
+}
 const FORMATS = [
   { key: '9:16', width: 1080, height: 1920 },
   { key: '16:9', width: 1600, height: 900 },
   { key: '3:4', width: 1200, height: 1600 },
   { key: '4:5', width: 1080, height: 1350 },
   { key: '1:1', width: 1080, height: 1080 },
-  // Framed card built from the SuperBlitz artwork (/superblitz-frame.png, 1080 x 1080).
-  { key: 'SuperBlitz', width: 1080, height: 1080 },
+  // Banner-framed card: uploaded banner fills the card, profile sits inside the notched panel. Exports at 2x (1336 x 2048).
+  { key: 'SuperBlitz', width: 668, height: 1024 },
 ] as const;
 export type FormatKey = (typeof FORMATS)[number]['key'];
 export const FORMAT_OPTIONS = FORMATS;
@@ -106,7 +120,7 @@ const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() 
 
 function imageAnswerGrid(urls: string[], cols: number): string { return urls.length <= 1 ? '1fr' : cols === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)'; }
 
-export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUpload, onViewPublicProfile, layout = 'inline', initialFormat, publicFormat, onPublicFormatChange }: { data: ProfileCardData; download?: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void; onViewPublicProfile?: () => void; layout?: 'inline' | 'rows'; initialFormat?: FormatKey; publicFormat?: FormatKey; onPublicFormatChange?: (f: FormatKey) => void | Promise<void> }) {
+export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUpload, onSuperBlitzBannerUpload, onViewPublicProfile, layout = 'inline', initialFormat, publicFormat, onPublicFormatChange }: { data: ProfileCardData; download?: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void; onSuperBlitzBannerUpload?: () => void; onViewPublicProfile?: () => void; layout?: 'inline' | 'rows'; initialFormat?: FormatKey; publicFormat?: FormatKey; onPublicFormatChange?: (f: FormatKey) => void | Promise<void> }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [format, setFormat] = useState<FormatKey>(initialFormat || PREVIEW_FORMAT);
@@ -151,10 +165,10 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
       const exportSelected = FORMATS.find((f) => f.key === exportFormat) || selected;
       const options = {
         cacheBust: true,
-        pixelRatio: 1,
+        pixelRatio: exportFormat === 'SuperBlitz' ? 2 : 1,
         width: exportSelected.width,
         height: exportSelected.height,
-        backgroundColor: C.deep2,
+        backgroundColor: exportFormat === 'SuperBlitz' ? '#ffffff' : C.deep2,
         imagePlaceholder: IMAGE_PLACEHOLDER,
         // The on-screen preview is scaled down with CSS; export at full size.
         style: { transform: 'none' },
@@ -198,8 +212,8 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
     </div>}
 
     {/* The preview is the exact export canvas, scaled down to fit the page. What you see is what you download. */}
-    <div ref={wrapRef} className="relative w-full mx-auto overflow-hidden rounded-[24px] nl-pc-preview" style={{ height: selected.height * scale, maxWidth: selected.width > selected.height ? 560 : 380, boxShadow: '0 26px 60px rgba(0,80,95,.28)', border: '1px solid rgba(8,145,178,.3)' }}>
-      <CardCanvas key={`${format}-${replay}`} canvasRef={canvasRef} data={data} width={selected.width} height={selected.height} superBlitz={format === 'SuperBlitz'} scale={scale} play={inView} still={downloading} onAvatarUpload={onAvatarUpload} onHeaderUpload={onHeaderUpload} />
+    <div ref={wrapRef} className="relative w-full mx-auto overflow-hidden rounded-[24px] nl-pc-preview" style={{ height: selected.height * scale, maxWidth: selected.width > selected.height ? 560 : 380, boxShadow: '0 26px 60px rgba(0,80,95,.28)', border: format === 'SuperBlitz' ? 'none' : '1px solid rgba(8,145,178,.3)', borderRadius: format === 'SuperBlitz' ? 38 * scale : undefined }}>
+      <CardCanvas key={`${format}-${replay}`} canvasRef={canvasRef} data={data} width={selected.width} height={selected.height} superBlitz={format === 'SuperBlitz'} scale={scale} play={inView} still={downloading} onAvatarUpload={onAvatarUpload} onHeaderUpload={onHeaderUpload} onSuperBlitzBannerUpload={onSuperBlitzBannerUpload} />
     </div>
   </div>;
 }
@@ -234,7 +248,7 @@ function Cover({ url, w, h, radius, iconSize }: { url: string | null; w: number;
   </div>;
 }
 
-function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, scale, play, still, onAvatarUpload, onHeaderUpload }: { canvasRef: RefObject<HTMLDivElement>; data: ProfileCardData; width: number; height: number; superBlitz?: boolean; scale: number; play: boolean; still: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void }) {
+function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, scale, play, still, onAvatarUpload, onHeaderUpload, onSuperBlitzBannerUpload }: { canvasRef: RefObject<HTMLDivElement>; data: ProfileCardData; width: number; height: number; superBlitz?: boolean; scale: number; play: boolean; still: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void; onSuperBlitzBannerUpload?: () => void }) {
   /*
    * One information architecture, responsive composition.
    * The card keeps the same reading order at every aspect ratio, but the
@@ -281,7 +295,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
 
   const ui = (px: number) => px / Math.max(scale, 0.2);
   // SuperBlitz keeps type close to 1:1 pixel scale: its content panel is only ~560px wide.
-  const u = superBlitz ? Math.min(1.1, fit.m) : Math.min(w / 1080, h / 1350) * fit.m;
+  const u = superBlitz ? Math.min(1.05, fit.m) : Math.min(w / 1080, h / 1350) * fit.m;
   const s = (n: number) => n * u;
   const pad = Math.max(w * 0.045, s(isTall ? 34 : 48));
   const bannerH = Math.round(isWide ? h * 0.25 : isLandscape ? h * 0.19 : isTall ? h * 0.13 : h * 0.16);
@@ -358,17 +372,18 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
     })}
   </div>;
 
-  const journeyItems: [string, string][] = [
-    ['Favourite book', data.favoriteBook || '—'],
-    ['Favourite author', data.favoriteAuthor || '—'],
-    ['Favourite genre', data.favoriteGenre || '—'],
-  ];
-  const journey = <div style={{ borderRadius: s(22), padding: s(isTall ? 13 : 17), background: 'linear-gradient(150deg,rgba(1,43,54,.62),rgba(1,58,70,.38))', border: `1px solid ${C.line}`, boxShadow: '0 12px 28px rgba(0,25,35,.22)' }}>
+  // A favourite the reader hid (or left empty) is dropped entirely - no label, no dash placeholder.
+  const journeyItems: [string, string][] = ([
+    ['Favourite book', data.favoriteBook],
+    ['Favourite author', data.favoriteAuthor],
+    ['Favourite genre', data.favoriteGenre],
+  ] as [string, string | null][]).filter((x): x is [string, string] => !!x[1] && x[1].trim() !== '');
+  const journey = journeyItems.length === 0 && !data.readingSince ? null : <div style={{ borderRadius: s(22), padding: s(isTall ? 13 : 17), background: 'linear-gradient(150deg,rgba(1,43,54,.62),rgba(1,58,70,.38))', border: `1px solid ${C.line}`, boxShadow: '0 12px 28px rgba(0,25,35,.22)' }}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(10), marginBottom: s(11) }}>
       <p style={{ fontSize: s(13), letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Reading journey</p>
       {data.readingSince && <span style={{ fontSize: s(11), fontWeight: 800, borderRadius: 999, padding: `${s(5)}px ${s(11)}px`, background: C.mint, color: C.deep2, whiteSpace: 'nowrap' }}>Since {data.readingSince}</span>}
     </div>
-    <div style={{ display: 'grid', gridTemplateColumns: isTall ? '1fr' : 'repeat(3,minmax(0,1fr))', gap: s(8) }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isTall ? '1fr' : `repeat(${Math.max(1, journeyItems.length)},minmax(0,1fr))`, gap: s(8) }}>
       {journeyItems.map(([label, value], i) => { const m = mv('slide', cue(0.08)); return <div key={label} className={m.className} style={{ ...m.style, minWidth: 0, borderRadius: s(14), padding: s(11), background: C.glass, border: `1px solid ${C.line}` }}>
         <p style={{ fontSize: s(8), letterSpacing: '.10em', textTransform: 'uppercase', fontWeight: 800, color: C.faint }}>{label}</p>
         <p className="font-serif" style={{ fontSize: s(isTall ? 18 : 20), fontWeight: 600, marginTop: s(4), color: C.ink, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{sanitizeUserText(value, 160)}</p>
@@ -431,33 +446,35 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
     {extra}
   </div> : null;
 
-  // ---- SuperBlitz: content laid out inside the notched panel of /superblitz-frame.png (1080 x 1080). ----
+  // ---- SuperBlitz: banner fills the card; profile lives inside the notched panel. ----
   if (superBlitz) {
-    // Safe area of the panel (frame pixel coordinates): x 300-858, y 215-800 is clear of every notch;
-    // the lower band x 470-858, y 815-905 is clear of the bottom-left notch.
-    const X = 300, W = 558;
-    const sbAvatar = 150;
+    const sbAvatar = 136;
+    const bannerUrl = safeExternalUrl(data.superBlitzBannerUrl || '');
     const sbStats = <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: s(8) }}>
       {stats.map((st, i) => { const m = mv('pop', statCues[i]); return <div key={st.label} className={m.className} style={{ ...m.style, minWidth: 0, textAlign: 'center', borderRadius: s(14), padding: `${s(9)}px ${s(4)}px`, background: 'rgba(1,43,54,.30)', border: `1px solid ${C.line}` }}>
-        <p className="font-serif" style={{ fontSize: s(32), fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
+        <p className="font-serif" style={{ fontSize: s(30), fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
         <p style={{ marginTop: s(5), fontSize: s(8), letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 800, color: C.soft, lineHeight: 1.2 }}>{st.label}</p>
       </div>; })}
     </div>;
-    return <div ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: w, height: h, overflow: 'hidden', transform: `scale(${scale})`, transformOrigin: 'top left', background: '#0097b2', color: C.ink }}>
-      <img src={SB_FRAME} alt="" crossOrigin="anonymous" style={{ position: 'absolute', inset: 0, width: w, height: h, display: 'block' }} />
-      <img src={SB_LOGO} alt="Novelty Library" style={{ position: 'absolute', left: X, top: 76, height: 112, width: 'auto', display: 'block', opacity: .95 }} />
+    const panelBg = `linear-gradient(160deg,${C.deep2} 0%,#00687f 45%,${C.teal} 100%)`;
+    return <div ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: w, height: h, overflow: 'hidden', borderRadius: 38, transform: `scale(${scale})`, transformOrigin: 'top left', background: '#fff', color: C.ink }}>
+      {/* Banner = the "white space" around the panel. */}
+      {bannerUrl && <img className={still ? '' : 'nl-pc-a nl-pc-zoom'} src={bannerUrl} alt="" crossOrigin="anonymous" style={{ position: 'absolute', inset: 0, width: w, height: h, objectFit: 'cover', display: 'block' }} />}
+      {!still && onSuperBlitzBannerUpload && <button type="button" onClick={(e) => { e.stopPropagation(); onSuperBlitzBannerUpload(); }} title={`Change banner (${SB_BANNER_SIZE.width} × ${SB_BANNER_SIZE.height} px)`} aria-label={`Change banner image, ${SB_BANNER_SIZE.width} by ${SB_BANNER_SIZE.height} pixels`} className="nl-pc-edit-chip" style={{ top: ui(28), right: ui(26), height: ui(28), padding: `0 ${ui(5)}px 0 ${ui(11)}px`, gap: ui(7), fontSize: ui(11) }}>{SB_BANNER_SIZE.width} × {SB_BANNER_SIZE.height} px<span className="nl-pc-edit-dot" style={{ width: ui(20), height: ui(20) }}><ImagePlus width={ui(12)} height={ui(12)} /></span></button>}
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ position: 'absolute', inset: 0, display: 'block' }} aria-hidden="true"><defs><linearGradient id="sbp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={C.deep2} /><stop offset=".45" stopColor="#00687f" /><stop offset="1" stopColor={C.teal} /></linearGradient></defs><path d={sbPanelPath()} fill="url(#sbp)" /></svg>
 
-      <div className={avatarMv.className} style={{ ...avatarMv.style, position: 'absolute', left: X, top: 215, width: sbAvatar, height: sbAvatar }}>
-        <div style={{ width: '100%', height: '100%', borderRadius: '50%', padding: 6, background: '#fff', boxShadow: '0 10px 26px rgba(0,25,35,.35)' }}><div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', background: C.deep2, display: 'grid', placeItems: 'center', color: C.mint, fontWeight: 800, fontSize: 56 }}>{data.avatarUrl ? <img src={safeExternalUrl(data.avatarUrl) || undefined} alt="" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : sanitizeUserText((data.name || 'N').trim().charAt(0).toUpperCase(), 2)}</div></div>
+      {/* Avatar sits in the panel's top-left lobe. */}
+      <div className={avatarMv.className} style={{ ...avatarMv.style, position: 'absolute', left: 40, top: 30, width: sbAvatar, height: sbAvatar }}>
+        <div style={{ width: '100%', height: '100%', borderRadius: '50%', padding: 5, background: '#fff', boxShadow: '0 10px 26px rgba(0,25,35,.35)' }}><div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', background: C.deep2, display: 'grid', placeItems: 'center', color: C.mint, fontWeight: 800, fontSize: 52 }}>{data.avatarUrl ? <img src={safeExternalUrl(data.avatarUrl) || undefined} alt="" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : sanitizeUserText((data.name || data.username || 'N').trim().charAt(0).toUpperCase(), 2)}</div></div>
         {!still && onAvatarUpload && <button type="button" onClick={(e) => { e.stopPropagation(); onAvatarUpload(); }} title="Change profile picture" aria-label="Change profile picture" className="nl-pc-cam" style={{ width: ui(26), height: ui(26), left: sbAvatar * .80 - ui(13), top: sbAvatar * .80 - ui(13) }}><Camera width={ui(13)} height={ui(13)} /></button>}
       </div>
-      <div className={heroMv.className} style={{ ...heroMv.style, position: 'absolute', left: X + sbAvatar + 22, right: 1080 - 800, top: 215, height: sbAvatar, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
-        <p style={{ fontSize: 12, letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: 6 }}>Novelty Library · Reader</p>
-        <h2 className="font-serif" style={{ fontSize: 44 * nameScale(data.name || 'Novelty Reader'), fontWeight: 700, lineHeight: 1.05, color: C.ink, overflow: 'hidden', overflowWrap: 'anywhere', maxHeight: 96 }}>{sanitizeUserText(data.name || 'Novelty Reader', 120)}</h2>
-        <p style={{ alignSelf: 'flex-start', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 16, fontWeight: 700, marginTop: 8, padding: '3px 11px', borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader', 80)}</p>
+
+      <div className={heroMv.className} style={{ ...heroMv.style, position: 'absolute', left: 45, width: 579, top: 178, display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+        <h2 className="font-serif" style={{ fontSize: 40 * nameScale(data.name || 'Novelty Reader'), fontWeight: 700, lineHeight: 1.05, color: C.ink, overflow: 'hidden', overflowWrap: 'anywhere', maxHeight: 84, minWidth: 0, flexShrink: 1 }}>{sanitizeUserText(data.name || 'Novelty Reader', 120)}</h2>
+        <p style={{ flexShrink: 0, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 15, fontWeight: 700, padding: '3px 11px', borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader', 80)}</p>
       </div>
 
-      <div data-fit style={{ position: 'absolute', left: X, width: W, top: 392, height: 408, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(11) }}>
+      <div data-fit style={{ position: 'absolute', left: 45, width: 579, top: 240, height: 530, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(11) }}>
         {details}
         {sbStats}
         {journey}
@@ -465,12 +482,14 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
         {extra}
       </div>
 
-      <div className={footerMv.className} style={{ ...footerMv.style, position: 'absolute', left: 470, width: 858 - 470, top: 816, height: 88, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, minWidth: 0 }}>
-          {ig && <a href={safeExternalUrl(`https://instagram.com/${ig}`) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', borderRadius: 999, padding: '5px 10px', background: 'linear-gradient(135deg,#feda75 0%,#fa7e1e 28%,#d62976 58%,#962fbf 82%,#4f5bd5 100%)', color: '#fff', fontWeight: 800, fontSize: 12, textDecoration: 'none' }}><Instagram width={13} height={13} />@{sanitizeUserText(ig, 40)}</a>}
-          {otherSocials.map((link) => <a key={link.platform} href={normalizeUrl(link.url)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 999, padding: '5px 9px', fontSize: 11, fontWeight: 700, background: C.glassStrong, color: '#fff', border: `1px solid ${C.line}`, textDecoration: 'none' }}>{platformIcon(link.platform, 12)}{sanitizeUserText(platformLabel(link.platform), 40)}</a>)}
-        </div>
-        <p style={{ fontSize: 9, letterSpacing: '.14em', textTransform: 'uppercase', fontWeight: 900, color: C.mint }}>Readers&apos; personal archive · Novelty Library</p>
+      {/* Branding (same treatment as the other cards), tucked into the panel's lower lobes. */}
+      <div className={footerMv.className} style={{ ...footerMv.style, position: 'absolute', left: 205, width: 419, top: 792, height: 80, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
+        {ig && <a href={safeExternalUrl(`https://instagram.com/${ig}`) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', borderRadius: 999, padding: '5px 10px', background: 'linear-gradient(135deg,#feda75 0%,#fa7e1e 28%,#d62976 58%,#962fbf 82%,#4f5bd5 100%)', color: '#fff', fontWeight: 800, fontSize: 12, textDecoration: 'none' }}><Instagram width={13} height={13} />@{sanitizeUserText(ig, 40)}</a>}
+        {otherSocials.map((link) => <a key={link.platform} href={normalizeUrl(link.url)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 999, padding: '5px 9px', fontSize: 11, fontWeight: 700, background: C.glassStrong, color: '#fff', border: `1px solid ${C.line}`, textDecoration: 'none' }}>{platformIcon(link.platform, 12)}{sanitizeUserText(platformLabel(link.platform), 40)}</a>)}
+      </div>
+      <div className={footerMv.className} style={{ ...footerMv.style, position: 'absolute', left: 418, width: 212, top: 894, height: 94, display: 'flex', alignItems: 'center', gap: 9, borderRadius: 16, padding: '8px 10px', background: 'linear-gradient(135deg,rgba(255,255,255,.92),rgba(206,255,255,.78))', border: '1px solid rgba(159,243,245,.72)', boxShadow: '0 10px 24px rgba(0,25,35,.25),inset 0 1px 0 rgba(255,255,255,.85)' }}>
+        <div style={{ display: 'grid', placeItems: 'center', width: 40, height: 40, borderRadius: 12, flexShrink: 0, background: '#fff', boxShadow: '0 6px 14px rgba(0,65,80,.28)' }}><img src={LOGO} alt="Novelty Library" style={{ width: 29, height: 29, objectFit: 'contain', display: 'block' }} /></div>
+        <div style={{ minWidth: 0 }}><p className="font-serif" style={{ fontSize: 16, fontWeight: 800, lineHeight: 1, color: C.deep2 }}>Novelty Library</p><p style={{ fontSize: 6.5, letterSpacing: '.1em', textTransform: 'uppercase', marginTop: 4, color: C.teal, fontWeight: 900, lineHeight: 1.3 }}>Readers&apos; personal archive · branding tool</p></div>
       </div>
     </div>;
   }
