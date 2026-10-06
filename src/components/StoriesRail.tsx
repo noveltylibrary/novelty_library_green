@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, X, Clock3, Heart, Repeat2 } from 'lucide-react';
+import { Plus, X, Clock3, Heart, Repeat2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchActiveStories, repostStory, toggleStoryLike, type Story } from '@/lib/social';
 import { useAuth } from '@/lib/auth';
 
@@ -16,7 +16,10 @@ export function StoriesRail({ navigate }: Props) {
 
   if (!user) return null;
   const groups = stories.reduce<Record<string, Story[]>>((acc, story) => { const key = story.user_id; (acc[key] ||= []).push(story); return acc; }, {});
-  const grouped = Object.values(groups);
+  const grouped = Object.values(groups).map((g) => [...g].reverse()); // oldest first, like Instagram
+  const siblings = active ? (groups[active.user_id] ? [...groups[active.user_id]].reverse() : [active]) : [];
+  const activeIdx = active ? Math.max(0, siblings.findIndex((s) => s.id === active.id)) : 0;
+  const go = (d: number) => { const n = siblings[activeIdx + d]; if (n) setActive(n); };
 
   const likeActive = async () => {
     if (!active || !user) return;
@@ -46,6 +49,7 @@ export function StoriesRail({ navigate }: Props) {
     </section>
     {active && <div className="nl-story-viewer" role="dialog" aria-modal="true" onClick={() => setActive(null)}>
       <div className="nl-story-viewer-card" onClick={(e) => e.stopPropagation()}>
+        {siblings.length > 1 && <><div className="nl-story-count">{activeIdx + 1} / {siblings.length}</div>{activeIdx > 0 && <button type="button" className="nl-story-nav nl-story-nav-prev" onClick={() => go(-1)} aria-label="Previous story"><ChevronLeft className="w-5 h-5" /></button>}{activeIdx < siblings.length - 1 && <button type="button" className="nl-story-nav nl-story-nav-next" onClick={() => go(1)} aria-label="Next story"><ChevronRight className="w-5 h-5" /></button>}</>}
         <button className="nl-story-close" onClick={() => setActive(null)} aria-label="Close story"><X className="w-5 h-5" /></button>
         <img src={active.image_url} alt={active.caption || 'Reader story'} />
         <div className="nl-story-viewer-meta"><div className="flex items-center gap-2"><Clock3 className="w-3.5 h-3.5" /> Expires in 24 hours</div><strong>@{active.novelty_username || 'reader'}</strong>{active.caption && <p>{active.caption}</p>}</div>

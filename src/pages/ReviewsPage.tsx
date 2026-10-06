@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect, useMemo } from 'react';
-import { Search, ArrowUp, Sparkles } from 'lucide-react';
+import { Search, ArrowUp, Sparkles, FileText, BookMarked, PenTool, BarChart3 } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { loadReviewCached, fetchReviews } from '@/lib/reviews';
 import { CommunityReviewCard, type CommunityReviewCardData } from '@/components/CommunityReviewCard';
@@ -103,6 +103,12 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
   return (
     <div className="pt-24 pb-20 container-prose container-wide animate-fade-in">
       <header className="mb-8">
+        <div className="nl-reviews-actions" role="group" aria-label="Review shortcuts">
+          <button type="button" className="nl-action-btn" onClick={() => navigate('/review-guidelines')}><FileText aria-hidden="true" /><span>Review Guide</span></button>
+          <button type="button" className="nl-action-btn" onClick={() => navigate('/submit#reserve')}><BookMarked aria-hidden="true" /><span>Reserve</span></button>
+          <button type="button" className="nl-action-btn" onClick={() => navigate('/submit')}><PenTool aria-hidden="true" /><span>Submit</span></button>
+          <button type="button" className="nl-action-btn" onClick={() => navigate('/analytics')}><BarChart3 aria-hidden="true" /><span>Analytics</span></button>
+        </div>
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
           <div>
             <div className="inline-flex items-center gap-2 mb-3 text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-teal-dark)' }}>
