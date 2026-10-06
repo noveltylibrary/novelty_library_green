@@ -11,11 +11,13 @@ import {
   saveProfileQuestionSection,
   deleteProfileQuestion,
   reorderProfileQuestions,
+  isLegacyProfileFieldKey,
   type ProfileQuestion,
   type ProfileQuestionType,
   type ProfileQuestionSection,
 } from '@/lib/profileQuestions';
-import { CORE_FIELDS, coreActive, fetchCoreOverrides, saveCoreOverride, resetCoreOverride, fetchCoreFieldOrder, saveCoreFieldOrder, type CoreFieldKey, type CoreOverrides, type CoreFieldOrder } from '@/lib/profileCoreFields';
+import { convertReadingJourneyToQuestions } from '@/lib/profileReadingMigration';
+import { CORE_FIELDS, coreActive, coreDefaultSection, coreFieldsInSection, coreSection, fetchCoreOverrides, saveCoreOverride, resetCoreOverride, fetchCoreFieldOrder, saveCoreFieldPlacement, type CoreFieldKey, type CoreOverrides, type CoreFieldOrder, type CoreSectionKey } from '@/lib/profileCoreFields';
 import { BUILT_IN_PROFILE_SECTIONS, fetchProfileSectionLayout, saveProfileSectionLayout, type ProfileSectionLayoutItem } from '@/lib/profileLayout';
 
 const PAGE_KEYS = ['review-guidelines', 'about', 'privacy', 'terms', 'cookies', 'cookie-banner'] as const;
@@ -54,6 +56,10 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   const [corePlaceholderDraft, setCorePlaceholderDraft] = useState('');
   const [coreVisibleDraft, setCoreVisibleDraft] = useState(true);
   const [coreActiveDraft, setCoreActiveDraft] = useState(true);
+  const [coreSectionDraft, setCoreSectionDraft] = useState<CoreSectionKey>('reader_identity');
+  const [converting, setConverting] = useState(false);
+  const [dragField, setDragField] = useState<CoreFieldKey | null>(null);
+  const [fieldPreview, setFieldPreview] = useState<Record<CoreSectionKey, CoreFieldKey[]> | null>(null);
   const [question, setQuestion] = useState('');
   const [placeholder, setPlaceholder] = useState('');
   const [section, setSection] = useState('');
@@ -88,6 +94,8 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     // Identity is locked at the top; everything else follows the admin's order.
     return [...built, ...custom].sort((a,b)=>(a.key==='reader_identity'?-1:b.key==='reader_identity'?1:0) || a.order-b.order || a.key.localeCompare(b.key));
   }, [orderedSections, sectionLayout]);
+  // Once converted, the old built-in reading section is replaced by a normal question section of the same name.
+  const readingConverted = sectionLayout.some(x => x.key === 'reading_journey' && x.converted === true);
   const [dragQ, setDragQ] = useState<string | null>(null);
   const [dragSec, setDragSec] = useState<string | null>(null);
   const [overKey, setOverKey] = useState<string | null>(null);
@@ -96,7 +104,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   // The 'profile_questions' layout entry only holds the heading shown above the section tiles
   // (it is not a tile), so it is edited separately and never takes part in ordering.
   const hubItem = useMemo(() => allSectionLayout.find(x => x.key === 'profile_questions') || null, [allSectionLayout]);
-  const sortableSections = useMemo(() => allSectionLayout.filter(x => x.key !== 'profile_questions'), [allSectionLayout]);
+  const sortableSections = useMemo(() => allSectionLayout.filter(x => x.key !== 'profile_questions' && !(x.key === 'reading_journey' && readingConverted)), [allSectionLayout, readingConverted]);
   const shownSections = useMemo(() => {
     if (!secPreview) return sortableSections;
     const byKey = new Map(sortableSections.map(x => [x.key, x]));
@@ -111,6 +119,12 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     return groups;
   }, [orderedSections, questions, qPreview]);
   const activeSections = useMemo(() => orderedSections.filter(s => s.active), [orderedSections]);
+  // Built-in fields grouped by the built-in section they currently live in (drag preview wins while dragging).
+  const coreLists = useMemo<Record<CoreSectionKey, CoreFieldKey[]>>(() => fieldPreview ?? {
+    reader_identity: coreFieldsInSection(coreOverrides, coreFieldOrder, 'reader_identity').map(f => f.key),
+    basic_reader: coreFieldsInSection(coreOverrides, coreFieldOrder, 'basic_reader').map(f => f.key),
+    reading_journey: coreFieldsInSection(coreOverrides, coreFieldOrder, 'reading_journey').map(f => f.key),
+  }, [fieldPreview, coreOverrides, coreFieldOrder]);
 
   const loadPage = async (slug: typeof PAGE_KEYS[number]) => {
     const page = await fetchEditablePage(slug);
@@ -166,6 +180,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     setCorePlaceholderDraft(o.placeholder ?? def.placeholder);
     setCoreVisibleDraft(o.defaultVisible ?? def.defaultVisible);
     setCoreActiveDraft(o.active !== false);
+    setCoreSectionDraft(coreSection(coreOverrides, key));
     requestAnimationFrame(() => editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
   };
 
@@ -174,7 +189,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
     if (!coreLabelDraft.trim()) { setMsg('Enter a field label first.'); return; }
     try {
       setQuestionSaving(true);
-      setCoreOverrides(await saveCoreOverride(editingCore, { label: coreLabelDraft.trim(), placeholder: corePlaceholderDraft, defaultVisible: coreVisibleDraft, active: coreActiveDraft }));
+      setCoreOverrides(await saveCoreOverride(editingCore, { label: coreLabelDraft.trim(), placeholder: corePlaceholderDraft, defaultVisible: coreVisibleDraft, active: coreActiveDraft, section: coreSectionDraft === coreDefaultSection(editingCore) ? undefined : coreSectionDraft }));
       setMsg('Built-in field updated.');
       setEditingCore(null);
     } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not save built-in field.'); }
@@ -279,7 +294,8 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   };
 
   const removeQuestion = async (id: string) => {
-    if (!confirm('Remove this profile question?')) return;
+    const target = questions.find(x => x.id === id);
+    if (!confirm(target && isLegacyProfileFieldKey(target.key) ? 'Remove this reading question? It disappears from readers\' profiles and cards; the answers already saved stay in their profiles.' : 'Remove this profile question?')) return;
     try {
       await deleteProfileQuestion(id);
       setQuestions(v => v.filter(x => x.id !== id));
@@ -412,10 +428,13 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
 
   const persistSectionOrder = async (next: ProfileSectionLayoutItem[]) => {
     const renumbered = next.map((item, i) => ({ ...item, order: i * 10 + 10 }));
+    // Show the new order straight away so the tiles do not snap back while saving.
+    setSections(cur => cur.map(sec => { const hit = renumbered.find(x => x.key === `custom:${sec.id}`); return hit ? { ...sec, sort_order: hit.order } : sec; }));
+    setSectionLayout(cur => cur.map(item => { const hit = renumbered.find(x => x.key === item.key); return hit ? { ...item, order: hit.order } : item; }));
     try {
       // Built-in sections keep their order in the layout; question sections keep it in
       // profile_question_sections.sort_order (which also re-syncs their questions).
-      const builtIns = [...renumbered.filter(x => !String(x.key).startsWith('custom:')), ...(hubItem ? [hubItem] : [])];
+      const builtIns = [...renumbered.filter(x => !String(x.key).startsWith('custom:')), ...(hubItem ? [hubItem] : []), ...sectionLayout.filter(x => x.key === 'reading_journey' && readingConverted)];
       setSectionLayout(await saveProfileSectionLayout(builtIns));
       for (const item of renumbered) {
         if (!String(item.key).startsWith('custom:')) continue;
@@ -427,22 +446,96 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
       setSections(await fetchProfileSections(true));
       setQuestions(await fetchProfileQuestions(true));
       setMsg('Profile section order saved.');
-    } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not save section order.'); }
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Could not save section order.');
+      await loadProfileBuilder();
+    }
+  };
+
+  const reloadCoreFields = async () => {
+    try { const [o, ord] = await Promise.all([fetchCoreOverrides(), fetchCoreFieldOrder()]); setCoreOverrides(o); setCoreFieldOrder(ord); } catch { /* keep what is on screen */ }
+  };
+
+  // Saves a new built-in field placement (section + order). Shows the result immediately and rolls back on failure.
+  const persistCoreLists = async (next: Record<CoreSectionKey, CoreFieldKey[]>, key: CoreFieldKey) => {
+    const sec: CoreSectionKey = next.reader_identity.includes(key) ? 'reader_identity' : next.basic_reader.includes(key) ? 'basic_reader' : 'reading_journey';
+    const order: CoreFieldOrder = {};
+    [...next.reader_identity, ...next.basic_reader, ...next.reading_journey].forEach((k, i) => { order[k] = i; });
+    const prevOverrides = coreOverrides; const prevOrder = coreFieldOrder;
+    setCoreFieldOrder(order);
+    setCoreOverrides({ ...coreOverrides, [key]: { ...(coreOverrides[key] ?? {}), section: sec === coreDefaultSection(key) ? undefined : sec } });
+    try {
+      const saved = await saveCoreFieldPlacement(key, sec, order);
+      setCoreOverrides(saved.overrides); setCoreFieldOrder(saved.order);
+      setMsg(sec !== coreSection(prevOverrides, key) ? 'Built-in field moved to its new section.' : 'Built-in field order saved.');
+    } catch (e) {
+      setCoreOverrides(prevOverrides); setCoreFieldOrder(prevOrder);
+      setMsg(e instanceof Error ? e.message : 'Could not save built-in field order.');
+    }
   };
 
   const moveCoreField = async (key: CoreFieldKey, direction: -1 | 1) => {
-    const group = CORE_FIELDS.filter(f => {
-      const sectionKey = f.section === 'Reading Journey' ? 'reading_journey' : 'reader_identity';
-      return sectionKey === (key === 'reading_since' || key === 'books_read_this_month' || key === 'total_books_read' || key === 'favorite_book' || key === 'favorite_author' || key === 'favorite_genre' ? 'reading_journey' : 'reader_identity');
-    });
-    const sorted = [...group].sort((a,b)=>(coreFieldOrder[a.key] ?? CORE_FIELDS.indexOf(a))-(coreFieldOrder[b.key] ?? CORE_FIELDS.indexOf(b)));
-    const index = sorted.findIndex(f => f.key === key);
+    const sec = coreSection(coreOverrides, key);
+    const list = [...coreLists[sec]];
+    const index = list.indexOf(key);
     const target = index + direction;
-    if (index < 0 || target < 0 || target >= sorted.length) return;
-    [sorted[index], sorted[target]] = [sorted[target], sorted[index]];
-    const next = { ...coreFieldOrder };
-    sorted.forEach((f,i)=>{ next[f.key] = i; });
-    try { setCoreFieldOrder(await saveCoreFieldOrder(next)); setMsg('Built-in field order saved.'); } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not save built-in field order.'); }
+    if (index < 0 || target < 0 || target >= list.length) return;
+    [list[index], list[target]] = [list[target], list[index]];
+    await persistCoreLists({ ...coreLists, [sec]: list }, key);
+  };
+
+  // Dragging downwards lands after the target, upwards before it (same rule as questions and sections).
+  const previewField = (sec: CoreSectionKey, targetKey: CoreFieldKey | null) => {
+    if (!dragField || dragField === targetKey) return;
+    const base = fieldPreview ?? coreLists;
+    const next: Record<CoreSectionKey, CoreFieldKey[]> = {
+      reader_identity: base.reader_identity.filter(k => k !== dragField),
+      basic_reader: base.basic_reader.filter(k => k !== dragField),
+      reading_journey: base.reading_journey.filter(k => k !== dragField),
+    };
+    const list = next[sec];
+    let idx = list.length;
+    if (targetKey) {
+      const found = list.indexOf(targetKey);
+      if (found >= 0) {
+        idx = found;
+        const from = base[sec].indexOf(dragField);
+        if (from >= 0 && from < base[sec].indexOf(targetKey)) idx += 1;
+      }
+    }
+    list.splice(idx, 0, dragField);
+    setFieldPreview(next);
+  };
+
+  const commitFields = async () => {
+    const next = fieldPreview; const key = dragField;
+    setFieldPreview(null); setDragField(null);
+    if (!next || !key) return;
+    const same = (['reader_identity', 'basic_reader', 'reading_journey'] as const).every(sec => next[sec].join('|') === coreLists[sec].join('|'));
+    if (same) return;
+    await persistCoreLists(next, key);
+  };
+
+  const cancelFieldDrag = () => { setFieldPreview(null); setDragField(null); };
+
+  const toggleCoreActive = async (key: CoreFieldKey) => {
+    try {
+      const o = coreOverrides[key] ?? {};
+      setCoreOverrides(await saveCoreOverride(key, { ...o, active: o.active === false }));
+      setMsg(o.active === false ? 'Built-in field is shown on the profile again.' : 'Built-in field hidden from the profile.');
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not update built-in field.'); }
+  };
+
+  const convertReading = async () => {
+    if (!confirm('Create a "Reading Journey" section with these six built-in questions as normal questions? Readers keep every answer they already entered.')) return;
+    try {
+      setConverting(true);
+      const result = await convertReadingJourneyToQuestions();
+      await loadProfileBuilder();
+      setMsg(`Reading Journey is now a normal section${result.questionsCreated ? ` with ${result.questionsCreated} question${result.questionsCreated === 1 ? '' : 's'} created` : ''}${result.questionsMoved ? ` and ${result.questionsMoved} existing question${result.questionsMoved === 1 ? '' : 's'} moved` : ''}. You can edit, reorder, move or hide them like any other question.`);
+    } catch (e) {
+      setMsg(e instanceof Error ? `Could not convert Reading Journey: ${e.message}` : 'Could not convert Reading Journey.');
+    } finally { setConverting(false); }
   };
 
   const saveSection = async () => {
@@ -576,9 +669,9 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
             <button type="button" className="btn-primary !w-auto" onClick={openAddSection}><FolderPlus className="w-4 h-4" /> Add section</button>
           </div>
           {hubItem && <button type="button" className="btn-ghost !w-auto text-xs mb-3" onClick={() => openBuiltInSection(hubItem)}><Pencil className="w-3.5 h-3.5" /> Edit profile page heading &amp; description</button>}
-          <div className="flex flex-col gap-2 max-w-2xl" role="list" aria-label="Profile sections, top to bottom">
+          <div className="flex flex-col gap-2 max-w-2xl" role="list" aria-label="Profile sections, top to bottom" onDragOver={e => { if (dragSec) e.preventDefault(); }} onDrop={e => { e.preventDefault(); void commitSections(); }}>
             {shownSections.map((item, index) => {
-              const builtIn = item.key === 'reader_identity' || item.key === 'profile_questions' || item.key === 'reading_journey';
+              const builtIn = item.key === 'reader_identity' || item.key === 'profile_questions' || item.key === 'basic_reader' || item.key === 'reading_journey';
               const custom = !builtIn ? orderedSections.find(s => item.key === `custom:${s.id}`) : null;
               const locked = item.key === 'reader_identity';
               const dragging = dragSec === item.key;
@@ -586,7 +679,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
 
                 {locked ? <Lock className="w-4 h-4 shrink-0" style={{ color: 'var(--color-teal-dark)' }} aria-label="Locked at the top" /> : <GripVertical className="w-4 h-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} aria-hidden="true" />}
                 <div className="flex flex-col"><button type="button" disabled={locked || index<=1} onClick={()=>void moveSection(index,-1)} className="p-1 rounded disabled:opacity-30" title="Move section up"><ChevronUp className="w-4 h-4"/></button><button type="button" disabled={locked || index===shownSections.length-1} onClick={()=>void moveSection(index,1)} className="p-1 rounded disabled:opacity-30" title="Move section down"><ChevronDown className="w-4 h-4"/></button></div>
-                <button type="button" onClick={() => custom ? openRenameSection(custom) : openBuiltInSection(item)} className="min-w-0 flex-1 text-left" title="Click to edit this section"><p className="font-semibold text-sm truncate">{item.header || item.key}</p><p className="text-[11px] mt-1 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>{item.description || 'No helper text set.'}</p><p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: 'var(--color-text-muted)' }}>{locked ? 'Locked at the top' : builtIn ? 'Built-in section' : 'Custom section'} · Order {index+1} · {item.active ? 'Visible' : 'Hidden'}</p></button>
+                <div role="button" tabIndex={0} onClick={() => custom ? openRenameSection(custom) : openBuiltInSection(item)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (custom) openRenameSection(custom); else openBuiltInSection(item); } }} className="min-w-0 flex-1 text-left cursor-pointer" title="Click to edit this section"><p className="font-semibold text-sm truncate">{item.header || item.key}</p><p className="text-[11px] mt-1 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>{item.description || 'No helper text set.'}</p><p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: 'var(--color-text-muted)' }}>{locked ? 'Locked at the top' : builtIn ? 'Built-in section' : 'Custom section'} · Order {index+1} · {item.active ? 'Visible' : 'Hidden'}</p></div>
                 {custom ? <button type="button" className="p-2 rounded-lg" title={`Edit ${custom.name}`} aria-label={`Edit ${custom.name}`} onClick={() => openRenameSection(custom)}><Pencil className="w-3.5 h-3.5" /></button> : <button type="button" className="p-2 rounded-lg" title="Edit built-in section heading and text" aria-label="Edit built-in section" onClick={() => openBuiltInSection(item)}><Pencil className="w-3.5 h-3.5" /></button>}
               </div>;
             })}
@@ -597,11 +690,33 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
           <div className="space-y-3 min-w-0 nl-admin-col" tabIndex={-1} aria-label="Questions list">
             <div className="rounded-2xl p-4" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
               <p className="text-sm font-semibold">Built-in profile fields</p>
-              <p className="text-xs mt-1 mb-3" style={{ color: 'var(--color-text-muted)' }}>These ship with every profile. Edit their label, placeholder and default visibility. Name and Email are locked.</p>
+              <p className="text-xs mt-1 mb-3" style={{ color: 'var(--color-text-muted)' }}>These ship with every profile and work like any other section: drag a field to reorder it or drop it into the other section, use Edit to change its label, placeholder, section and default visibility, or hide it. Name and Email are locked.</p>
+              {!readingConverted && <div className="rounded-2xl p-4 mb-4 flex flex-wrap items-center justify-between gap-3" style={{ background: 'linear-gradient(135deg,rgba(0,151,178,.09),rgba(53,211,217,.12))', border: '1px solid var(--color-border)' }}><div className="min-w-0 flex-1" style={{ minWidth: 220 }}><p className="text-sm font-semibold">Turn the built-in Reading Journey into a normal section</p><p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Creates a “Reading Journey” section and replaces the six built-in reading questions with ordinary questions of the same names, so they can be edited, dragged and moved like every other question. Readers keep their existing answers. Identity stays as it is.</p></div><button type="button" className="btn-primary !w-auto" disabled={converting} onClick={() => void convertReading()}>{converting ? 'Converting…' : 'Convert to a section'}</button></div>}
               <div className="space-y-4">
-                {(['reader_identity','reading_journey'] as const).map(sectionKey => {
-                  const fields = CORE_FIELDS.filter(f => (sectionKey === 'reading_journey' ? f.section === 'Reading Journey' : f.section === 'Identity')).sort((a,b)=>(coreFieldOrder[a.key] ?? CORE_FIELDS.indexOf(a))-(coreFieldOrder[b.key] ?? CORE_FIELDS.indexOf(b)));
-                  return <div key={sectionKey} className="rounded-2xl p-3" style={{background:'var(--color-background)',border:'1px solid var(--color-border)'}}><p className="text-xs uppercase tracking-wider font-bold mb-2" style={{color:'var(--color-teal-dark)'}}>{sectionKey === 'reading_journey' ? 'Reading Journey' : 'Build Your Reader Identity'}</p><div className="space-y-2">{fields.map((f,i)=><div key={f.key} className="rounded-xl p-3 flex items-center gap-2" style={{background:'var(--color-paper)',border:'1px solid var(--color-border)'}}><div className="flex flex-col"><button type="button" disabled={i===0} onClick={()=>void moveCoreField(f.key,-1)} className="p-1 rounded disabled:opacity-30" title="Move field up"><ChevronUp className="w-4 h-4"/></button><button type="button" disabled={i===fields.length-1} onClick={()=>void moveCoreField(f.key,1)} className="p-1 rounded disabled:opacity-30" title="Move field down"><ChevronDown className="w-4 h-4"/></button></div><div className="min-w-0 flex-1"><p className="text-[10px] uppercase tracking-wider font-bold" style={{color:'var(--color-teal-dark)'}}>{f.type}</p><p className="font-semibold text-sm truncate">{(coreOverrides[f.key]?.label || f.label)}</p><p className="text-[11px] mt-0.5" style={{color:'var(--color-text-muted)'}}>{f.key === 'name' || f.key === 'email' ? 'Built-in · locked' : `Built-in · ${coreActive(coreOverrides, f.key) ? 'shown on profile' : 'HIDDEN from profile'}`}</p></div>{f.locked ? <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{color:'var(--color-text-muted)'}}><Lock className="w-3.5 h-3.5"/> Locked</span> : <button type="button" onClick={()=>editCore(f.key)} className="btn-ghost !w-auto !px-3 text-xs">Edit</button>}</div>)}</div></div>;
+                {(['reader_identity', 'basic_reader', 'reading_journey'] as CoreSectionKey[]).filter(k => !(k === 'reading_journey' && readingConverted)).map(sectionKey => {
+                  const sectionItem = allSectionLayout.find(x => x.key === sectionKey);
+                  const keys = coreLists[sectionKey];
+                  const lockedFields = sectionKey === 'reader_identity' ? CORE_FIELDS.filter(f => f.locked) : [];
+                  const dragFromHere = !!dragField && keys.includes(dragField);
+                  return <section key={sectionKey} onDragOver={e => { if (dragField) e.preventDefault(); }} onDragEnter={() => { if (dragField && !keys.includes(dragField)) previewField(sectionKey, null); }} onDrop={e => { e.preventDefault(); void commitFields(); }} className="rounded-2xl p-3 min-w-0" style={{ background: 'var(--color-background)', border: dragFromHere ? '1px solid var(--color-cyan-dark)' : '1px solid var(--color-border)' }}>
+                    <div className="flex items-center justify-between gap-2 mb-2 px-1"><p className="text-xs uppercase tracking-wider font-bold truncate" style={{ color: 'var(--color-teal-dark)' }}>{sectionItem?.header || (sectionKey === 'reading_journey' ? 'Your reading life' : sectionKey === 'basic_reader' ? 'Basic Reader' : 'Identity')}</p><span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Built-in section · {keys.length + lockedFields.length} field{keys.length + lockedFields.length === 1 ? '' : 's'}</span></div>
+                    <div className="space-y-2">
+                      {lockedFields.map(f => <div key={f.key} className="rounded-xl p-3 flex items-center gap-2" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}><Lock className="w-4 h-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} aria-hidden="true" /><div className="min-w-0 flex-1"><p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'var(--color-teal-dark)' }}>{f.type}</p><p className="font-semibold text-sm truncate">{f.label}</p><p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Built-in · locked at the top</p></div><span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: 'var(--color-text-muted)' }}>Locked</span></div>)}
+                      {keys.length === 0 && <div className="rounded-xl py-6 text-center text-xs" style={{ border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)' }}>Drop a built-in field here</div>}
+                      {keys.map((key, i) => {
+                        const f = CORE_FIELDS.find(x => x.key === key)!;
+                        const shown = coreActive(coreOverrides, key);
+                        const dragging = dragField === key;
+                        return <div key={key} draggable onDragStart={e => { e.stopPropagation(); setDragField(key); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', key); }} onDragEnter={e => { e.stopPropagation(); previewField(sectionKey, key); }} onDragOver={e => { if (dragField) { e.preventDefault(); e.stopPropagation(); } }} onDrop={e => { e.preventDefault(); e.stopPropagation(); void commitFields(); }} onDragEnd={cancelFieldDrag} className="rounded-xl p-3 flex items-center gap-2 cursor-grab active:cursor-grabbing transition-all duration-150" style={{ background: 'var(--color-paper)', border: dragging ? '2px solid var(--color-cyan-dark)' : '1px solid var(--color-border)', boxShadow: dragging ? '0 14px 30px rgba(0,80,95,.28)' : undefined, transform: dragging ? 'scale(1.02)' : undefined, position: 'relative', zIndex: dragging ? 5 : 0, opacity: shown ? 1 : 0.65 }}>
+                          <GripVertical className="w-4 h-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} aria-hidden="true" />
+                          <div className="flex flex-col"><button type="button" disabled={i === 0} onClick={() => void moveCoreField(key, -1)} className="p-1 rounded disabled:opacity-30" title="Move field up" aria-label={`Move ${coreOverrides[key]?.label || f.label} up`}><ChevronUp className="w-4 h-4" /></button><button type="button" disabled={i === keys.length - 1} onClick={() => void moveCoreField(key, 1)} className="p-1 rounded disabled:opacity-30" title="Move field down" aria-label={`Move ${coreOverrides[key]?.label || f.label} down`}><ChevronDown className="w-4 h-4" /></button></div>
+                          <div className="min-w-0 flex-1"><p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'var(--color-teal-dark)' }}>{f.type}</p><p className="font-semibold text-sm truncate">{coreOverrides[key]?.label || f.label}</p><p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Built-in · {shown ? 'shown on profile' : 'HIDDEN from profile'} · {(coreOverrides[key]?.defaultVisible ?? f.defaultVisible) ? 'public by default' : 'private by default'}</p></div>
+                          <button type="button" onClick={() => void toggleCoreActive(key)} className="p-2 rounded-lg" title={shown ? 'Hide from profile' : 'Show on profile'} aria-label={shown ? `Hide ${coreOverrides[key]?.label || f.label}` : `Show ${coreOverrides[key]?.label || f.label}`}><Eye className="w-4 h-4" style={{ opacity: shown ? 1 : 0.35 }} /></button>
+                          <button type="button" onClick={() => editCore(key)} className="btn-ghost !w-auto !px-3 text-xs">Edit</button>
+                        </div>;
+                      })}
+                    </div>
+                  </section>;
                 })}
               </div>
             </div>
@@ -618,6 +733,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full" style={{ background: 'rgba(8,145,178,.09)', color: 'var(--color-teal-dark)' }}>{q.section}</span>
                     <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>{questionTypeLabel(q.type)}</span>
+                    {isLegacyProfileFieldKey(q.key) && <span className="text-[10px] font-semibold" style={{ color: 'var(--color-text-muted)' }} title="The answer is stored in the reader's profile record, so existing answers are kept">Linked to profile data</span>}
                     {q.required && <span className="text-[10px] font-bold">Required</span>}
                     {q.show_in_profile_card !== false && <span className="text-[10px] font-bold" style={{ color: 'var(--color-teal-dark)' }}>{q.profile_card_mode === 'answer_no_question' ? 'Answer only' : q.profile_card_mode === 'tag_no_question' ? 'Profile card · Tag (answer only)' : q.profile_card_mode === 'tag' ? 'Profile card · Tag' : 'Profile card · Q + A'}</span>}
                   </div>
@@ -645,9 +761,10 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
               <div className="flex items-center justify-between mb-1"><div><p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-teal-dark)' }}>Edit built-in field</p><h3 className="font-serif text-xl font-semibold">{def.label}</h3></div><button type="button" className="p-2 rounded-lg" aria-label="Close" onClick={() => setEditingCore(null)}><X className="w-4 h-4" /></button></div>
               <div><label className="label">Field label</label><input value={coreLabelDraft} onChange={e => setCoreLabelDraft(e.target.value)} maxLength={80} className="input-field" /></div>
               <div><label className="label">Placeholder</label><input value={corePlaceholderDraft} onChange={e => setCorePlaceholderDraft(e.target.value)} maxLength={120} className="input-field" /></div>
+              <div><label className="label">Section</label><select value={coreSectionDraft} onChange={e => setCoreSectionDraft(e.target.value as CoreSectionKey)} className="input-field"><option value="reader_identity">{allSectionLayout.find(x => x.key === 'reader_identity')?.header || 'Identity'}</option><option value="basic_reader">{allSectionLayout.find(x => x.key === 'basic_reader')?.header || 'Basic Reader'}</option>{!readingConverted && <option value="reading_journey">{allSectionLayout.find(x => x.key === 'reading_journey')?.header || 'Your reading life'}</option>}</select><p className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>Choose which built-in section readers see this field in. You can also drag the field between sections.</p></div>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={coreActiveDraft} onChange={e => setCoreActiveDraft(e.target.checked)} /> Show this field on the reader&apos;s profile page</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={coreVisibleDraft} onChange={e => setCoreVisibleDraft(e.target.checked)} /> Visible by default (readers can still change it with their eye control)</label>
-              <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Section ({def.section}) and answer type ({def.type}) are fixed for built-in fields. Default visibility applies to readers who haven&apos;t saved a visibility choice yet.</p>
+              <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>The answer type ({def.type}) is fixed for built-in fields because it is tied to the reader&apos;s saved profile data. Default visibility applies to readers who haven&apos;t saved a visibility choice yet.</p>
               <div className="flex gap-2"><button type="button" className="btn-primary flex-1" disabled={questionSaving} onClick={saveCore}><Save className="w-4 h-4" />{questionSaving ? 'Saving…' : 'Update field'}</button><button type="button" className="btn-ghost !w-auto" onClick={restoreCore}>Restore default</button></div>
             </div>; })()}
             <div className={editingCore ? 'hidden' : ''}>

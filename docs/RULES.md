@@ -178,3 +178,18 @@ npm run build
 ```
 
 A change is not production-ready if any of these fail unless the failure is documented and intentionally accepted.
+
+## 20. Built-in profile field placement
+
+1. Built-in field placement is stored as an optional `section` override in `profile-core-fields` (only when it differs from the default) plus the shared order map in `profile-core-field-order`.
+2. Name and Email are locked: they can never be moved, hidden or relabelled.
+3. A built-in field's answer type is fixed (it maps to a typed `profiles` column); only label, placeholder, section, visibility defaults and active state are editable.
+4. Any built-in section save must persist every built-in field value, because fields can be moved between sections.
+5. Do not place a full-width `<button>` inside a `draggable` element.
+
+## 21. Converted reading questions
+
+1. Questions whose key is one of `reading_since`, `books_read_this_month`, `total_books_read`, `favorite_book`, `favorite_author`, `favorite_genre` are bridged to the `profiles` column of the same name, not to `profile_answers`. Never change these keys.
+2. The profile card shows these six through its fixed stat/rows layout; they must be excluded from the dynamic question list to avoid duplicates.
+3. Total Books Read is still floored at the reader's accepted-review count on save.
+4. The conversion is done by `convertReadingJourneyToQuestions()` (`src/lib/profileReadingMigration.ts`) and marks `reading_journey.converted` in `profile-section-layout`; it must stay idempotent.

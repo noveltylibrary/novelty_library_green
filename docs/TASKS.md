@@ -180,3 +180,19 @@ A feature is done when:
 6. `typecheck`, `lint` and `build` pass.
 7. Relevant regression tests are added or updated.
 8. `TASKS.md` is updated.
+
+## 1.41
+
+- [x] Built-in profile fields shown as editable, drag-sortable section columns in the profile admin.
+- [x] Built-in fields can move between Reader identity and Reading journey (`section` override).
+- [x] Section-tile drag hardening (Firefox button-in-draggable, gap drops, optimistic order, reload on failure).
+- [ ] Verify in production: drag a built-in field across sections, reload the reader profile, confirm placement, saved values and card export.
+- [ ] Run `npm run typecheck`, `npm run lint`, `npm run build` (not run in the authoring sandbox: no network for `npm install`).
+
+## 1.42
+
+- [x] Reading Journey conversion into a real question section (admin button, idempotent).
+- [x] Published-count card moved to Identity.
+- [x] Reader/public profile bridge for converted reading questions.
+- [ ] Verify in production: click Convert, check section + 6 questions appear, edit/drag one, confirm a reader's old answers still show on their profile and card, hide one question and confirm its card row disappears.
+- [ ] Run `npm run typecheck`, `npm run lint`, `npm run build` (not run in the authoring sandbox: no network for `npm install`).

@@ -244,3 +244,20 @@ When behavior changes:
 - Restored the 24-hour story upload UI beside the profile card using the 1.36 layout and styling.
 - Restored the follower/following privacy controls beside the profile card using the 1.36 presentation.
 - Placed the current 1.39 profile-question buttons directly below the story/privacy area while keeping their current question editing and visibility controls unchanged.
+
+
+## Version 1.41 profile-admin update
+
+- Built-in profile fields (Instagram, Reading Since, Books Read This Month, Total Books Read, Favourite Book/Author/Genre) are now managed as **section columns** in Admin -> WebApp Pages Moderation -> Profile Page, exactly like question sections.
+- Each built-in field can be dragged to reorder it, dragged into the other built-in section (Reader identity <-> Reading journey), hidden/shown with the eye button, or edited (label, placeholder, section, default visibility). Name and Email stay locked at the top of the identity section.
+- The reader profile page renders built-in fields by their effective section; saving either built-in section persists all built-in field values, so a moved field never loses data.
+- Section-tile drag fixes: tiles no longer contain a full-width `<button>` (Firefox cannot start a drag from inside one), drops between tiles now save, and the new order shows immediately and reloads from the server if the save fails.
+
+
+## Version 1.42 - Reading Journey becomes a normal section
+
+- Admin -> WebApp Pages Moderation -> Profile Page shows a **Convert to a section** button for the built-in Reading Journey. It creates a normal question section named **Reading Journey** (same header, text, position and visibility as the built-in one) and six ordinary questions with the same names: Reading Since, Books Read This Month, Total Books Read, Favourite Book, Favourite Author, Favourite Genre. Admin edits already made to those built-in fields (label, placeholder, default visibility, hidden, order) are carried over. The action is idempotent.
+- After conversion they are edited, dragged, moved between sections, hidden and deleted exactly like any other question. Their keys equal the old column names, so readers' existing answers are kept: the values still live in the `profiles` columns and are read/written by the question fields. The profile card, public profile, onboarding and admin user view are unchanged.
+- The built-in Reading Journey tile is retired after conversion. **Identity** keeps its name and fields (Name, Email, Instagram, social links).
+- The "Published with Novelty Library" count card moved from Reading Journey into **Identity**.
+- Cards no longer render converted reading fields twice, and a converted question that is hidden or off-card switches the matching card row off, on both the reader profile and the public profile.

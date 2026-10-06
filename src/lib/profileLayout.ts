@@ -1,20 +1,23 @@
 import { supabase } from '@/lib/supabase';
 
-export type ProfileSectionKey = 'reader_identity' | 'profile_questions' | 'reading_journey' | `custom:${string}`;
+export type ProfileSectionKey = 'reader_identity' | 'profile_questions' | 'basic_reader' | 'reading_journey' | `custom:${string}`;
 export type ProfileSectionLayoutItem = {
   key: ProfileSectionKey;
   order: number;
   active: boolean;
   header?: string;
   description?: string;
+  /** reading_journey only: set once its fields were converted into a real question section. */
+  converted?: boolean;
 };
 
 const SLUG = 'profile-section-layout';
 
 export const BUILT_IN_PROFILE_SECTIONS: ProfileSectionLayoutItem[] = [
-  { key: 'reader_identity', order: 10, active: true, header: 'Build your reader identity', description: 'Your name, account details and social links.' },
-  { key: 'profile_questions', order: 20, active: true, header: 'Profile Questions', description: 'Answer the questions shared by Novelty Library.' },
-  { key: 'reading_journey', order: 30, active: true, header: 'Your reading life', description: 'Your reading history, favourites and book-related profile details live here.' },
+  { key: 'reader_identity', order: 10, active: true, header: 'Identity', description: 'Your name, account details and social links.' },
+  { key: 'basic_reader', order: 20, active: true, header: 'Basic Reader', description: 'Your core Novelty Library reading activity.' },
+  { key: 'profile_questions', order: 30, active: true, header: 'Profile Questions', description: 'Answer the questions shared by Novelty Library.' },
+  { key: 'reading_journey', order: 40, active: true, header: 'Your reading life', description: 'Your reading history, favourites and book-related profile details live here.' },
 ];
 
 export async function fetchProfileSectionLayout(): Promise<ProfileSectionLayoutItem[]> {
@@ -24,7 +27,16 @@ export async function fetchProfileSectionLayout(): Promise<ProfileSectionLayoutI
     const parsed = JSON.parse(String(data.content)) as { sections?: ProfileSectionLayoutItem[] };
     const saved = Array.isArray(parsed.sections) ? parsed.sections : [];
     const byKey = new Map(saved.map(x => [x.key, x]));
-    const builtIns = BUILT_IN_PROFILE_SECTIONS.map(def => ({ ...def, ...(byKey.get(def.key) || {}) }));
+    const builtIns = BUILT_IN_PROFILE_SECTIONS.map(def => {
+      const savedDef = byKey.get(def.key);
+      // Preserve genuine admin edits, but migrate the old identity heading to the
+      // requested stable section name. The new Basic Reader section is injected
+      // automatically for older saved layouts because it has a new built-in key.
+      if (def.key === 'reader_identity' && (!savedDef?.header || savedDef.header === 'Build your reader identity')) {
+        return { ...def, ...(savedDef || {}), header: 'Identity' };
+      }
+      return { ...def, ...(savedDef || {}) };
+    });
     // Question sections (custom:*) are owned by the profile_question_sections table;
     // copies stored here were stale and overrode the admin's edits, so they are ignored.
     return builtIns.sort((a, b) => a.order - b.order || a.key.localeCompare(b.key));

@@ -34,6 +34,16 @@ export type ProfileQuestionSection = {
   active: boolean;
 };
 
+/**
+ * The six former built-in "reading journey" fields. After the admin converts them they are ordinary profile
+ * questions (own section, editable, draggable) that keep these keys. Their VALUES still live in the matching
+ * `profiles` columns, so the profile card, public profile, onboarding and admin user view keep working.
+ */
+export const LEGACY_PROFILE_FIELD_KEYS = ['reading_since', 'books_read_this_month', 'total_books_read', 'favorite_book', 'favorite_author', 'favorite_genre'] as const;
+export type LegacyProfileFieldKey = typeof LEGACY_PROFILE_FIELD_KEYS[number];
+export const isLegacyProfileFieldKey = (key: string): key is LegacyProfileFieldKey => (LEGACY_PROFILE_FIELD_KEYS as readonly string[]).includes(key);
+export const READING_JOURNEY_SECTION_NAME = 'Reading Journey';
+
 export const DEFAULT_PROFILE_SECTIONS = ['Personal Details', 'Book Journey', 'Reading Identity', 'Custom'] as const;
 /** Backwards-compatible alias used by older UI code. */
 export const PROFILE_SECTIONS = DEFAULT_PROFILE_SECTIONS;
@@ -61,11 +71,28 @@ export async function saveProfileQuestionSection(input: {
   const name = input.name.trim();
   if (!name) throw new Error('Section name is required.');
 
+  // New sections must never reuse an occupied sort_order. The database enforces
+  // uniqueness here, and the old admin flow could collide with a seeded section
+  // (for example two sections both trying to use 20). Keep edits deterministic,
+  // but choose the next free slot for a genuinely new section.
+  let sortOrder = input.sort_order ?? 10;
+  if (!input.id) {
+    const { data: existingOrders } = await supabase
+      .from('profile_question_sections')
+      .select('sort_order')
+      .order('sort_order', { ascending: false });
+    const used = new Set((existingOrders ?? []).map(row => Number(row.sort_order)));
+    if (used.has(sortOrder)) {
+      const max = Math.max(0, ...Array.from(used).filter(Number.isFinite));
+      sortOrder = max + 10;
+    }
+  }
+
   const payload = {
     name,
     header: input.header?.trim() || name,
     description: input.description?.trim() || '',
-    sort_order: input.sort_order ?? 10,
+    sort_order: sortOrder,
     active: input.active ?? true,
   };
 

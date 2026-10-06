@@ -3,7 +3,7 @@ import { ArrowLeft, BookOpen, CheckCircle, User, UserPlus, UserCheck, Users, X, 
 import { useAuth } from '@/lib/auth';
 import { fetchPublicProfile, fetchPublicPublishedReviews, type AcceptedReviewCard, type PublicProfileData } from '@/lib/reviews';
 import { fetchFollowStats, followUsername, unfollowUsername, fetchConnections, fetchFollowPrivacy, type FollowStats, type ConnectionProfile, type FollowPrivacy } from '@/lib/social';
-import { fetchProfileQuestions, type ProfileQuestion } from '@/lib/profileQuestions';
+import { fetchProfileQuestions, isLegacyProfileFieldKey, type LegacyProfileFieldKey, type ProfileQuestion } from '@/lib/profileQuestions';
 import { ProfileCard, asFormatKey, type ProfileCardData } from '@/components/ProfileCard';
 import { answerText, answerImageUrls } from '@/components/ProfileQuestionAnswer';
 import { RwStarRating } from '@/components/RwStarRating';
@@ -16,7 +16,7 @@ export function PublicProfilePage({ username, navigate }: Props) {
   useEffect(()=>{
     let alive=true; setLoading(true);
     // allSettled: a failing optional piece (follow stats, privacy, questions) must never hide the profile or its published reviews.
-    Promise.allSettled([fetchPublicProfile(username),fetchPublicPublishedReviews(username),fetchProfileQuestions(),fetchFollowStats(username),fetchFollowPrivacy(username)]).then(([p,pub,q,stats,priv])=>{
+    Promise.allSettled([fetchPublicProfile(username),fetchPublicPublishedReviews(username),fetchProfileQuestions(true),fetchFollowStats(username),fetchFollowPrivacy(username)]).then(([p,pub,q,stats,priv])=>{
       if(!alive) return;
       setProfile(p.status==='fulfilled'?p.value:null);
       setPublished(pub.status==='fulfilled'?pub.value:[]);
@@ -33,7 +33,10 @@ export function PublicProfilePage({ username, navigate }: Props) {
     if(!profile)return undefined;
     const avg=published.filter(r=>Number(r.reviewers_rating)>0);
     const answers=Object.fromEntries(questions.map(q=>{ const raw=(profile.profile_answers||{})[q.key]; if(q.type==='image_upload') return [sanitizeUserText(q.key,120), answerImageUrls(raw).map(url=>safeExternalUrl(url)).filter((url): url is string=>!!url)]; if(q.type==='select_multiple' && Array.isArray(raw)) return [sanitizeUserText(q.key,120), raw.map(v=>sanitizeUserText(answerText(v),180)).filter(Boolean)]; return [sanitizeUserText(q.key,120),sanitizeUserText(answerText(raw),1200)]; }));
-    const safeQuestions=questions.map(q=>({...q,key:sanitizeUserText(q.key,120),question:sanitizeUserText(q.question,300)}));
+    // Converted reading fields are real questions: they show only while their question is active and on the card.
+    const readingConverted=questions.some(q=>isLegacyProfileFieldKey(q.key));
+    const legacyOn=(k:LegacyProfileFieldKey)=>{ if(!readingConverted) return true; const q=questions.find(x=>x.key===k); return !!q&&q.active!==false&&q.show_in_profile_card!==false; };
+    const safeQuestions=questions.filter(q=>!isLegacyProfileFieldKey(q.key)).map(q=>({...q,key:sanitizeUserText(q.key,120),question:sanitizeUserText(q.question,300)}));
     const socialLinks=(profile.social_links||[]).map(l=>({platform:sanitizeUserText(l.platform,40).toLowerCase(),url:safeExternalUrl(l.url)||''})).filter(l=>l.url);
     return {
       name:sanitizeUserText(profile.name,120)||null,
@@ -42,12 +45,12 @@ export function PublicProfilePage({ username, navigate }: Props) {
       headerImageUrl:safeExternalUrl(profile.header_image_url),
       socialLinks,
       instagram:(profile.profile_visibility?.instagram===false?null:sanitizeUserText(profile.instagram_id,80)||null),
-      booksThisMonth:profile.books_read_this_month,totalBooksRead:profile.total_books_read,publishedBooks:published.length,
+      booksThisMonth:legacyOn('books_read_this_month')?profile.books_read_this_month:null,totalBooksRead:legacyOn('total_books_read')?profile.total_books_read:null,publishedBooks:published.length,
       avgRating:avg.length?avg.reduce((s,r)=>s+Number(r.reviewers_rating),0)/avg.length:null,
-      readingSince:profile.reading_since,
-      favoriteBook:sanitizeUserText(profile.favorite_book,200)||null,
-      favoriteAuthor:sanitizeUserText(profile.favorite_author,160)||null,
-      favoriteGenre:sanitizeUserText(profile.favorite_genre,120)||null,
+      readingSince:legacyOn('reading_since')?profile.reading_since:null,
+      favoriteBook:legacyOn('favorite_book')?sanitizeUserText(profile.favorite_book,200)||null:null,
+      favoriteAuthor:legacyOn('favorite_author')?sanitizeUserText(profile.favorite_author,160)||null:null,
+      favoriteGenre:legacyOn('favorite_genre')?sanitizeUserText(profile.favorite_genre,120)||null:null,
       answers,questions:safeQuestions.filter(q => q.active !== false),
       publishedReviews:published.slice(0,6).map(r=>({id:r.id,reviewNo:sanitizeUserText(r.review_no,40)||null,title:sanitizeUserText(r.book_title,200)||'Untitled review',author:sanitizeUserText(r.author,160),coverUrl:safeExternalUrl(r.book_cover),rating:Number(r.reviewers_rating)||null}))
     };
