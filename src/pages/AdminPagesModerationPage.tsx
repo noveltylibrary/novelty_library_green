@@ -85,7 +85,8 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   const allSectionLayout = useMemo(() => {
     const custom = orderedSections.map((s): ProfileSectionLayoutItem => ({ key: `custom:${s.id}` as const, order: s.sort_order, active: s.active, header: s.header || s.name, description: s.description || '' }));
     const built = sectionLayout.filter(s => !String(s.key).startsWith('custom:')).map(s => ({ ...s }));
-    return [...built, ...custom].sort((a,b)=>a.order-b.order || a.key.localeCompare(b.key));
+    // Identity is locked at the top; everything else follows the admin's order.
+    return [...built, ...custom].sort((a,b)=>(a.key==='reader_identity'?-1:b.key==='reader_identity'?1:0) || a.order-b.order || a.key.localeCompare(b.key));
   }, [orderedSections, sectionLayout]);
   const [dragQ, setDragQ] = useState<string | null>(null);
   const [dragSec, setDragSec] = useState<string | null>(null);
@@ -341,7 +342,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
 
   const dropSection = async (targetKey: string) => {
     const from = dragSec; setDragSec(null); setOverKey(null);
-    if (!from || from === targetKey) return;
+    if (!from || from === targetKey || from === 'reader_identity' || targetKey === 'reader_identity') return;
     const next = [...allSectionLayout];
     const fi = next.findIndex(x => x.key === from); const ti = next.findIndex(x => x.key === targetKey);
     if (fi < 0 || ti < 0) return;
@@ -353,7 +354,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
   const moveSection = async (index: number, direction: -1 | 1) => {
     const next = [...allSectionLayout];
     const target = index + direction;
-    if (target < 0 || target >= next.length) return;
+    if (target < 1 || index < 1 || target >= next.length) return;
     [next[index], next[target]] = [next[target], next[index]];
     await persistSectionOrder(next);
   };
@@ -523,14 +524,15 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
             <div><p className="text-sm font-semibold">Profile question sections</p><p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Every profile-question section is configurable here: internal name, reader-facing heading, text under the heading, order and visibility. Add as many sections as your profile needs.</p></div>
             <button type="button" className="btn-primary !w-auto" onClick={openAddSection}><FolderPlus className="w-4 h-4" /> Add section</button>
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2 max-w-2xl" role="list" aria-label="Profile sections, top to bottom">
             {allSectionLayout.map((item, index) => {
               const builtIn = item.key === 'reader_identity' || item.key === 'profile_questions' || item.key === 'reading_journey';
               const custom = !builtIn ? orderedSections.find(s => item.key === `custom:${s.id}`) : null;
-              return <div key={item.key} draggable onDragStart={e => { setDragSec(item.key); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', item.key); }} onDragOver={e => { if (dragSec) { e.preventDefault(); setOverKey(`sec:${item.key}`); } }} onDragLeave={() => setOverKey(k => k === `sec:${item.key}` ? null : k)} onDrop={e => { e.preventDefault(); void dropSection(item.key); }} onDragEnd={() => { setDragSec(null); setOverKey(null); }} className="rounded-xl p-3 flex items-center gap-2 cursor-grab active:cursor-grabbing" style={{ background: 'var(--color-background)', border: overKey === `sec:${item.key}` ? '2px dashed var(--color-cyan-dark)' : '1px solid var(--color-border)', opacity: dragSec === item.key ? .45 : 1 }}>
-                <GripVertical className="w-4 h-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} aria-hidden="true" />
-                <div className="flex flex-col"><button type="button" disabled={index===0} onClick={()=>void moveSection(index,-1)} className="p-1 rounded disabled:opacity-30" title="Move section up"><ChevronUp className="w-4 h-4"/></button><button type="button" disabled={index===allSectionLayout.length-1} onClick={()=>void moveSection(index,1)} className="p-1 rounded disabled:opacity-30" title="Move section down"><ChevronDown className="w-4 h-4"/></button></div>
-                <div className="min-w-0 flex-1"><p className="font-semibold text-sm truncate">{item.header || item.key}</p><p className="text-[11px] mt-1 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>{item.description || 'No helper text set.'}</p><p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: 'var(--color-text-muted)' }}>{builtIn ? 'Built-in section' : 'Custom section'} · Order {index+1} · {item.active ? 'Visible' : 'Hidden'}</p></div>
+              const locked = item.key === 'reader_identity';
+              return <div key={item.key} draggable={!locked} onDragStart={e => { setDragSec(item.key); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', item.key); }} onDragOver={e => { if (dragSec && !locked) { e.preventDefault(); setOverKey(`sec:${item.key}`); } }} onDragLeave={() => setOverKey(k => k === `sec:${item.key}` ? null : k)} onDrop={e => { e.preventDefault(); void dropSection(item.key); }} onDragEnd={() => { setDragSec(null); setOverKey(null); }} className={`rounded-2xl px-3 py-3 flex items-center gap-2 shadow-sm transition hover:shadow-md hover:-translate-y-px ${locked ? '' : 'cursor-grab active:cursor-grabbing'}`} style={{ background: 'var(--color-background)', border: overKey === `sec:${item.key}` ? '2px dashed var(--color-cyan-dark)' : '1px solid var(--color-border)', opacity: dragSec === item.key ? .45 : 1 }}>
+                {locked ? <Lock className="w-4 h-4 shrink-0" style={{ color: 'var(--color-teal-dark)' }} aria-label="Locked at the top" /> : <GripVertical className="w-4 h-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} aria-hidden="true" />}
+                <div className="flex flex-col"><button type="button" disabled={locked || index<=1} onClick={()=>void moveSection(index,-1)} className="p-1 rounded disabled:opacity-30" title="Move section up"><ChevronUp className="w-4 h-4"/></button><button type="button" disabled={locked || index===allSectionLayout.length-1} onClick={()=>void moveSection(index,1)} className="p-1 rounded disabled:opacity-30" title="Move section down"><ChevronDown className="w-4 h-4"/></button></div>
+                <button type="button" onClick={() => custom ? openRenameSection(custom) : openBuiltInSection(item)} className="min-w-0 flex-1 text-left" title="Click to edit this section"><p className="font-semibold text-sm truncate">{item.header || item.key}</p><p className="text-[11px] mt-1 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>{item.description || 'No helper text set.'}</p><p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: 'var(--color-text-muted)' }}>{locked ? 'Locked at the top' : builtIn ? 'Built-in section' : 'Custom section'} · Order {index+1} · {item.active ? 'Visible' : 'Hidden'}</p></button>
                 {custom ? <button type="button" className="p-2 rounded-lg" title={`Edit ${custom.name}`} aria-label={`Edit ${custom.name}`} onClick={() => openRenameSection(custom)}><Pencil className="w-3.5 h-3.5" /></button> : <button type="button" className="p-2 rounded-lg" title="Edit built-in section heading and text" aria-label="Edit built-in section" onClick={() => openBuiltInSection(item)}><Pencil className="w-3.5 h-3.5" /></button>}
               </div>;
             })}
@@ -544,14 +546,14 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
               <p className="text-xs mt-1 mb-3" style={{ color: 'var(--color-text-muted)' }}>These ship with every profile. Edit their label, placeholder and default visibility. Name and Email are locked.</p>
               <div className="space-y-4">
                 {(['reader_identity','reading_journey'] as const).map(sectionKey => {
-                  const fields = CORE_FIELDS.filter(f => (sectionKey === 'reading_journey' ? f.section === 'Reading Journey' : f.section === 'Personal Details')).sort((a,b)=>(coreFieldOrder[a.key] ?? CORE_FIELDS.indexOf(a))-(coreFieldOrder[b.key] ?? CORE_FIELDS.indexOf(b)));
+                  const fields = CORE_FIELDS.filter(f => (sectionKey === 'reading_journey' ? f.section === 'Reading Journey' : f.section === 'Identity')).sort((a,b)=>(coreFieldOrder[a.key] ?? CORE_FIELDS.indexOf(a))-(coreFieldOrder[b.key] ?? CORE_FIELDS.indexOf(b)));
                   return <div key={sectionKey} className="rounded-2xl p-3" style={{background:'var(--color-background)',border:'1px solid var(--color-border)'}}><p className="text-xs uppercase tracking-wider font-bold mb-2" style={{color:'var(--color-teal-dark)'}}>{sectionKey === 'reading_journey' ? 'Reading Journey' : 'Build Your Reader Identity'}</p><div className="space-y-2">{fields.map((f,i)=><div key={f.key} className="rounded-xl p-3 flex items-center gap-2" style={{background:'var(--color-paper)',border:'1px solid var(--color-border)'}}><div className="flex flex-col"><button type="button" disabled={i===0} onClick={()=>void moveCoreField(f.key,-1)} className="p-1 rounded disabled:opacity-30" title="Move field up"><ChevronUp className="w-4 h-4"/></button><button type="button" disabled={i===fields.length-1} onClick={()=>void moveCoreField(f.key,1)} className="p-1 rounded disabled:opacity-30" title="Move field down"><ChevronDown className="w-4 h-4"/></button></div><div className="min-w-0 flex-1"><p className="text-[10px] uppercase tracking-wider font-bold" style={{color:'var(--color-teal-dark)'}}>{f.type}</p><p className="font-semibold text-sm truncate">{(coreOverrides[f.key]?.label || f.label)}</p><p className="text-[11px] mt-0.5" style={{color:'var(--color-text-muted)'}}>{f.key === 'name' || f.key === 'email' ? 'Built-in · locked' : `Built-in · ${coreActive(coreOverrides, f.key) ? 'shown on profile' : 'HIDDEN from profile'}`}</p></div>{f.locked ? <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{color:'var(--color-text-muted)'}}><Lock className="w-3.5 h-3.5"/> Locked</span> : <button type="button" onClick={()=>editCore(f.key)} className="btn-ghost !w-auto !px-3 text-xs">Edit</button>}</div>)}</div></div>;
                 })}
               </div>
             </div>
             {questions.length === 0 ? <div className="py-10 text-center" style={{ color: 'var(--color-text-muted)' }}>No profile questions yet.</div> : <>
               <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Drag a question by its card to reorder it, or drop it into another section column to move it there.</p>
-              <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 items-start">
+              <div className="flex flex-col gap-4">
                 {questionGroups.map(group => <section key={group.name} onDragOver={e => { if (dragQ) { e.preventDefault(); setOverKey(`g:${group.name}`); } }} onDrop={e => { e.preventDefault(); void dropQuestion(group.name, null); }} className="rounded-2xl p-3 space-y-2 min-w-0" style={{ background: 'var(--color-background)', border: overKey === `g:${group.name}` ? '2px dashed var(--color-cyan-dark)' : '1px solid var(--color-border)' }}>
                   <div className="flex items-center justify-between gap-2 px-1"><p className="text-xs uppercase tracking-wider font-bold truncate" style={{ color: 'var(--color-teal-dark)' }}>{group.header}</p><span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{group.items.length} question{group.items.length === 1 ? '' : 's'}{group.active ? '' : ' · hidden'}</span></div>
                   {group.items.length === 0 && <div className="rounded-xl py-6 text-center text-xs" style={{ border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)' }}>Drop a question here</div>}

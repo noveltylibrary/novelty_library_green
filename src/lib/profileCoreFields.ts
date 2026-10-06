@@ -22,9 +22,9 @@ export interface CoreFieldDef {
 }
 
 export const CORE_FIELDS: CoreFieldDef[] = [
-  { key: 'name', label: 'Name', placeholder: 'Jane Doe', section: 'Personal Details', type: 'Short answer', locked: true, defaultVisible: true },
-  { key: 'email', label: 'Email', placeholder: '', section: 'Personal Details', type: 'Account email', locked: true, defaultVisible: false },
-  { key: 'instagram', label: 'Instagram', placeholder: '@yourhandle or instagram.com/yourhandle', section: 'Personal Details', type: 'Short answer', locked: false, defaultVisible: true },
+  { key: 'name', label: 'Name', placeholder: 'Jane Doe', section: 'Identity', type: 'Short answer', locked: true, defaultVisible: true },
+  { key: 'email', label: 'Email', placeholder: '', section: 'Identity', type: 'Account email', locked: true, defaultVisible: false },
+  { key: 'instagram', label: 'Instagram', placeholder: '@yourhandle or instagram.com/yourhandle', section: 'Identity', type: 'Short answer', locked: false, defaultVisible: true },
   { key: 'reading_since', label: 'Reading Since', placeholder: '2024', section: 'Reading Journey', type: 'Year', locked: false, defaultVisible: true },
   { key: 'books_read_this_month', label: 'Books Read This Month', placeholder: '3', section: 'Reading Journey', type: 'Number', locked: false, defaultVisible: true },
   { key: 'total_books_read', label: 'Total Books Read', placeholder: '102', section: 'Reading Journey', type: 'Number', locked: false, defaultVisible: true },
