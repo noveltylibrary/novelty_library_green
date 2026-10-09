@@ -261,3 +261,12 @@ When behavior changes:
 - The built-in Reading Journey tile is retired after conversion. **Identity** keeps its name and fields (Name, Email, Instagram, social links).
 - The "Published with Novelty Library" count card moved from Reading Journey into **Identity**.
 - Cards no longer render converted reading fields twice, and a converted question that is hidden or off-card switches the matching card row off, on both the reader profile and the public profile.
+
+
+## Version 1.60 - Reviewer verdict
+
+- New **compulsory** submit-form question, placed right before the review text and ratings: **Perfection**, **Go for it** or **Timepass** (stored as `perfection`, `go_for_it`, `timepass`).
+- The verdict flows `reviews` -> `master_list` (Accepted) -> `community_reviews` (Published). It is only written when set, so legacy rows, Google Sheets imports and admin queue transitions are unaffected (NULL = no banner).
+- Published review pages and feed cards show an indigo/violet gradient **verdict banner** with a unique SVG symbol per verdict.
+- On submit/save, a soft **verdict vs R/W rating check** asks the reviewer to confirm mismatches (Perfection < 8.5, Go for it < 5.5, Timepass > 7.5). Thresholds live in `src/lib/verdict.ts` (`VERDICT_RATING_RULES`).
+- Database: run `sql/verdict_column.sql` (idempotent; the live project already has the column and `*_verdict_chk` CHECK constraints).

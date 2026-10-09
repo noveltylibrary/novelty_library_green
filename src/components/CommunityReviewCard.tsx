@@ -2,6 +2,7 @@ import { PosterImage } from '@/components/PosterImage';
 import { EngagementBar } from '@/components/EngagementBar';
 import { computeNlRating, type EngagementStats } from '@/lib/engagement';
 import { sanitizeUserText } from '@/lib/sanitize';
+import { VerdictBanner } from '@/components/VerdictBanner';
 
 export interface CommunityReviewCardData {
   id: string;
@@ -10,6 +11,7 @@ export interface CommunityReviewCardData {
   genre: string;
   reviewText: string;
   rwRating: number | null;
+  verdict?: string | null;
   reviewer: string;
   coverImage: string | null;
   publishedAt: string;
@@ -38,6 +40,7 @@ export function CommunityReviewCard({ item, onClick, onPrefetch, index = 0, stat
 
   return (
     <article className="community-review-card group" style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }} onPointerEnter={onPrefetch} onTouchStart={onPrefetch} onFocus={onPrefetch}>
+      <VerdictBanner verdict={item.verdict} size="compact" className="mb-2" />
       <div className="community-review-poster" onClick={onClick} role="link" aria-label={`Open review of ${safeTitle}`}>
         <PosterImage src={item.coverImage} alt={safeTitle} />
 

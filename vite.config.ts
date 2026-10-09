@@ -53,6 +53,9 @@ return {
         // Pre-cache the app shell: HTML, CSS, JS, logos/icons and any bundled fonts.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
         navigateFallback: `${base}index.html`,
+        // The ad host page is served straight from the network with its own CSP; never precache it or swap in the app shell.
+        navigateFallbackDenylist: [/ad-frame\.html/],
+        globIgnores: ['**/ad-frame.*'],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,

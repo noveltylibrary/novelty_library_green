@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCookieConsent } from '@/lib/cookieConsent';
 
 interface AdsterraAdSlotProps {
@@ -9,26 +9,24 @@ interface AdsterraAdSlotProps {
 
 type SlotState = 'loading' | 'filled' | 'empty';
 
-const AD_KEY = '94338a299763bb951992d9cd078429e9';
-const AD_SCRIPT_SRC = import.meta.env.VITE_ADSTERRA_SCRIPT_URL || `https://bauval.org/22/${AD_KEY}`;
+// The ad lives in /ad-frame.html, a static page with its OWN Content-Security-Policy (see vercel.json), so the app's
+// own policy can stay strict. Optionally host it on a separate origin: VITE_AD_FRAME_ORIGIN=https://ads.your-domain.com
+const FRAME_ORIGIN = String(import.meta.env.VITE_AD_FRAME_ORIGIN || '').replace(/\/$/, '');
+const FRAME_SRC = FRAME_ORIGIN ? `${FRAME_ORIGIN}/ad-frame.html` : `${import.meta.env.BASE_URL}ad-frame.html`;
+const FRAME_IS_SEPARATE_ORIGIN = (() => { try { return !!FRAME_ORIGIN && new URL(FRAME_ORIGIN).origin !== window.location.origin; } catch { return false; } })();
 
 /**
  * Two ad modes, chosen by the reader's cookie choice:
- *  - 'essential' (Essential only): non-personalised ads. The frame is sandboxed WITHOUT allow-same-origin and sends
- *    no referrer, so the ad code gets no cookies/storage and cannot recognise the reader (contextual / random ads).
- *  - 'all' (Accept all): personalised ads. The frame may keep the ad network's cookies/storage so it can tailor ads.
- * The ad runs inside its own iframe (srcDoc). Adsterra's invoke script uses document.write and
- * sets a global `atOptions`; isolating it in an iframe keeps both away from the app's page, and the
- * 'essential' sandbox has NO allow-same-origin, so third-party ad code can never read the app's storage or login.
- * NOTE: a srcDoc iframe inherits the page's Content-Security-Policy, so vercel.json must allow the ad
- * network's scripts (inline + https:) or the creative is silently blocked.
+ *  - Essential only: non-personalised. The frame is sandboxed without allow-same-origin and sends no referrer,
+ *    so the ad code gets no cookies/storage and cannot recognise the reader.
+ *  - Accept all: personalised ads, ONLY when the ad frame is on a separate origin (VITE_AD_FRAME_ORIGIN). Then
+ *    allow-same-origin is safe because the ad code can never reach the app's storage or login session. Without a
+ *    separate origin the frame stays fully sandboxed (ads still show, but the network cannot use cookies).
  */
 export function AdsterraAdSlot({ className = '', active = true }: AdsterraAdSlotProps) {
   const consent = useCookieConsent();
   const [state, setState] = useState<SlotState>('loading');
-  const personalised = consent === 'all';
-
-  const srcDoc = useMemo(() => `<!doctype html><html><head><meta charset="utf-8"><base target="_blank"><style>html,body{margin:0;padding:0;overflow:hidden;background:transparent}</style></head><body><script>atOptions={'key':'${AD_KEY}','format':'iframe','height':250,'width':300,'params':{}};<\/script><script src="${AD_SCRIPT_SRC}"><\/script></body></html>`, []);
+  const personalised = consent === 'all' && FRAME_IS_SEPARATE_ORIGIN;
 
   useEffect(() => { if (consent && active) setState('loading'); }, [consent, active]);
 
@@ -43,7 +41,7 @@ export function AdsterraAdSlot({ className = '', active = true }: AdsterraAdSlot
           key={personalised ? 'personalised' : 'basic'}
           data-ad-mode={personalised ? 'personalised' : 'non-personalised'}
           title="Advertisement"
-          srcDoc={srcDoc}
+          src={FRAME_SRC}
           width={300}
           height={250}
           scrolling="no"

@@ -1,3 +1,4 @@
+import { VerdictBanner } from '@/components/VerdictBanner';
 import { useState, useEffect } from 'react';
 import { ArrowLeft, ExternalLink, Instagram, Calendar, Globe, Tag, Star } from 'lucide-react';
 import type { Review } from '@/types/review';
@@ -176,6 +177,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
 
           {/* Content */}
           <div className="md:col-span-3 nl-fast-up" style={{ animationDelay: '40ms' }}>
+            <VerdictBanner verdict={review.verdict} className="mb-5" />
             <div className="flex flex-wrap gap-2 mb-4">
               <span className="nl-chip px-4 py-1.5 text-[13px] font-semibold">{sanitizeUserText(review.genre, 80)}</span>
               {review.traits?.split(',').map((trait) => (

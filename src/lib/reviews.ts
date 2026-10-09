@@ -1,7 +1,9 @@
 import { supabase } from '@/lib/supabase';
+import { normalizePicks } from '@/lib/profileCardPicks';
 import { prepareImageForUpload, extForImageType } from '@/lib/imageUpload';
 import type { Review, ReviewStatus, Profile } from '@/types/review';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
+import { normalizeVerdict, type Verdict } from '@/lib/verdict';
 
 function slugify(text: string): string {
   return text
@@ -80,7 +82,8 @@ function mapMasterListToReview(row: MasterListRow & { id: string; published?: bo
     reviewer_name: row.name || null,
     reviewer_email: row.email || null,
     novelty_username: row.novelty_username || null,
-  };
+    verdict: normalizeVerdict((row as { verdict?: unknown }).verdict),
+  } as Review;
 }
 
 export async function fetchReviewBySlug(slug: string): Promise<Review | null> {
@@ -303,6 +306,7 @@ export async function submitReview(input: {
   form_feedback?: string;
   rating_integer?: number;
   undertaking_accepted?: boolean;
+  verdict: Verdict;
 }): Promise<Review> {
   const slug = uniqueSlug(input.title);
   const { data: userData } = await supabase.auth.getUser();
@@ -341,6 +345,7 @@ export async function submitReview(input: {
     rating_integer: input.rating_integer || null,
     undertaking_accepted: input.undertaking_accepted || false,
     user_id: userId,
+    verdict: normalizeVerdict(input.verdict),
   };
 
   let { data, error } = await supabase
@@ -399,6 +404,7 @@ export interface MasterListRow {
   published_on?: string | null;
   poster_url?: string | null;
   poster_link?: string | null;
+  verdict?: string | null;
 }
 
 // Review No. is stored as text (it mirrors a free-form spreadsheet column),
@@ -490,6 +496,8 @@ export async function publishReviewToMasterList(
     heard_from: review.heard_from || '',
     status: 'Published',
     blogger_draft: '',
+    // Only sent when set, so legacy submissions (no verdict) behave exactly as before.
+    ...(normalizeVerdict(review.verdict) ? { verdict: normalizeVerdict(review.verdict) } : {}),
   };
 
   const { error: insertError } = await supabase.from('master_list').insert(newRow);
@@ -572,6 +580,8 @@ function communitySnapshot(master: any, extra: Record<string, unknown> = {}) {
     suggestions: master.suggestions ?? '',
     status: master.status ?? '',
     blogger_draft: master.blogger_draft ?? '',
+    // Mirror the verdict only when the column exists on the source row; invalid/sheet text becomes NULL.
+    ...('verdict' in master ? { verdict: normalizeVerdict(master.verdict) } : {}),
     updated_at: new Date().toISOString(),
     ...extra,
   };
@@ -935,6 +945,11 @@ export async function updateProfile(uid: string, fields: Partial<Profile>): Prom
   if ('hide_followers' in fields) (allowed as any).hide_followers = Boolean(fields.hide_followers);
   if ('hide_following' in fields) (allowed as any).hide_following = Boolean(fields.hide_following);
   if ('profile_visibility' in fields) (allowed as any).profile_visibility = fields.profile_visibility ?? {};
+  if ('selected_question_ids' in fields || 'profile_display_tags' in fields) {
+    const picks = normalizePicks(fields.selected_question_ids, fields.profile_display_tags);
+    (allowed as any).selected_question_ids = picks.qa;
+    (allowed as any).profile_display_tags = picks.tags;
+  }
   const { error } = await supabase.from('profiles').update({ ...allowed, updated_at: new Date().toISOString() }).eq('id', uid);
   if (error) throw error;
 }

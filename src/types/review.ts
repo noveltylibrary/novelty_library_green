@@ -44,6 +44,8 @@ export interface Review {
   reading_since: number | null;
   favorite_author: string | null;
   favorite_genre: string | null;
+  /** Reviewer verdict; null for legacy reviews. */
+  verdict?: 'perfection' | 'go_for_it' | 'timepass' | null;
 }
 
 export interface Profile {
@@ -68,6 +70,10 @@ export interface Profile {
   hide_followers?: boolean;
   hide_following?: boolean;
   profile_visibility?: Record<string, boolean>;
+  /** Advanced Reader question keys shown as Q&A on the profile card (max 5). */
+  selected_question_ids?: string[];
+  /** Advanced Reader question keys shown as tags on the profile card (max 3). */
+  profile_display_tags?: string[];
 }
 
 export interface ReviewDraft {

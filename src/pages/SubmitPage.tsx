@@ -5,6 +5,8 @@ import {
   Clock, BookOpen, Sparkles, Heart, Plus, Trash2, FileText, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { VERDICTS, normalizeVerdict, verdictRatingWarning, type Verdict } from '@/lib/verdict';
+import { VerdictIcon, VerdictBanner } from '@/components/VerdictBanner';
 import { supabase } from '@/lib/supabase';
 import { submitReview, searchOpenLibrary, uploadCoverImage, saveDraft, loadDrafts, checkBookAvailability, createBookReservation, type OpenLibraryResult, type SavedReviewDraft } from '@/lib/reviews';
 import { getErrorMessage } from '@/lib/format';
@@ -38,6 +40,7 @@ interface FormState {
   traits: string;
   language: string;
   review_text: string;
+  verdict: Verdict | '';
   rw_rating: number;
   goodreads_rating: string;
   amazon_rating: string;
@@ -55,7 +58,7 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-  title: '', author: '', genre: '', traits: '', language: '', review_text: '',
+  title: '', author: '', genre: '', traits: '', language: '', review_text: '', verdict: '',
   rw_rating: 7, goodreads_rating: '', amazon_rating: '', cover_image_url: '',
   cover_storage_path: '', buy_link: '', series_name: '', series_number: '',
   translated_from: '', review_date: '', heard_from: '', form_feedback: '', rating_integer: 9,
@@ -188,6 +191,8 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
   const [savedDrafts, setSavedDrafts] = useState<SavedReviewDraft[]>([]);
   const [selectedDraftId, setSelectedDraftId] = useState('');
   const [draftModalOpen, setDraftModalOpen] = useState(false);
+  // Verdict vs R/W rating sanity check: shows a confirm dialog instead of silently submitting a mismatch.
+  const [mismatch, setMismatch] = useState<{ message: string; mode: 'new' | 'edit' } | null>(null);
   const [draftName, setDraftName] = useState('');
   const [reservationModalOpen, setReservationModalOpen] = useState(false);
   useEffect(() => {
@@ -253,7 +258,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
   // Rating and "Where did you hear about us" are optional and deliberately
   // excluded.
   const COMPULSORY_FIELDS: (keyof FormState)[] = [
-    'title', 'author', 'genre', 'language', 'traits', 'review_text', 'goodreads_rating', 'rw_rating',
+    'title', 'author', 'genre', 'language', 'traits', 'verdict', 'review_text', 'goodreads_rating', 'rw_rating',
   ];
   const compulsoryDone = COMPULSORY_FIELDS.filter((f) => {
     const v = form[f];
@@ -358,6 +363,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
     (Object.keys(EMPTY_FORM) as (keyof FormState)[]).forEach((key) => {
       if (key in draft) nextForm[key] = draft[key] as never;
     });
+    nextForm.verdict = normalizeVerdict(nextForm.verdict) ?? '';
     setForm(nextForm);
     const savedCover = typeof draft.coverPreview === 'string' ? draft.coverPreview : nextForm.cover_image_url;
     setCoverPreview(savedCover || null);
@@ -479,8 +485,8 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
     setQualityTips(reviewQualityTips(form.review_text));
   }, [form.review_text]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent, skipVerdictCheck = false) => {
+    e?.preventDefault();
 
     // Honeypot check: a real visitor never sees or fills this field. If it
     // has any value, this is a bot — abort silently with no Supabase write
@@ -519,6 +525,14 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
     if (form.author.trim().length > 100) {
       setError('Author name must be 100 characters or fewer.');
       return;
+    }
+
+    if (!normalizeVerdict(form.verdict)) {
+
+      setError('Please choose your verdict: Perfection, Go for it or Timepass.');
+
+      return;
+
     }
 
     if (form.review_text.trim().length < 100) {
@@ -578,6 +592,11 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
       setError('Amazon rating must be 5 or less.');
       return;
     }
+    const warnNew = skipVerdictCheck ? null : verdictRatingWarning(form.verdict, form.rw_rating);
+    if (warnNew) {
+      setMismatch({ message: warnNew, mode: 'new' });
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -589,6 +608,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
         traits: form.traits.trim() || undefined,
         language: form.language.trim(),
         review_text: form.review_text.trim(),
+        verdict: normalizeVerdict(form.verdict) as Verdict,
         rw_rating: form.rw_rating,
         goodreads_rating: form.goodreads_rating ? Number(form.goodreads_rating) : undefined,
         amazon_rating: form.amazon_rating ? Number(form.amazon_rating) : undefined,
@@ -626,7 +646,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
     }
   };
 
-  const handleEditSubmit = async () => {
+  const handleEditSubmit = async (skipVerdictCheck = false) => {
     if (!submittedReview || editExpired) return;
 
     if (!form.title.trim() || !form.author.trim() || !form.genre.trim() || !form.language.trim()) {
@@ -643,6 +663,10 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
     }
     if (form.author.trim().length > 100) {
       setError('Author name must be 100 characters or fewer.');
+      return;
+    }
+    if (!normalizeVerdict(form.verdict)) {
+      setError('Please choose your verdict: Perfection, Go for it or Timepass.');
       return;
     }
     if (form.review_text.trim().length < 100) {
@@ -683,6 +707,12 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
       return;
     }
 
+    const warnEdit = skipVerdictCheck === true ? null : verdictRatingWarning(form.verdict, form.rw_rating);
+    if (warnEdit) {
+      setMismatch({ message: warnEdit, mode: 'edit' });
+      return;
+    }
+
     setError(null);
     try {
       setSubmitting(true);
@@ -693,6 +723,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
         traits: form.traits || null,
         language: form.language,
         review_text: form.review_text,
+        verdict: normalizeVerdict(form.verdict),
         rw_rating: form.rw_rating,
         goodreads_rating: form.goodreads_rating ? Number(form.goodreads_rating) : null,
         amazon_rating: form.amazon_rating ? Number(form.amazon_rating) : null,
@@ -847,6 +878,21 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   // Success screen with edit/preview/download
+  const mismatchModal = mismatch && <div className="fixed inset-0 z-[120] grid place-items-center p-4 bg-black/45 backdrop-blur-sm" role="dialog" aria-modal="true" onClick={() => setMismatch(null)}>
+        <div className="w-full max-w-md rounded-3xl p-6" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }} onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-start gap-3 mb-3">
+            {normalizeVerdict(form.verdict) && <span className={`nl-verdict nl-verdict-${normalizeVerdict(form.verdict)} nl-verdict-icon`} style={{ width: 44, height: 44, borderRadius: 14, boxShadow: 'none' }}><VerdictIcon verdict={normalizeVerdict(form.verdict) as Verdict} size={22} /></span>}
+            <div><h2 className="font-serif text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Is this verdict right?</h2><p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>{mismatch.message}</p></div>
+          </div>
+          <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>Your verdict and R/W rating should tell the same story for readers.</p>
+          <div className="grid gap-2">
+            <button type="button" className="btn-primary w-full" onClick={() => { setMismatch(null); document.querySelector('.nl-verdict-pick')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}>Change my verdict</button>
+            <button type="button" className="btn-ghost w-full" onClick={() => { setMismatch(null); document.querySelector('.rw-range')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}>Change my rating</button>
+            <button type="button" className="btn-ghost w-full" onClick={() => { const m = mismatch.mode; setMismatch(null); void (m === 'edit' ? handleEditSubmit(true) : handleSubmit(undefined, true)); }}>Yes, keep both and {mismatch.mode === 'edit' ? 'save' : 'submit'}</button>
+          </div>
+        </div>
+      </div>;
+
   if (success && submittedReview) {
     return (
       <div className="pt-32 pb-20 container-prose">
@@ -915,6 +961,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
                 </div>
                 <span className="preview-rating"><strong>{rwRatingToStars(form.rw_rating).toFixed(1)}</strong><CalculatedStars value={form.rw_rating} size={17} /></span>
               </div>
+              <VerdictBanner verdict={form.verdict} className="mb-4" />
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-5 items-start">
                 <div className="preview-cover-frame">
                   {coverPreview ? (
@@ -961,9 +1008,10 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
                 onCoverUpload={handleCoverUpload}
                 onCoverUrlChange={(value) => setCoverSource(value.trim() ? 'url' : null)}
                 syncAutofill={syncAutofill}
+                error={error}
               />
               <div className="flex gap-3">
-                <button onClick={handleEditSubmit} disabled={submitting} className="btn-primary flex-1">
+                <button onClick={() => void handleEditSubmit()} disabled={submitting} className="btn-primary flex-1">
                   {submitting ? 'Saving...' : (<><Save className="w-4 h-4" /> Save Changes</>)}
                 </button>
                 <button onClick={() => setEditMode(false)} className="btn-ghost">Cancel</button>
@@ -981,6 +1029,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
             </div>
           )}
         </div>
+        {mismatchModal}
       </div>
     );
   }
@@ -1209,6 +1258,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
             onCoverUpload={handleCoverUpload}
             onCoverUrlChange={(value) => setCoverSource(value.trim() ? 'url' : null)}
             syncAutofill={syncAutofill}
+            error={error}
           />
 
           {duplicateWarning && (
@@ -1379,6 +1429,8 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
         </div>
       </div>}
 
+      {mismatchModal}
+
       {reservationModalOpen && <div className="fixed inset-0 z-[120] grid place-items-center p-4 bg-black/45 backdrop-blur-sm" role="dialog" aria-modal="true" onClick={() => setReservationModalOpen(false)}>
         <div className="w-full max-w-md rounded-3xl p-6" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }} onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between mb-4"><div><h2 className="font-serif text-2xl font-semibold" style={{ color: 'var(--color-text)' }}>Reserve a Book</h2><p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>No review is required right now.</p></div><button type="button" onClick={() => setReservationModalOpen(false)}><X className="w-5 h-5" /></button></div>
@@ -1392,9 +1444,10 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
 }
 
 function SubmitFormFields({
-  form, update, coverPreview, coverSource, fileInputRef, onCoverUpload, onCoverUrlChange, syncAutofill,
+  form, update, coverPreview, coverSource, fileInputRef, onCoverUpload, onCoverUrlChange, syncAutofill, error,
 }: {
   form: FormState;
+  error?: string | null;
   update: (field: keyof FormState, value: string | number | boolean) => void;
   coverPreview: string | null;
   coverSource: 'open-library' | 'uploaded' | 'url' | null;
@@ -1496,6 +1549,9 @@ function SubmitFormFields({
       {/* Traits (compulsory, 1–5) */}
       <TraitsField value={form.traits} onChange={(value) => update('traits', value)} />
 
+      {/* Verdict (compulsory) — sits right before the review/rating section */}
+      <VerdictField value={form.verdict} onChange={(value) => update('verdict', value)} showError={Boolean(error) && !normalizeVerdict(form.verdict)} />
+
       {/* Review text */}
       <ReviewTextField value={form.review_text} onChange={(value) => update('review_text', value)} />
 
@@ -1569,6 +1625,35 @@ function SubmitFormFields({
           {form.buy_link.trim() && !isValidHttpUrl(form.buy_link.trim()) && <p className="field-error">Enter a valid http:// or https:// link.</p>}
         </div>
       </div>
+    </div>
+  );
+}
+
+function VerdictField({ value, onChange, showError }: { value: Verdict | ''; onChange: (value: Verdict) => void; showError: boolean }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--color-text-muted)' }}>
+        Your verdict on this book *
+      </label>
+      <div className="nl-verdict-pick" role="radiogroup" aria-label="Your verdict on this book" aria-required="true">
+        {VERDICTS.map((v) => {
+          const on = value === v.value;
+          return (
+            <button
+              key={v.value}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => onChange(v.value)}
+              className={`nl-verdict-opt nl-verdict-${v.value} ${on ? 'nl-verdict-opt-on' : ''} ${showError && !value ? 'nl-verdict-opt-err' : ''}`}
+            >
+              <span className="nl-verdict-icon"><VerdictIcon verdict={v.value} size={20} /></span>
+              <span><strong className="text-sm">{v.label}</strong><small>{v.blurb}</small></span>
+            </button>
+          );
+        })}
+      </div>
+      {showError && !value && <p className="field-error">Please pick one verdict.</p>}
     </div>
   );
 }

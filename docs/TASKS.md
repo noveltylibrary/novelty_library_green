@@ -196,3 +196,13 @@ A feature is done when:
 - [x] Reader/public profile bridge for converted reading questions.
 - [ ] Verify in production: click Convert, check section + 6 questions appear, edit/drag one, confirm a reader's old answers still show on their profile and card, hide one question and confirm its card row disappears.
 - [ ] Run `npm run typecheck`, `npm run lint`, `npm run build` (not run in the authoring sandbox: no network for `npm install`).
+
+
+## 1.60
+
+- [x] Compulsory verdict question on the submit form (Perfection / Go for it / Timepass).
+- [x] Verdict carried through submit -> accept (master_list) -> publish (community_reviews), written only when set.
+- [x] Indigo/violet verdict banner with per-verdict SVG on review page, feed cards and submit preview.
+- [x] `sql/verdict_column.sql` (idempotent, nullable, no default, NOT VALID CHECKs).
+- [ ] Run `npm run typecheck`, `npm run lint`, `npm run build` (not run in the authoring sandbox: no network for `npm install`).
+- [ ] Optional: backfill `master_list.verdict` for old reviews, then republish; add verdict to profile review RPCs.

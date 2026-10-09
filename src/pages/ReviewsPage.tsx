@@ -20,6 +20,7 @@ function mapCommunityReviews(reviews: Review[]): CommunityReviewCardData[] {
     genre: review.genre || '',
     reviewText: review.review_text,
     rwRating: review.rw_rating > 0 ? review.rw_rating : null,
+    verdict: review.verdict ?? null,
     reviewer: review.reviewer_handle || '',
     coverImage: review.poster_url || null,
     publishedAt: review.published_at,
