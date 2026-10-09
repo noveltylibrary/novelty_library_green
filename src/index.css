@@ -858,7 +858,7 @@ input:not(:-webkit-autofill) {
   background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.65) 49%, transparent 60%);
   transform: translateX(-55%); animation: nl-an-sweep 5.5s ease-in-out infinite;
 }
-.nl-an-bridge-copy, .nl-an-bridge-metrics { position: relative; z-index: 1; }
+.nl-an-bridge-copy, .nl-an-bridge-line { position: relative; z-index: 1; }
 .nl-an-bridge-copy { min-width: 0; }
 .nl-an-bridge-kicker { display: flex; align-items: center; gap: 7px; color: var(--an-accent); font-size: 9.5px; font-weight: 900; letter-spacing: 1.8px; }
 .nl-an-bridge-copy strong { display: block; margin-top: 5px; color: var(--an-text); font-family: 'Fraunces', Georgia, serif; font-size: clamp(1.05rem, 2.5vw, 1.35rem); line-height: 1.15; }
@@ -1652,28 +1652,54 @@ header.fixed { max-width: 100vw; z-index: 60; }
 .dark .nl-about-mobilenav button:first-child { color: #03272d; background: #5ce1e6; border-color: #5ce1e6; }
 .nl-about-mobilenav svg { width: 1rem; height: 1rem; }
 
-/* ---- Reviewer verdict banner (indigo / violet / purple gradients) ---- */
-.nl-verdict { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 16px; color: #fff; box-shadow: 0 8px 22px rgba(79,70,229,.28); }
-.nl-verdict-perfection { background: linear-gradient(120deg, #7c3aed 0%, #6d28d9 45%, #4338ca 100%); }
-.nl-verdict-go_for_it { background: linear-gradient(120deg, #4f46e5 0%, #6366f1 50%, #8b5cf6 100%); }
-.nl-verdict-timepass { background: linear-gradient(120deg, #4338ca 0%, #6366f1 55%, #a78bfa 100%); }
-.nl-verdict-icon { display: grid; place-items: center; flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,.28); }
-.nl-verdict-text { display: grid; line-height: 1.15; min-width: 0; }
-.nl-verdict-kicker { font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; opacity: .8; }
-.nl-verdict-label { font-family: var(--font-serif, inherit); font-size: 1.15rem; font-weight: 700; }
-.nl-verdict-compact { padding: 6px 12px; border-radius: 12px; gap: 8px; box-shadow: none; }
-.nl-verdict-compact .nl-verdict-icon { width: 26px; height: 26px; border-radius: 8px; }
-.nl-verdict-compact .nl-verdict-label { font-size: .85rem; letter-spacing: .02em; }
+/* ---- Reviewer verdict tag (teal / cyan, with a small violet accent) ---- */
+.nl-verdict {
+  --v-a: #0097b2; --v-b: #22d3ee; --v-c: #2dd4bf; --v-hint: #8b5cf6;
+  position: relative; overflow: hidden; isolation: isolate;
+  display: inline-flex; align-items: center; gap: 8px; max-width: 100%;
+  padding: 5px 14px 5px 5px; border-radius: 999px; color: #fff;
+  background: linear-gradient(110deg, var(--v-a), var(--v-b), var(--v-c), var(--v-a)); background-size: 240% 100%;
+  box-shadow: 0 4px 14px rgba(0,151,178,.30), inset 0 0 0 1px rgba(255,255,255,.28);
+  animation: nl-verdict-flow 7s linear infinite, nl-verdict-pop .55s cubic-bezier(.22,1,.36,1) both;
+}
+.nl-verdict-perfection { --v-a: #0891b2; --v-b: #22d3ee; --v-c: #14b8a6; --v-hint: #a855f7; }
+.nl-verdict-go_for_it  { --v-a: #0097b2; --v-b: #38d9e8; --v-c: #2ec4b6; --v-hint: #7c6cf2; }
+.nl-verdict-timepass   { --v-a: #0e8fa8; --v-b: #5cd6e6; --v-c: #4fd1c5; --v-hint: #9d8df5; }
+/* light sweep */
+.nl-verdict::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.55) 50%, transparent 65%); transform: translateX(-120%); animation: nl-verdict-sheen 4.2s ease-in-out infinite 1s; }
+.nl-verdict-icon { display: grid; place-items: center; flex: 0 0 auto; width: 28px; height: 28px; border-radius: 999px;
+  background: linear-gradient(145deg, var(--v-hint), rgba(255,255,255,.18) 140%); box-shadow: 0 0 0 2px rgba(255,255,255,.35), 0 2px 8px rgba(124,108,242,.45); animation: nl-verdict-bob 3.2s ease-in-out infinite; }
+.nl-verdict-text { display: inline-flex; align-items: baseline; gap: 6px; line-height: 1.1; min-width: 0; }
+.nl-verdict-kicker { font-size: 9.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; opacity: .82; }
+.nl-verdict-label { font-size: 13px; font-weight: 800; letter-spacing: .01em; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,60,80,.25); }
+.nl-verdict-compact { padding: 3px 11px 3px 3px; gap: 6px; box-shadow: 0 3px 10px rgba(0,151,178,.25), inset 0 0 0 1px rgba(255,255,255,.25); }
+.nl-verdict-compact .nl-verdict-icon { width: 22px; height: 22px; }
+.nl-verdict-compact .nl-verdict-label { font-size: 11.5px; }
+@keyframes nl-verdict-flow { to { background-position: 240% 0; } }
+@keyframes nl-verdict-sheen { 0%, 55% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+@keyframes nl-verdict-bob { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-1.5px) rotate(-6deg); } }
+@keyframes nl-verdict-pop { from { opacity: 0; transform: translateY(6px) scale(.92); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .nl-verdict, .nl-verdict::after, .nl-verdict-icon { animation: none; } }
 /* Submit form picker */
 .nl-verdict-pick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 560px) { .nl-verdict-pick { grid-template-columns: 1fr; } }
 .nl-verdict-opt { display: flex; align-items: center; gap: 10px; text-align: left; padding: 12px 14px; border-radius: 14px; border: 1.5px solid var(--color-border); background: var(--color-paper); color: var(--color-text); transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; cursor: pointer; }
-.nl-verdict-opt:hover { transform: translateY(-1px); border-color: #818cf8; }
-.nl-verdict-opt .nl-verdict-icon { background: rgba(99,102,241,.14); box-shadow: none; color: #6366f1; width: 36px; height: 36px; }
+.nl-verdict-opt:hover { transform: translateY(-1px); border-color: #22d3ee; }
+.nl-verdict-opt .nl-verdict-icon { background: rgba(0,151,178,.12); box-shadow: none; color: #0097b2; width: 36px; height: 36px; animation: none; }
 .nl-verdict-opt small { display: block; font-size: 11px; opacity: .7; line-height: 1.25; }
-.nl-verdict-opt-on { color: #fff; border-color: transparent; box-shadow: 0 8px 20px rgba(79,70,229,.3); }
-.nl-verdict-opt-on.nl-verdict-perfection { background: linear-gradient(120deg, #7c3aed, #4338ca); }
-.nl-verdict-opt-on.nl-verdict-go_for_it { background: linear-gradient(120deg, #4f46e5, #8b5cf6); }
-.nl-verdict-opt-on.nl-verdict-timepass { background: linear-gradient(120deg, #4338ca, #a78bfa); }
-.nl-verdict-opt-on .nl-verdict-icon { background: rgba(255,255,255,.2); color: #fff; }
+.nl-verdict-opt-on { color: #fff; border-color: transparent; box-shadow: 0 8px 20px rgba(0,151,178,.32); background: linear-gradient(120deg, #0097b2, #22d3ee 60%, #2dd4bf); }
+.nl-verdict-opt-on .nl-verdict-icon { background: linear-gradient(145deg, #8b5cf6, rgba(255,255,255,.2) 140%); color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.35); }
 .nl-verdict-opt-err { border-color: #ef4444; }
+
+/* Analytics bridge: one sleek flowing line replaces the right-hand numbers */
+.nl-an-bridge-line { flex: 1 1 120px; min-width: 90px; max-width: 360px; height: 14px; display: flex; align-items: center; }
+.nl-an-bridge-line::before { content: ''; flex: 1; height: 2px; border-radius: 2px; background: linear-gradient(90deg, rgba(0,151,178,0), var(--an-accent-2, #00b8d4) 35%, var(--an-accent, #0097b2) 100%); opacity: .75; }
+.nl-an-bridge-line::after { content: ''; width: 9px; height: 9px; margin-left: -2px; border-radius: 50%; background: var(--an-accent, #0097b2); box-shadow: 0 0 0 4px rgba(0,151,178,.16), 0 0 14px rgba(0,229,255,.7); }
+.nl-an-bridge-line i { position: absolute; left: 0; top: 50%; width: 46px; height: 2px; margin-top: -1px; border-radius: 2px; background: linear-gradient(90deg, transparent, #fff, transparent); animation: nl-an-line-run 2.6s ease-in-out infinite; }
+@keyframes nl-an-line-run { 0% { left: 0; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { left: calc(100% - 55px); opacity: 0; } }
+@media (max-width: 720px) { .nl-an-bridge-line { width: 100%; max-width: none; flex-basis: auto; } }
+@media (prefers-reduced-motion: reduce) { .nl-an-bridge-line i { animation: none; display: none; } }
+
+/* Verdict tag pinned to the top-right corner of a feed-card poster */
+.nl-verdict.nl-verdict-corner { position: absolute; top: 10px; right: 10px; z-index: 5; width: max-content; }

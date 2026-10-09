@@ -267,6 +267,8 @@ When behavior changes:
 
 - New **compulsory** submit-form question, placed right before the review text and ratings: **Perfection**, **Go for it** or **Timepass** (stored as `perfection`, `go_for_it`, `timepass`).
 - The verdict flows `reviews` -> `master_list` (Accepted) -> `community_reviews` (Published). It is only written when set, so legacy rows, Google Sheets imports and admin queue transitions are unaffected (NULL = no banner).
-- Published review pages and feed cards show an indigo/violet gradient **verdict banner** with a unique SVG symbol per verdict.
+- Published review pages and feed cards show an teal/cyan gradient **verdict tag** (small violet accent) with a unique SVG symbol per verdict.
 - On submit/save, a soft **verdict vs R/W rating check** asks the reviewer to confirm mismatches (Perfection < 8.5, Go for it < 5.5, Timepass > 7.5). Thresholds live in `src/lib/verdict.ts` (`VERDICT_RATING_RULES`).
 - Database: run `sql/verdict_column.sql` (idempotent; the live project already has the column and `*_verdict_chk` CHECK constraints).
+
+- Admin -> Accepted Reviews: the **Verdict** can be set for older reviews (Cards -> edit, or click the Verdict cell in the table). Saving also copies just the verdict onto the already-published copy, so the banner appears without a republish. A **No verdict only** filter lists reviews still missing one, and an **exact Review No.** box works like the Publishing Queue's.

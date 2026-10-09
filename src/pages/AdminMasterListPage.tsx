@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { VERDICTS, normalizeVerdict } from '@/lib/verdict';
+import { mirrorVerdictToPublished } from '@/lib/reviews';
+import { VerdictBanner } from '@/components/VerdictBanner';
 
 // This is only kept as an optional "peek at the original" reference link —
 // the Table/Cards views below are the actual place to add, edit and delete
@@ -70,6 +73,8 @@ interface MasterRow {
   // purely for ordering — see fetchRows below. Null for rows added by hand
   // in this table rather than imported from the sheet.
   sheet_row_index: number | null;
+  // Reviewer verdict: null for older reviews. Allowed: perfection | go_for_it | timepass.
+  verdict?: string | null;
 }
 
 type ColumnKey = keyof Omit<MasterRow, 'id' | 'sheet_row_index'>;
@@ -91,6 +96,7 @@ const COLUMNS: { key: ColumnKey; label: string; width: number }[] = [
   { key: 'language', label: 'Language', width: 80 },
   { key: 'translated_in', label: 'Translated In', width: 90 },
   { key: 'reviewers_rating', label: 'R/W Rating', width: 80 },
+  { key: 'verdict', label: 'Verdict', width: 110 },
   { key: 'goodreads_rating', label: 'Goodreads', width: 80 },
   { key: 'amazon_rating', label: 'Amazon', width: 70 },
   { key: 'traits', label: 'Traits', width: 160 },
@@ -143,7 +149,13 @@ function sanitizeText(value: string): string {
 function sanitizeDraft(draft: Draft): Draft {
   const next = { ...draft };
   for (const key of Object.keys(next) as ColumnKey[]) {
-    next[key] = sanitizeText(next[key] ?? '');
+    if (key === 'verdict') {
+      // The DB CHECK only allows NULL or one of the three verdicts — never ''.
+      next.verdict = normalizeVerdict(next.verdict);
+      continue;
+    }
+    const v = next[key];
+    if (typeof v === 'string') (next as Record<string, unknown>)[key] = sanitizeText(v);
   }
   return next;
 }
@@ -159,6 +171,8 @@ export function AdminMasterListPage({ navigate, embedded = false }: MasterListPa
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [reviewNoSearch, setReviewNoSearch] = useState('');
+  const [missingVerdictOnly, setMissingVerdictOnly] = useState(false);
   const [editingCell, setEditingCell] = useState<{ rowId: string; col: ColumnKey } | null>(null);
   const [editValue, setEditValue] = useState('');
   const [dirtyRows, setDirtyRows] = useState<Set<string>>(new Set());
@@ -286,9 +300,14 @@ export function AdminMasterListPage({ navigate, embedded = false }: MasterListPa
   const invalidRowCount = rows.length - validRows.length;
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return validRows;
+    let base = validRows;
+    if (missingVerdictOnly) base = base.filter((r) => !normalizeVerdict(r.verdict));
+    // Exact Review No. search (same behaviour as the Publishing Queue): when filled it wins over the text search.
+    const exactNo = reviewNoSearch.trim().replace(/^#/, '');
+    if (exactNo) return base.filter((r) => (r.review_no ?? '').trim() === exactNo);
+    if (!search.trim()) return base;
     const q = search.toLowerCase();
-    return validRows.filter((r) =>
+    return base.filter((r) =>
       r.book_title.toLowerCase().includes(q) ||
       r.author.toLowerCase().includes(q) ||
       r.name.toLowerCase().includes(q) ||
@@ -297,7 +316,7 @@ export function AdminMasterListPage({ navigate, embedded = false }: MasterListPa
       r.instagram.toLowerCase().includes(q) ||
       r.review_no.toLowerCase().includes(q)
     );
-  }, [validRows, search]);
+  }, [validRows, search, reviewNoSearch, missingVerdictOnly]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages - 1);
@@ -320,10 +339,11 @@ export function AdminMasterListPage({ navigate, embedded = false }: MasterListPa
     }, 0);
   };
 
-  const commitEdit = () => {
+  const commitEdit = (override?: unknown) => {
     if (!editingCell) return;
     const { rowId, col } = editingCell;
-    const sanitized = sanitizeText(editValue);
+    const raw = typeof override === 'string' ? override : editValue;
+    const sanitized = col === 'verdict' ? normalizeVerdict(raw) : sanitizeText(raw);
     setRows((prev) =>
       prev.map((r) =>
         r.id === rowId ? { ...r, [col]: sanitized } : r
@@ -351,6 +371,7 @@ export function AdminMasterListPage({ navigate, embedded = false }: MasterListPa
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', rowId);
       if (updateError) throw updateError;
+      await mirrorVerdictToPublished(rowId, row.verdict);
       setDirtyRows((prev) => {
         const next = new Set(prev);
         next.delete(rowId);
@@ -380,6 +401,7 @@ export function AdminMasterListPage({ navigate, embedded = false }: MasterListPa
           .update({ ...updates, updated_at: new Date().toISOString() })
           .eq('id', rowId);
         if (updateError) throw updateError;
+        await mirrorVerdictToPublished(rowId, row.verdict);
       }
       setDirtyRows(new Set());
       setSaveMsg(`Saved ${dirtyIds.length} row(s)`);
@@ -432,6 +454,7 @@ export function AdminMasterListPage({ navigate, embedded = false }: MasterListPa
         .update({ ...cleanDraft, updated_at: new Date().toISOString() })
         .eq('id', editingRowId);
       if (updateError) throw updateError;
+      await mirrorVerdictToPublished(editingRowId, cleanDraft.verdict);
       setRows((prev) => prev.map((r) => (r.id === editingRowId ? { ...r, ...cleanDraft } : r)));
       setEditingRowId(null);
       setRowDraft(EMPTY_ROW);
@@ -603,6 +626,27 @@ export function AdminMasterListPage({ navigate, embedded = false }: MasterListPa
             className="input-field pl-10"
           />
         </div>
+        <div className="relative w-full md:w-52">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold" style={{ color: 'var(--color-cyan-dark)' }}>#</span>
+          <input
+            value={reviewNoSearch}
+            onChange={(e) => { setReviewNoSearch(e.target.value.replace(/[^0-9]/g, '')); setPage(0); }}
+            inputMode="numeric"
+            placeholder="Exact Review No."
+            className="input-field pl-7 w-full"
+            aria-label="Search exact review number only"
+          />
+          {reviewNoSearch && <button type="button" onClick={() => { setReviewNoSearch(''); setPage(0); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs" style={{ color: 'var(--color-text-muted)' }}>Clear</button>}
+        </div>
+        <button
+          type="button"
+          onClick={() => { setMissingVerdictOnly((v) => !v); setPage(0); }}
+          className="btn-ghost text-xs whitespace-nowrap"
+          style={{ padding: '8px 12px', ...(missingVerdictOnly ? { background: 'rgba(99,102,241,.12)', color: '#4f46e5' } : {}) }}
+          title="Show only older reviews that have no verdict yet"
+        >
+          {missingVerdictOnly ? 'Showing: no verdict' : 'No verdict only'}
+        </button>
         {viewMode === 'table' && (
           <button
             onClick={() => setShowAllCols(!showAllCols)}
@@ -691,7 +735,7 @@ export function AdminMasterListPage({ navigate, embedded = false }: MasterListPa
                       </td>
                       {visibleColumns.map((col) => {
                         const isEditing = editingCell?.rowId === row.id && editingCell?.col === col.key;
-                        const value = row[col.key];
+                        const value = (row[col.key] ?? '') as string;
                         return (
                           <td
                             key={col.key}
@@ -700,7 +744,20 @@ export function AdminMasterListPage({ navigate, embedded = false }: MasterListPa
                             onClick={() => !isEditing && startEdit(row.id, col.key, value)}
                           >
                             {isEditing ? (
-                              col.key === 'review' ? (
+                              col.key === 'verdict' ? (
+                                <select
+                                  autoFocus
+                                  value={normalizeVerdict(editValue) ?? ''}
+                                  onChange={(e) => commitEdit(e.target.value)}
+                                  onBlur={() => setEditingCell(null)}
+                                  onKeyDown={(e) => { if (e.key === 'Escape') cancelEdit(); }}
+                                  className="w-full text-xs p-1 rounded outline-none"
+                                  style={{ background: 'var(--color-bg)', border: '2px solid var(--color-teal-dark)', color: 'var(--color-text)' }}
+                                >
+                                  <option value="">— Not set —</option>
+                                  {VERDICTS.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
+                                </select>
+                              ) : col.key === 'review' ? (
                                 <textarea
                                   ref={editRef as React.RefObject<HTMLTextAreaElement>}
                                   value={editValue}
@@ -891,6 +948,7 @@ function CardView({ row, onEdit, onDelete }: { row: MasterRow; onEdit: () => voi
           </span>
         )}
         {row.genre && <span>{row.genre}</span>}
+        {normalizeVerdict(row.verdict) ? <VerdictBanner verdict={row.verdict} size="compact" /> : <span className="italic opacity-60">No verdict</span>}
         {row.name && (
           <span className="inline-flex items-center gap-1">
             <User className="w-3 h-3" /> {row.name}
@@ -925,7 +983,7 @@ function CardEditor({
       <label className="text-[10px] font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--color-text-muted)' }}>{label}</label>
       <input
         type="text"
-        value={draft[key]}
+        value={(draft[key] ?? '') as string}
         onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
         className="input-field text-xs"
         style={{ padding: '6px 8px' }}
@@ -960,6 +1018,18 @@ function CardEditor({
         {field('series', 'Series')}
         {field('language', 'Language')}
         {field('reviewers_rating', 'R/W Rating')}
+        <div>
+          <label className="text-[10px] font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--color-text-muted)' }}>Verdict</label>
+          <select
+            value={normalizeVerdict(draft.verdict) ?? ''}
+            onChange={(e) => setDraft((prev) => ({ ...prev, verdict: normalizeVerdict(e.target.value) }))}
+            className="input-field text-xs"
+            style={{ padding: '6px 8px' }}
+          >
+            <option value="">— Not set —</option>
+            {VERDICTS.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
+          </select>
+        </div>
         {field('goodreads_rating', 'Goodreads')}
         {field('amazon_rating', 'Amazon')}
         {field('book_cover', 'Cover URL')}
@@ -1020,6 +1090,10 @@ function renderCellValue(value: string, col: ColumnKey): React.ReactNode {
         {value.slice(0, 120)}{value.length > 120 ? '...' : ''}
       </span>
     );
+  }
+
+  if (col === 'verdict') {
+    return <VerdictBanner verdict={value} size="compact" />;
   }
 
   if (col === 'reviewers_rating' && value) {

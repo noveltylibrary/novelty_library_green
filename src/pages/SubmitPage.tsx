@@ -881,8 +881,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
   const mismatchModal = mismatch && <div className="fixed inset-0 z-[120] grid place-items-center p-4 bg-black/45 backdrop-blur-sm" role="dialog" aria-modal="true" onClick={() => setMismatch(null)}>
         <div className="w-full max-w-md rounded-3xl p-6" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }} onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start gap-3 mb-3">
-            {normalizeVerdict(form.verdict) && <span className={`nl-verdict nl-verdict-${normalizeVerdict(form.verdict)} nl-verdict-icon`} style={{ width: 44, height: 44, borderRadius: 14, boxShadow: 'none' }}><VerdictIcon verdict={normalizeVerdict(form.verdict) as Verdict} size={22} /></span>}
-            <div><h2 className="font-serif text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Is this verdict right?</h2><p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>{mismatch.message}</p></div>
+            <div><h2 className="font-serif text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Is this verdict right?</h2><p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>{mismatch.message}</p><div className="mt-2"><VerdictBanner verdict={form.verdict} size="compact" /></div></div>
           </div>
           <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>Your verdict and R/W rating should tell the same story for readers.</p>
           <div className="grid gap-2">
@@ -961,7 +960,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
                 </div>
                 <span className="preview-rating"><strong>{rwRatingToStars(form.rw_rating).toFixed(1)}</strong><CalculatedStars value={form.rw_rating} size={17} /></span>
               </div>
-              <VerdictBanner verdict={form.verdict} className="mb-4" />
+              <div className="mb-4"><VerdictBanner verdict={form.verdict} /></div>
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-5 items-start">
                 <div className="preview-cover-frame">
                   {coverPreview ? (

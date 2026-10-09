@@ -1031,3 +1031,18 @@ export async function fetchPublicPublishedReviews(username: string): Promise<Acc
   if (error) throw error;
   return (data ?? []) as AcceptedReviewCard[];
 }
+
+
+/**
+ * Admin edited a verdict on an Accepted Review (master_list). If that review is already
+ * published, mirror ONLY the verdict onto its community_reviews row so the banner shows
+ * immediately — nothing else about the published copy is touched, no republish needed.
+ * Unpublished / never-snapshotted reviews simply match zero rows.
+ */
+export async function mirrorVerdictToPublished(masterId: string, verdict: unknown): Promise<void> {
+  const { error } = await supabase
+    .from('community_reviews')
+    .update({ verdict: normalizeVerdict(verdict) })
+    .eq('source_master_id', masterId);
+  if (error) throw error;
+}

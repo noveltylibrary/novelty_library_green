@@ -177,7 +177,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
 
           {/* Content */}
           <div className="md:col-span-3 nl-fast-up" style={{ animationDelay: '40ms' }}>
-            <VerdictBanner verdict={review.verdict} className="mb-5" />
+            {review.verdict && <div className="mb-3"><VerdictBanner verdict={review.verdict} /></div>}
             <div className="flex flex-wrap gap-2 mb-4">
               <span className="nl-chip px-4 py-1.5 text-[13px] font-semibold">{sanitizeUserText(review.genre, 80)}</span>
               {review.traits?.split(',').map((trait) => (

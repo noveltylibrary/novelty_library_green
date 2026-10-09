@@ -35,22 +35,22 @@ export function VerdictIcon({ verdict, size = 22 }: { verdict: Verdict; size?: n
 
 interface VerdictBannerProps {
   verdict: unknown;
-  /** 'full' = review page header strip, 'compact' = strip on feed cards. */
+  /** 'full' = tag with a "Verdict" prefix (review page), 'compact' = smaller tag (feed cards, admin). */
   size?: 'full' | 'compact';
   className?: string;
 }
 
-/** Renders nothing for legacy / empty / unknown verdicts, so old reviews are unaffected. */
+/** Verdict shown as a gradient tag. Renders nothing for legacy / empty / unknown verdicts, so old reviews are unaffected. */
 export function VerdictBanner({ verdict, size = 'full', className = '' }: VerdictBannerProps) {
   const v = normalizeVerdict(verdict);
   if (!v) return null;
   return (
-    <div className={`nl-verdict nl-verdict-${v} ${size === 'compact' ? 'nl-verdict-compact' : ''} ${className}`} role="note" aria-label={`Reviewer verdict: ${verdictLabel(v)}`}>
-      <span className="nl-verdict-icon"><VerdictIcon verdict={v} size={size === 'compact' ? 17 : 22} /></span>
+    <span className={`nl-verdict nl-verdict-${v} ${size === 'compact' ? 'nl-verdict-compact' : ''} ${className}`} role="note" aria-label={`Reviewer verdict: ${verdictLabel(v)}`}>
+      <span className="nl-verdict-icon"><VerdictIcon verdict={v} size={size === 'compact' ? 13 : 16} /></span>
       <span className="nl-verdict-text">
-        {size === 'full' && <span className="nl-verdict-kicker">Reviewer's verdict</span>}
+        {size === 'full' && <span className="nl-verdict-kicker">Verdict</span>}
         <span className="nl-verdict-label">{verdictLabel(v)}</span>
       </span>
-    </div>
+    </span>
   );
 }

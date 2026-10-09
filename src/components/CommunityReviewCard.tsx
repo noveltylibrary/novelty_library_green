@@ -40,9 +40,9 @@ export function CommunityReviewCard({ item, onClick, onPrefetch, index = 0, stat
 
   return (
     <article className="community-review-card group" style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }} onPointerEnter={onPrefetch} onTouchStart={onPrefetch} onFocus={onPrefetch}>
-      <VerdictBanner verdict={item.verdict} size="compact" className="mb-2" />
       <div className="community-review-poster" onClick={onClick} role="link" aria-label={`Open review of ${safeTitle}`}>
         <PosterImage src={item.coverImage} alt={safeTitle} />
+        <VerdictBanner verdict={item.verdict} size="compact" className="nl-verdict-corner" />
 
       </div>
 

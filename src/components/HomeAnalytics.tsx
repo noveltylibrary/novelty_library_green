@@ -69,13 +69,7 @@ export function HomeAnalytics({ navigate, published, data, failed }: Props) {
           <strong>Every review leaves a measurable trace.</strong>
           <p>Accepted reviews, published reads and reader ratings flow into the library below.</p>
         </div>
-        <div className="nl-an-bridge-metrics" aria-hidden="true">
-          <span><b>{acceptedAnim}</b><small>accepted</small></span>
-          <i />
-          <span><b>{publishedAnim}</b><small>published</small></span>
-          <i />
-          <span><b>{trust === null ? '—' : trustAnim.toFixed(1)}</b><small>trust / 10</small></span>
-        </div>
+        <div className="nl-an-bridge-line" aria-hidden="true"><i /></div>
       </div>
 
       <p className="nl-an-eyebrow"><span className="nl-an-live" /> NOVELTY LIBRARY ANALYTICS • LIVE</p>
