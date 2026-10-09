@@ -58,7 +58,7 @@ export function HeroSection({ navigate, live }: HeroSectionProps) {
   const reduce = useReducedMotion();
 
   return (
-    <section className="relative isolate overflow-hidden bg-gradient-to-b from-sky-50 via-cyan-50/70 to-white text-slate-900 dark:bg-none dark:bg-slate-950 dark:text-slate-100 rounded-b-[2rem] md:rounded-b-[3rem] pt-32 pb-16 md:pt-44 md:pb-24">
+    <section className="nl-home-hero relative isolate overflow-hidden bg-gradient-to-b from-sky-50 via-cyan-50/70 to-white text-slate-900 dark:bg-none dark:text-slate-100 rounded-b-[2rem] md:rounded-b-[3rem] pt-32 pb-16 md:pt-44 md:pb-24">
       {/* Atmosphere: soft & bright in light theme, deep black in dark theme (pure CSS, GPU friendly) */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         {/* Light theme */}
@@ -73,14 +73,14 @@ export function HeroSection({ navigate, live }: HeroSectionProps) {
         <div className="absolute inset-0 dark:hidden" style={GRID_BG_LIGHT} />
 
         {/* Dark theme */}
-        <div className="absolute inset-0 hidden dark:block" style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 38%, rgba(6,182,212,0.15), transparent 70%)' }} />
+        <div className="absolute inset-0 hidden dark:block" style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 38%, rgba(59,130,246,0.13), rgba(6,182,212,0.07) 45%, transparent 70%)' }} />
         <motion.div
           className="absolute left-1/2 top-[34%] hidden h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full will-change-transform dark:block"
-          style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.20), rgba(16,185,129,0.06) 45%, transparent 70%)', filter: 'blur(30px)' }}
+          style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.16), rgba(20,184,166,0.07) 45%, transparent 70%)', filter: 'blur(30px)' }}
           animate={reduce ? undefined : { scale: [1, 1.12, 1], opacity: [0.75, 1, 0.75] }}
           transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <div className="absolute inset-x-0 bottom-0 hidden h-1/2 dark:block" style={{ background: 'radial-gradient(ellipse 70% 100% at 50% 100%, rgba(8,145,178,0.14), transparent 70%)' }} />
+        <div className="absolute inset-x-0 bottom-0 hidden h-1/2 dark:block" style={{ background: 'radial-gradient(ellipse 70% 100% at 50% 100%, rgba(8,145,178,0.10), rgba(37,99,235,0.045) 42%, transparent 70%)' }} />
         <div className="absolute inset-0 hidden dark:block" style={GRID_BG} />
         <div className="absolute inset-0 hidden opacity-[0.07] mix-blend-screen dark:block" style={{ backgroundImage: GRAIN }} />
       </div>
