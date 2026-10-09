@@ -65,7 +65,7 @@ function AppContent() {
   }, [user, navigate]);
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
+    <div className="nl-app-shell min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
       <Header navigate={navigate} currentRoute={currentRouteName} user={user} isAdmin={isAdmin} />
       <main className="flex-1">
         {route.name === 'home' && <HomePage navigate={navigate} />}

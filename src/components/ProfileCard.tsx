@@ -192,18 +192,6 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
   };
 
   return <div className="w-full">
-    {layout === 'rows' && (download || onViewPublicProfile) && <div className="nl-pc-rows" style={{ maxWidth: selected.width > selected.height ? 560 : 380 }}>
-      {onViewPublicProfile && <button type="button" onClick={onViewPublicProfile} className="nl-pc-row"><span className="nl-pc-row-main"><ExternalLink className="w-4 h-4" /> View public profile</span></button>}
-      {download && <label className="nl-pc-row nl-pc-row-select"><span className="nl-pc-row-main">View card</span><span className="nl-pc-select"><select value={format} onChange={(e) => setFormat(e.target.value as FormatKey)} aria-label="Card format to preview">{FORMATS.map((f) => <option key={f.key} value={f.key}>{f.key} · {f.width}×{f.height}</option>)}</select><ChevronDown className="w-4 h-4" aria-hidden="true" /></span></label>}
-      {onPublicFormatChange && <label className="nl-pc-row nl-pc-row-select"><span className="nl-pc-row-main">Set public view{publicSaved && <em className="nl-pc-saved">✓ Saved</em>}</span><span className="nl-pc-select"><select value={publicFormat || PREVIEW_FORMAT} onChange={async (e) => { await onPublicFormatChange(e.target.value as FormatKey); setPublicSaved(true); window.setTimeout(() => setPublicSaved(false), 2200); }} aria-label="Card format other readers see on your public profile">{FORMATS.map((f) => <option key={f.key} value={f.key}>{f.key}</option>)}</select><ChevronDown className="w-4 h-4" aria-hidden="true" /></span></label>}
-      {download && <button type="button" onClick={() => setReplay((n) => n + 1)} className="nl-pc-row" aria-label="Replay animation"><span className="nl-pc-row-main"><RotateCcw className="w-4 h-4" /> Replay animation</span></button>}
-      {download && <div className="relative">
-        <button type="button" onClick={() => setDownloadMenuOpen(v => !v)} disabled={downloading} className="nl-pc-row nl-pc-row-primary disabled:opacity-50"><span className="nl-pc-row-main"><Download className="w-4 h-4" /> {downloading ? 'Preparing…' : 'Download Profile Card'}</span><ChevronDown className="w-4 h-4" /></button>
-        {downloadMenuOpen && <div className="absolute left-0 right-0 top-full mt-2 z-30 rounded-2xl p-1.5 shadow-2xl" style={{background:'var(--color-surface)',border:'1px solid var(--color-border)'}}>
-          {FORMATS.map((f) => <button key={f.key} type="button" onClick={() => { setFormat(f.key); setDownloadMenuOpen(false); window.setTimeout(() => void downloadCard(f.key), 0); }} className="w-full text-left rounded-xl px-3 py-2.5 text-sm hover:bg-black/5 dark:hover:bg-white/5">{f.key} <span className="opacity-60">· {f.width}×{f.height}</span>{format===f.key && <span className="float-right font-bold">✓</span>}</button>)}
-        </div>}
-      </div>}
-    </div>}
 
     {layout !== 'rows' && (download || onAvatarUpload || onHeaderUpload || onViewPublicProfile) && <div className="flex flex-wrap items-center justify-end gap-2 mb-3">
       {onViewPublicProfile && <button type="button" onClick={onViewPublicProfile} className="btn-ghost !w-auto !px-3 !py-2 text-sm"><ExternalLink className="w-4 h-4" /> View public profile</button>}
@@ -220,6 +208,45 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
     <div ref={wrapRef} className="relative w-full mx-auto overflow-hidden rounded-[24px] nl-pc-preview" style={{ height: selected.height * scale, maxWidth: selected.width > selected.height ? 560 : 380, boxShadow: '0 26px 60px rgba(0,80,95,.28)', border: '1px solid rgba(8,145,178,.3)' }}>
       <CardCanvas key={`${format}-${replay}`} canvasRef={canvasRef} data={data} width={selected.width} height={selected.height} superBlitz={format === 'SuperBlitz'} scale={scale} play={inView} still={downloading} onAvatarUpload={onAvatarUpload} onHeaderUpload={onHeaderUpload} onSuperBlitzBannerUpload={onSuperBlitzBannerUpload} onFollowersClick={onFollowersClick} />
     </div>
+
+    {layout === 'rows' && (download || onViewPublicProfile) && <div className="nl-pc-dock" style={{ maxWidth: selected.width > selected.height ? 560 : 380 }}>
+      {download && <div className="nl-pc-seg" role="radiogroup" aria-label="Card format to preview" style={{ '--n': FORMATS.length, '--idx': Math.max(0, FORMATS.findIndex((f) => f.key === format)) } as CSSProperties}>
+        <span className="nl-pc-seg-pill" aria-hidden="true" />
+        {FORMATS.map((f) => <button key={f.key} type="button" role="radio" aria-checked={format === f.key} onClick={() => setFormat(f.key)} className="nl-pc-seg-btn" title={`${f.key} · ${f.width}×${f.height}`}>{f.key === 'SuperBlitz' ? 'Blitz' : f.key}</button>)}
+      </div>}
+      <div className="nl-pc-tiles">
+        {download && <div className="nl-pc-tile-wrap" style={{ '--i': 0 } as CSSProperties}>
+          <button type="button" onClick={() => setDownloadMenuOpen((v) => !v)} disabled={downloading} aria-haspopup="menu" aria-expanded={downloadMenuOpen} className="nl-pc-tile nl-pc-tile-primary nl-ico-download disabled:opacity-60">
+            <span className="nl-pc-tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path className="nl-ico-arrow" d="M12 4v11m0 0l-4-4m4 4l4-4" /><path d="M5 19h14" /></svg></span>
+            <span className="nl-pc-tile-txt"><strong>{downloading ? 'Preparing…' : 'Download'}</strong><small>{format} PNG</small></span>
+            <ChevronDown className={`nl-pc-tile-chev ${downloadMenuOpen ? 'is-open' : ''}`} aria-hidden="true" />
+          </button>
+          {downloadMenuOpen && <div className="nl-pc-menu" role="menu">
+            {FORMATS.map((f, k) => <button key={f.key} type="button" role="menuitem" style={{ '--k': k } as CSSProperties} onClick={() => { setFormat(f.key); setDownloadMenuOpen(false); window.setTimeout(() => void downloadCard(f.key), 0); }}>{f.key} <span>· {f.width}×{f.height}</span>{format === f.key && <b>✓</b>}</button>)}
+          </div>}
+        </div>}
+        {onViewPublicProfile && <div className="nl-pc-tile-wrap" style={{ '--i': 1 } as CSSProperties}>
+          <button type="button" onClick={onViewPublicProfile} className="nl-pc-tile nl-ico-open">
+            <span className="nl-pc-tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 4h6v6" className="nl-ico-arrow" /><path d="M20 4l-9 9" className="nl-ico-arrow" /><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" /></svg></span>
+            <span className="nl-pc-tile-txt"><strong>Public profile</strong><small>See what others see</small></span>
+          </button>
+        </div>}
+        {download && <div className="nl-pc-tile-wrap" style={{ '--i': 2 } as CSSProperties}>
+          <button type="button" onClick={() => setReplay((n) => n + 1)} className="nl-pc-tile nl-ico-replay" aria-label="Replay animation">
+            <span className="nl-pc-tile-ico"><svg key={replay} className="nl-ico-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /></svg></span>
+            <span className="nl-pc-tile-txt"><strong>Replay</strong><small>Play the intro again</small></span>
+          </button>
+        </div>}
+        {onPublicFormatChange && <div className="nl-pc-tile-wrap" style={{ '--i': 3 } as CSSProperties}>
+          <div className={`nl-pc-tile nl-ico-globe nl-pc-tile-select ${publicSaved ? 'is-saved' : ''}`}>
+            <span className="nl-pc-tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{publicSaved ? <path className="nl-ico-check" d="M5 13l4 4L19 7" /> : <><circle cx="12" cy="12" r="9" /><path className="nl-ico-meridian" d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" /></>}</svg></span>
+            <span className="nl-pc-tile-txt"><strong>{publicSaved ? 'Saved' : 'Public view'}</strong><small>Shown as {publicFormat || PREVIEW_FORMAT}</small></span>
+            <ChevronDown className="nl-pc-tile-chev" aria-hidden="true" />
+            <select value={publicFormat || PREVIEW_FORMAT} onChange={async (e) => { await onPublicFormatChange(e.target.value as FormatKey); setPublicSaved(true); window.setTimeout(() => setPublicSaved(false), 2200); }} aria-label="Card format other readers see on your public profile">{FORMATS.map((f) => <option key={f.key} value={f.key}>{f.key}</option>)}</select>
+          </div>
+        </div>}
+      </div>
+    </div>}
   </div>;
 }
 

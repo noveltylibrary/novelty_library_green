@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, X, Clock3, Heart, Repeat2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchActiveStories, repostStory, toggleStoryLike, type Story } from '@/lib/social';
 import { useAuth } from '@/lib/auth';
+import { StoryComposerModal } from '@/components/StoryComposerModal';
 
 interface Props { navigate?: (path: string) => void; }
 
@@ -10,8 +11,10 @@ export function StoriesRail({ navigate }: Props) {
   const [stories, setStories] = useState<Story[]>([]);
   const [active, setActive] = useState<Story | null>(null);
   const [reposting, setReposting] = useState(false);
+  const [storyComposerOpen, setStoryComposerOpen] = useState(false);
 
   const load = () => { if (!user) { setStories([]); return; } fetchActiveStories(user.id).then(setStories).catch(() => setStories([])); };
+  const refreshStoriesAfterPublish = async () => { if (!user) return; try { setStories(await fetchActiveStories(user.id)); } catch { /* published story remains saved even if list refresh fails */ } };
   useEffect(() => { load(); }, [user?.id]);
 
   if (!user) return null;
@@ -37,9 +40,9 @@ export function StoriesRail({ navigate }: Props) {
 
   return <>
     <section className="nl-stories" aria-label="Stories">
-      <div className="nl-stories-head"><div><span className="nl-eyebrow">24-HOUR STORIES</span><h2>From readers you follow</h2></div>{navigate && <button className="nl-story-add" onClick={() => navigate('/profile')}><Plus className="w-4 h-4" /> Add story</button>}</div>
+      <div className="nl-stories-head"><div><span className="nl-eyebrow">24-HOUR STORIES</span><h2>From readers you follow</h2></div>{navigate && <button type="button" className="nl-story-add" onClick={() => setStoryComposerOpen(true)} aria-haspopup="dialog"><Plus className="w-4 h-4" /> Add story</button>}</div>
       <div className="nl-story-scroller">
-        {navigate && <button type="button" className="nl-story-bubble nl-story-add-bubble" onClick={() => navigate('/profile')}>
+        {navigate && <button type="button" className="nl-story-bubble nl-story-add-bubble" onClick={() => setStoryComposerOpen(true)} aria-haspopup="dialog">
           <span className="nl-story-ring"><span className="nl-story-avatar"><Plus className="w-6 h-6" /></span></span>
           <span className="nl-story-name">Add story</span>
         </button>}
@@ -47,6 +50,7 @@ export function StoriesRail({ navigate }: Props) {
         {!grouped.length && <span className="nl-story-empty">Follow readers to see their active stories here.</span>}
       </div>
     </section>
+    <StoryComposerModal open={storyComposerOpen} onClose={() => setStoryComposerOpen(false)} onPublished={refreshStoriesAfterPublish}/>
     {active && <div className="nl-story-viewer" role="dialog" aria-modal="true" onClick={() => setActive(null)}>
       <div className="nl-story-viewer-card" onClick={(e) => e.stopPropagation()}>
         {siblings.length > 1 && <><div className="nl-story-count">{activeIdx + 1} / {siblings.length}</div>{activeIdx > 0 && <button type="button" className="nl-story-nav nl-story-nav-prev" onClick={() => go(-1)} aria-label="Previous story"><ChevronLeft className="w-5 h-5" /></button>}{activeIdx < siblings.length - 1 && <button type="button" className="nl-story-nav nl-story-nav-next" onClick={() => go(1)} aria-label="Next story"><ChevronRight className="w-5 h-5" /></button>}</>}

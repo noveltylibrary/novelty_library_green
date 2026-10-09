@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { BookOpen, Lock, Mail, ArrowRight, AlertCircle, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 
@@ -7,7 +8,7 @@ interface AuthPageProps {
 }
 
 export function AuthPage({ navigate }: AuthPageProps) {
-  const { user, signIn, signUp, signInWithGoogle, resendConfirmation, resetPassword, updatePassword, recovering, finishRecovery, authLinkError, clearAuthLinkError } = useAuth();
+  const { user, signIn, signUp, resendConfirmation, resetPassword, updatePassword, recovering, finishRecovery, authLinkError, clearAuthLinkError } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [showPassword, setShowPassword] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -24,18 +25,6 @@ export function AuthPage({ navigate }: AuthPageProps) {
   useEffect(() => {
     if (user && !recovering) navigate('/');
   }, [user, recovering, navigate]);
-
-  const handleGoogle = async () => {
-    setError(null);
-    setNotice(null);
-    setGoogleLoading(true);
-    try {
-      await signInWithGoogle(); // leaves the page for Google; nothing else to do on success
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google sign-in failed. Please try again.');
-      setGoogleLoading(false);
-    }
-  };
 
   const handleResend = async () => {
     setError(null);
@@ -132,21 +121,10 @@ export function AuthPage({ navigate }: AuthPageProps) {
         <form onSubmit={handleSubmit} className="surface-card p-6 space-y-5 shadow-sm">
           {!recovering && mode !== 'forgot' && (
             <>
-              <button
-                type="button"
-                onClick={() => void handleGoogle()}
-                disabled={googleLoading || loading}
-                className="w-full inline-flex items-center justify-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors disabled:opacity-50"
-                style={{ background: 'var(--color-surface, #fff)', borderColor: 'var(--color-border, rgba(0,0,0,0.15))', color: 'var(--color-text)' }}
-              >
-                <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-                  <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/>
-                  <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/>
-                  <path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/>
-                  <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/>
-                </svg>
-                {googleLoading ? 'Opening Google…' : 'Continue with Google'}
-              </button>
+              <GoogleSignInButton
+                onStart={() => { setError(null); setNotice(null); setGoogleLoading(true); }}
+                onError={(message) => { setError(message); setGoogleLoading(false); }}
+              />
               <p className="text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
                 By continuing with Google you agree to our{' '}
                 <button type="button" onClick={() => navigate('/privacy')} className="underline underline-offset-2">Privacy Policy</button> and{' '}

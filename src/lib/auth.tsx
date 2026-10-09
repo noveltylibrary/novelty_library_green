@@ -12,6 +12,7 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<SignUpResult>;
   signInWithGoogle: () => Promise<void>;
+  signInWithGoogleIdToken: (idToken: string, rawNonce: string) => Promise<void>;
   resendConfirmation: (email: string) => Promise<void>;
   authLinkError: string | null;
   clearAuthLinkError: () => void;
@@ -186,6 +187,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }, []);
 
+  /** Google Identity Services path: the account chooser shows our own site name instead of *.supabase.co. */
+  const signInWithGoogleIdToken = useCallback(async (idToken: string, rawNonce: string) => {
+    const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken, nonce: rawNonce });
+    if (error) throw error;
+  }, []);
+
   const resendConfirmation = useCallback(async (email: string) => {
     const { error } = await supabase.auth.resend({
       type: 'signup',
@@ -218,7 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, isAdmin, loading, signIn, signUp, signInWithGoogle, resendConfirmation, authLinkError, clearAuthLinkError, resetPassword, updatePassword, recovering, finishRecovery, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, profile, isAdmin, loading, signIn, signUp, signInWithGoogle, signInWithGoogleIdToken, resendConfirmation, authLinkError, clearAuthLinkError, resetPassword, updatePassword, recovering, finishRecovery, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

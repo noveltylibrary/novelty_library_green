@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { AlertTriangle, ArrowLeft, CheckCircle, KeyRound, LogOut, Lock, Mail, Save, Settings, Trash2, MessageSquareWarning } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { updateProfile } from '@/lib/reviews';
@@ -9,7 +10,7 @@ import { createGrievance, fetchMyGrievances, type GrievanceRecord } from '@/lib/
 interface AccountPageProps { navigate: (path: string) => void; }
 
 export function AccountPage({ navigate }: AccountPageProps) {
-  const { user, profile, loading, refreshProfile, signOut, signInWithGoogle, resetPassword } = useAuth();
+  const { user, profile, loading, refreshProfile, signOut, resetPassword } = useAuth();
   const identities = user?.identities ?? [];
   const providers: string[] = identities.length ? identities.map((i) => i.provider) : ((user?.app_metadata?.providers as string[] | undefined) ?? []);
   const usesGoogle = providers.includes('google');
@@ -45,11 +46,6 @@ export function AccountPage({ navigate }: AccountPageProps) {
 
   const lastSignIn = user.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : 0;
   const recentSignIn = Date.now() - lastSignIn < 10 * 60 * 1000;
-
-  const reverifyWithGoogle = async () => {
-    try { sessionStorage.setItem('nl_return_to', '/account'); } catch { /* ignore */ }
-    try { await signInWithGoogle(); } catch (e) { setDeleteError(e instanceof Error ? e.message : 'Google sign-in failed.'); }
-  };
 
   const saveUsername = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -158,7 +154,7 @@ export function AccountPage({ navigate }: AccountPageProps) {
         {hasPassword ? <PasswordField label="Confirm with your current password" value={deletePassword} onChange={setDeletePassword} auto="current-password" /> : <>
           <div><label className="label">Type your account email to confirm</label><input type="email" required value={deleteEmail} onChange={(e) => setDeleteEmail(e.target.value)} className="input-field" autoComplete="off" placeholder={user.email || ''} /></div>
           <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{recentSignIn ? 'Your Google sign-in is recent, so you can continue.' : 'Your Google sign-in is older than 10 minutes. Re-verify with Google before deleting.'}</p>
-          {!recentSignIn && <button type="button" onClick={() => void reverifyWithGoogle()} className="btn-ghost text-sm">Re-verify with Google</button>}
+          {!recentSignIn && <GoogleSignInButton fallbackLabel="Re-verify with Google" onStart={() => { try { sessionStorage.setItem('nl_return_to', '/account'); } catch { /* ignore */ } }} onError={(message) => setDeleteError(message)} />}
         </>}
         <div><label className="label">Type DELETE to confirm</label><input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} className="input-field" autoComplete="off" /></div>
         {deleteError && <p className="text-sm" style={{ color: '#dc2626' }}>{deleteError}</p>}
