@@ -1,0 +1,11 @@
+Novelty Library documentation export inventory
+
+Every Markdown document in this folder has a matching .docx and .pdf export:
+
+- ARCHITECTURE.md: ARCHITECTURE.docx, ARCHITECTURE.pdf
+- DESIGN.md: DESIGN.docx, DESIGN.pdf
+- INDEX.md: INDEX.docx, INDEX.pdf
+- PRD.md: PRD.docx, PRD.pdf
+- README.md: README.docx, README.pdf
+- RULES.md: RULES.docx, RULES.pdf
+- TASKS.md: TASKS.docx, TASKS.pdf

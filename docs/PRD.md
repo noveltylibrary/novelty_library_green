@@ -1,6 +1,6 @@
 # Novelty Library WebApp — Product Requirements Document
 
-**Source inspected:** `NL_WA_1_34` (uploaded archive `NL_WA_1_35.zip`)
+**Source inspected:** `NL_WA_1_75` (uploaded archive `NL_WA_1_35.zip`)
 
 **Document status:** Current-state PRD + target requirements
 

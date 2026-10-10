@@ -1,6 +1,6 @@
 # Novelty Library WebApp — Task Backlog
 
-**Baseline:** `NL_WA_1_34`
+**Baseline:** `NL_WA_1_75`
 
 Legend:
 - `[x]` = implemented in the inspected codebase.
@@ -206,3 +206,17 @@ A feature is done when:
 - [x] `sql/verdict_column.sql` (idempotent, nullable, no default, NOT VALID CHECKs).
 - [ ] Run `npm run typecheck`, `npm run lint`, `npm run build` (not run in the authoring sandbox: no network for `npm install`).
 - [ ] Optional: backfill `master_list.verdict` for old reviews, then republish; add verdict to profile review RPCs.
+
+
+## 1.75
+
+- [x] Added separate average R/W Rating star tile alongside average NL Rating on profile cards.
+- [x] Improved card Q&A box hierarchy and text wrapping for less cramped, more polished cards.
+- [x] Removed reader-controlled card question picks and Tag/Answer selection; the admin controls Tag/Answer format.
+- [x] Limited Advanced Reader card questions to the first two questions; other advanced/later-section answers render beneath the public profile card when public.
+- [x] Removed the “Show on profile card” toggle from the admin question editor while retaining the legacy schema field for compatibility.
+- [ ] Run `npm run typecheck`, `npm run lint`, and `npm run build`; verify profile card exports and public privacy behavior in deployment.
+
+
+## Version 1.83
+- Replaced the generic Basic Reader section icon with a custom inline SVG emblem combining an open book and a star, matching the Novelty Library teal visual language.

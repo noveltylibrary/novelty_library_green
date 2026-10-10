@@ -22,11 +22,13 @@ export type ProfileCardData = {
   booksThisMonth: number | null;
   totalBooksRead: number | null;
   publishedBooks: number;
-  /** Legacy average of the reader's own R/W scores. Only used as a fallback when avgNlRating is not supplied. */
+  /** Average of the reader's own R/W scores across published reviews. */
   avgRating: number | null;
   /** Average NL rating across the reader's published reviews (shown big, with a star, in the stats row). */
   avgNlRating?: number | null;
   readingSince: number | null;
+  /** Account creation month, displayed as a small badge at the top edge of the card. */
+  userSince?: string | null;
   favoriteBook: string | null;
   favoriteAuthor: string | null;
   favoriteGenre: string | null;
@@ -132,6 +134,7 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
   const [publicSaved, setPublicSaved] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const [exportType, setExportType] = useState<'png' | 'pdf' | 'video'>('png');
   const [boxWidth, setBoxWidth] = useState(0);
   const [inView, setInView] = useState(false);
   const [replay, setReplay] = useState(0);
@@ -158,38 +161,115 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
     return () => io.disconnect();
   }, []);
 
+  const renderCardPng = async (exportFormat: FormatKey) => {
+    if (exportFormat !== format) setFormat(exportFormat);
+    await nextFrame();
+    await new Promise((r) => window.setTimeout(r, 140));
+    if ('fonts' in document) await document.fonts.ready;
+    const exportSelected = FORMATS.find((f) => f.key === exportFormat) || selected;
+    const options = {
+      cacheBust: true,
+      pixelRatio: exportFormat === 'SuperBlitz' ? 2 : 1,
+      width: exportSelected.width,
+      height: exportSelected.height,
+      backgroundColor: exportFormat === 'SuperBlitz' ? '#ffffff' : C.deep2,
+      imagePlaceholder: IMAGE_PLACEHOLDER,
+      style: { transform: 'none' },
+    };
+    await toPng(canvasRef.current!, options).catch(() => undefined);
+    return { dataUrl: await toPng(canvasRef.current!, options), exportSelected };
+  };
+
   const downloadCard = async (formatOverride?: FormatKey) => {
     if (!canvasRef.current || downloading) return;
     const exportFormat = formatOverride || format;
-    if (exportFormat !== format) setFormat(exportFormat);
-    setDownloading(true); // renders the card in its final, motion-free state
+    setDownloading(true);
     try {
-      await nextFrame();
-      await new Promise((r) => window.setTimeout(r, 120));
-      if ('fonts' in document) await document.fonts.ready;
-      const exportSelected = FORMATS.find((f) => f.key === exportFormat) || selected;
-      const options = {
-        cacheBust: true,
-        pixelRatio: exportFormat === 'SuperBlitz' ? 2 : 1,
-        width: exportSelected.width,
-        height: exportSelected.height,
-        backgroundColor: exportFormat === 'SuperBlitz' ? '#ffffff' : C.deep2,
-        imagePlaceholder: IMAGE_PLACEHOLDER,
-        // The on-screen preview is scaled down with CSS; export at full size.
-        style: { transform: 'none' },
-      };
-      // First pass warms up image/font loading, second pass is the real export.
-      await toPng(canvasRef.current, options).catch(() => undefined);
-      const dataUrl = await toPng(canvasRef.current, options);
+      const { dataUrl } = await renderCardPng(exportFormat);
       const a = document.createElement('a');
       a.download = `novelty-library-profile-${data.username || 'reader'}-${exportFormat.replace(':', 'x')}.png`;
       a.href = dataUrl;
       a.click();
+      setDownloadMenuOpen(false);
     } catch (error) {
       console.error(error);
       window.alert('The profile card could not be exported. Please try again after the images finish loading.');
     } finally { setDownloading(false); }
   };
+
+  const downloadPdf = async () => {
+    if (!canvasRef.current || downloading) return;
+    // Open synchronously from the click so popup blockers allow the print-to-PDF sheet.
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { window.alert('Please allow pop-ups to export a PDF.'); return; }
+    const exportFormat = format;
+    setDownloading(true);
+    try {
+      const { dataUrl } = await renderCardPng(exportFormat);
+      printWindow.document.open();
+      printWindow.document.write(`<!doctype html><html><head><title>Novelty Library Profile</title><style>@page{size:${exportSelected.width}px ${exportSelected.height}px;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff}img{display:block;width:100%;height:100vh;object-fit:contain;page-break-inside:avoid}@media print{img{height:100vh;width:100vw;object-fit:contain}}</style></head><body><img src="${dataUrl}" alt="Novelty Library profile card"><script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);
+      printWindow.document.close();
+      setDownloadMenuOpen(false);
+    } catch (error) {
+      printWindow.close(); console.error(error);
+      window.alert('The profile card could not be prepared for PDF export.');
+    } finally { setDownloading(false); }
+  };
+
+  const downloadAnimatedVideo = async () => {
+    if (!canvasRef.current || downloading) return;
+    setDownloading(true);
+    try {
+      const { dataUrl, exportSelected } = await renderCardPng(format);
+      const image = new Image();
+      image.src = dataUrl;
+      await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('Could not load exported card image')); });
+      const videoCanvas = document.createElement('canvas');
+      // Keep a crisp but manageable video size for sharing.
+      const factor = Math.min(1, 1280 / exportSelected.width, 1920 / exportSelected.height);
+      videoCanvas.width = Math.max(2, Math.round(exportSelected.width * factor));
+      videoCanvas.height = Math.max(2, Math.round(exportSelected.height * factor));
+      const ctx = videoCanvas.getContext('2d');
+      if (!ctx || !videoCanvas.captureStream || typeof MediaRecorder === 'undefined') throw new Error('Animated video export is not supported in this browser.');
+      const stream = videoCanvas.captureStream(30);
+      const mimeType = ['video/mp4;codecs=h264', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find((type) => MediaRecorder.isTypeSupported(type));
+      if (!mimeType) throw new Error('This browser does not support an exportable MP4 or WebM video format.');
+      const recorder = new MediaRecorder(stream, { mimeType });
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+      const stopped = new Promise<Blob>((resolve) => { recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType })); });
+      recorder.start();
+      const started = performance.now();
+      await new Promise<void>((resolve) => {
+        const frame = (now: number) => {
+          const t = Math.min(1, (now - started) / 2500);
+          const ease = 1 - Math.pow(1 - t, 3);
+          ctx.clearRect(0, 0, videoCanvas.width, videoCanvas.height);
+          ctx.fillStyle = '#013a46'; ctx.fillRect(0, 0, videoCanvas.width, videoCanvas.height);
+          const zoom = 0.94 + ease * 0.06;
+          const dw = videoCanvas.width * zoom, dh = videoCanvas.height * zoom;
+          ctx.save(); ctx.globalAlpha = Math.min(1, t * 5); ctx.shadowColor = 'rgba(92,225,230,.65)'; ctx.shadowBlur = 24 * factor;
+          ctx.drawImage(image, (videoCanvas.width-dw)/2, (videoCanvas.height-dh)/2, dw, dh); ctx.restore();
+          if (t < 1) requestAnimationFrame(frame); else { window.setTimeout(() => recorder.stop(), 150); resolve(); }
+        };
+        requestAnimationFrame(frame);
+      });
+      const blob = await stopped;
+      stream.getTracks().forEach((track) => track.stop());
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+      a.href = url; a.download = `novelty-library-profile-${data.username || 'reader'}-${format.replace(':', 'x')}-animated.${ext}`; a.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+      setDownloadMenuOpen(false);
+    } catch (error) {
+      console.error(error);
+      window.alert(error instanceof Error ? error.message : 'Animated video export failed.');
+    } finally { setDownloading(false); }
+  };
+
+  const exportSelected = FORMATS.find((f) => f.key === format) || selected;
+  const runExport = () => exportType === 'png' ? void downloadCard(format) : exportType === 'pdf' ? void downloadPdf() : void downloadAnimatedVideo();
 
   return <div className="w-full">
 
@@ -198,9 +278,7 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
       {download && <button type="button" onClick={() => setReplay((n) => n + 1)} className="btn-ghost !w-auto !px-3 !py-2 text-sm" title="Replay animation" aria-label="Replay animation"><RotateCcw className="w-4 h-4" /></button>}
       {download && <div className="relative">
         <button type="button" onClick={() => setDownloadMenuOpen(v => !v)} disabled={downloading} className="btn-primary !w-auto disabled:opacity-50"><Download className="w-4 h-4" /> {downloading ? 'Preparing…' : 'Download Profile Card'} <ChevronDown className="w-4 h-4" /></button>
-        {downloadMenuOpen && <div className="absolute right-0 top-full mt-2 z-30 min-w-[190px] rounded-2xl p-1.5 shadow-2xl" style={{background:'var(--color-surface)',border:'1px solid var(--color-border)'}}>
-          {FORMATS.map((f) => <button key={f.key} type="button" onClick={() => { setFormat(f.key); setDownloadMenuOpen(false); window.setTimeout(() => void downloadCard(f.key), 0); }} className="w-full text-left rounded-xl px-3 py-2.5 text-sm hover:bg-black/5 dark:hover:bg-white/5">{f.key} <span className="opacity-60">· {f.width}×{f.height}</span>{format===f.key && <span className="float-right font-bold">✓</span>}</button>)}
-        </div>}
+
       </div>}
     </div>}
 
@@ -221,9 +299,7 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
             <span className="nl-pc-tile-txt"><strong>{downloading ? 'Preparing…' : 'Download'}</strong><small>{format} PNG</small></span>
             <ChevronDown className={`nl-pc-tile-chev ${downloadMenuOpen ? 'is-open' : ''}`} aria-hidden="true" />
           </button>
-          {downloadMenuOpen && <div className="nl-pc-menu" role="menu">
-            {FORMATS.map((f, k) => <button key={f.key} type="button" role="menuitem" style={{ '--k': k } as CSSProperties} onClick={() => { setFormat(f.key); setDownloadMenuOpen(false); window.setTimeout(() => void downloadCard(f.key), 0); }}>{f.key} <span>· {f.width}×{f.height}</span>{format === f.key && <b>✓</b>}</button>)}
-          </div>}
+
         </div>}
         {onViewPublicProfile && <div className="nl-pc-tile-wrap" style={{ '--i': 1 } as CSSProperties}>
           <button type="button" onClick={onViewPublicProfile} className="nl-pc-tile nl-ico-open">
@@ -245,6 +321,18 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
             <select value={publicFormat || PREVIEW_FORMAT} onChange={async (e) => { await onPublicFormatChange(e.target.value as FormatKey); setPublicSaved(true); window.setTimeout(() => setPublicSaved(false), 2200); }} aria-label="Card format other readers see on your public profile">{FORMATS.map((f) => <option key={f.key} value={f.key}>{f.key}</option>)}</select>
           </div>
         </div>}
+      </div>
+    </div>}
+
+    {downloadMenuOpen && download && <div role="dialog" aria-modal="true" aria-labelledby="nl-profile-export-title" className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,20,28,.62)', backdropFilter: 'blur(7px)' }} onClick={() => setDownloadMenuOpen(false)}>
+      <div className="w-full max-w-md rounded-3xl p-5 sm:p-6 shadow-2xl" style={{ background: 'var(--color-surface)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.18em]" style={{ color: C.teal }}>Profile export</p><h3 id="nl-profile-export-title" className="font-serif text-2xl font-bold mt-1">Download your profile card</h3><p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>Choose a card size and a file format.</p></div><button type="button" className="btn-ghost !w-auto !px-3" onClick={() => setDownloadMenuOpen(false)} aria-label="Close export options">✕</button></div>
+        <label className="block text-sm font-semibold mt-5 mb-2">Card layout / dimensions</label>
+        <div className="grid grid-cols-2 gap-2">{FORMATS.map((f) => <button key={f.key} type="button" onClick={() => setFormat(f.key)} className="rounded-xl border px-3 py-2.5 text-left" style={{ borderColor: format === f.key ? C.teal : 'var(--color-border)', background: format === f.key ? 'rgba(0,151,178,.10)' : 'transparent' }}><span className="block font-bold">{f.key}</span><span className="block text-xs opacity-70">{f.width} × {f.height} px</span></button>)}</div>
+        <label className="block text-sm font-semibold mt-5 mb-2">File format</label>
+        <div className="grid grid-cols-3 gap-2">{([{key:'png',title:'PNG',sub:'Still image'},{key:'pdf',title:'PDF',sub:'Print / save PDF'},{key:'video',title:'Video',sub:'2.5 sec animation'}] as const).map((t) => <button key={t.key} type="button" onClick={() => setExportType(t.key)} className="rounded-xl border p-3 text-left" style={{ borderColor: exportType === t.key ? C.teal : 'var(--color-border)', background: exportType === t.key ? 'rgba(0,151,178,.10)' : 'transparent' }}><span className="block font-bold">{t.title}</span><span className="block text-[11px] mt-1 opacity-70">{t.sub}</span></button>)}</div>
+        <p className="text-xs mt-3" style={{ color: 'var(--color-text-muted)' }}>{exportType === 'video' ? 'Exports MP4 when supported by this browser; otherwise exports WebM. The card animates for about 2.5 seconds.' : exportType === 'pdf' ? 'Opens the browser print dialog; choose “Save as PDF” to save a PDF at the selected card proportions.' : `PNG export at ${exportSelected.width} × ${exportSelected.height} pixels.`}</p>
+        <div className="flex gap-2 mt-5"><button type="button" className="btn-ghost" onClick={() => setDownloadMenuOpen(false)}>Cancel</button><button type="button" className="btn-primary" disabled={downloading} onClick={runExport}><Download className="w-4 h-4" />{downloading ? 'Preparing…' : `Export ${exportType === 'video' ? 'video' : exportType.toUpperCase()}`}</button></div>
       </div>
     </div>}
   </div>;
@@ -377,6 +465,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
 
 
   const bio = questionValue(['bio', 'about me', 'about', 'reader bio']);
+  const cappedBio = typeof bio === 'string' ? bio.slice(0, 140) : bio;
   const city = questionValue(['city', 'town', 'location', 'residence']);
   const state = questionValue(['state', 'province']);
   const country = questionValue(['country']);
@@ -411,7 +500,8 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
     return q.alphabetical_sort ? values.filter(Boolean).sort((a,b) => a.localeCompare(b, undefined, { sensitivity: 'base' })) : values.filter(Boolean);
   };
 
-  const reviewsLimit = isWide ? 3 : isTall ? 1 : 2;
+  // Keep the same two-review preview in every format; the remainder is summarized below.
+  const reviewsLimit = 2;
   const reviews = data.publishedReviews.slice(0, reviewsLimit);
   const moreReviews = Math.max(0, data.publishedReviews.length - reviews.length);
 
@@ -420,28 +510,28 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
   const tHero = cue(0.2);
   const tMeta = cue(0.12);
 
-  const stats: { value: string; label: string; icon: ReactNode; nl?: boolean }[] = [
-    { value: data.booksThisMonth == null ? '—' : String(data.booksThisMonth), label: 'read this month', icon: <BookOpen width={s(18)} height={s(18)} /> },
-    { value: data.totalBooksRead == null ? '—' : String(data.totalBooksRead), label: 'books read', icon: <BookOpen width={s(18)} height={s(18)} /> },
-    { value: String(data.publishedBooks), label: 'published reviews', icon: <BookOpen width={s(18)} height={s(18)} /> },
-    // Average NL rating (not the reader's own R/W scores). Shown as the number plus a big SVG star; no text label.
-    { value: (data.avgNlRating ?? data.avgRating) == null ? '—' : Number(data.avgNlRating ?? data.avgRating).toFixed(1), label: 'avg NL rating', icon: <StarIcon size={s(18)} />, nl: true },
+  const stats: { value: string; label: string; icon: ReactNode; rating?: 'nl' | 'rw' }[] = [
+    { value: data.booksThisMonth == null ? '—' : String(data.booksThisMonth), label: 'read this month', icon: <BookOpen width={s(14)} height={s(14)} aria-hidden="true" /> },
+    { value: data.totalBooksRead == null ? '—' : String(data.totalBooksRead), label: 'books read', icon: <BookOpen width={s(14)} height={s(14)} aria-hidden="true" /> },
+    { value: String(data.publishedBooks), label: 'published reviews', icon: <BookOpen width={s(14)} height={s(14)} aria-hidden="true" /> },
+    // Profile card displays the reviewer R/W average only; NL rating is intentionally omitted.
+    { value: data.avgRating == null ? '—' : Number(data.avgRating).toFixed(1), label: 'average R/W rating', icon: <StarIcon size={s(18)} />, rating: 'rw' },
   ];
 
   const statCues = stats.map(() => cue(0.08));
-  const statColumns = isTall || isWide ? 2 : 4;
+  const statColumns = isTall ? 2 : 4;
   const metrics = <div style={{ display: 'grid', gridTemplateColumns: `repeat(${statColumns}, minmax(0, 1fr))`, gap: s(isTall ? 8 : 10) }}>
     {stats.map((st, i) => {
       const m = mv('pop', statCues[i]);
-      const tileStyle: CSSProperties = { ...m.style, minWidth: 0, textAlign: 'center', borderRadius: s(18), padding: `${s(isTall ? 10 : 13)}px ${s(8)}px`, background: 'linear-gradient(150deg,rgba(255,255,255,.15),rgba(255,255,255,.07))', border: `1px solid ${C.line}`, boxShadow: '0 10px 26px rgba(0,25,35,.22), inset 0 1px 0 rgba(255,255,255,.16)' };
-      const bigNum = s(isTall ? 32 : 38);
-      if (st.nl) return <div key={st.label} className={m.className} role="img" aria-label={`Average NL rating ${st.value}`} title="Average NL rating" style={{ ...tileStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(7) }}>
-        <p className="font-serif" style={{ fontSize: bigNum, fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
-        <StarIcon size={bigNum * 0.95} />
+      const tileStyle: CSSProperties = { ...m.style, minWidth: 0, textAlign: 'center', borderRadius: s(18), padding: `${s(isTall ? 10 : isFourFive ? 7 : 13)}px ${s(isFourFive ? 3 : 8)}px`, background: 'linear-gradient(150deg,rgba(255,255,255,.15),rgba(255,255,255,.07))', border: `1px solid ${C.line}`, boxShadow: '0 10px 26px rgba(0,25,35,.22), inset 0 1px 0 rgba(255,255,255,.16)' };
+      const bigNum = s(isTall ? 32 : isFourFive ? 25 : 38);
+      if (st.rating) return <div key={st.label} className={m.className} role="img" aria-label={`${st.label} ${st.value}`} title={st.label} style={{ ...tileStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: s(5), background: st.rating === 'rw' ? 'linear-gradient(145deg,rgba(92,225,230,.20),rgba(255,255,255,.07))' : tileStyle.background, borderColor: st.rating === 'rw' ? 'rgba(92,225,230,.48)' : C.line }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(6) }}><p className="font-serif" style={{ fontSize: bigNum, fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p><StarIcon size={bigNum * 0.82} /></div>
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(4), fontSize: s(8), lineHeight: 1.15, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 900, color: C.mint, textAlign: 'center' }}><BookOpen width={s(11)} height={s(11)} aria-hidden="true" />Avg R/W Rating</span>
       </div>;
       return <div key={st.label} className={m.className} style={tileStyle}>
         <p className="font-serif" style={{ fontSize: bigNum, fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: s(5), marginTop: s(6), color: C.mint }}>{st.icon}<span style={{ fontSize: s(9), letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 800, color: C.soft }}>{st.label}</span></div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: s(5), marginTop: s(6), color: C.mint }}>{st.icon}<span style={{ fontSize: s(isFourFive ? 7 : 9), letterSpacing: '.04em', textTransform: 'uppercase', fontWeight: 800, color: C.soft }}>{st.label}</span></div>
       </div>;
     })}
   </div>;
@@ -454,13 +544,13 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
   ] as [string, string | null][]).filter((x): x is [string, string] => !!x[1] && x[1].trim() !== '');
   const journey = journeyItems.length === 0 && !data.readingSince ? null : <div style={{ borderRadius: s(22), padding: s(isTall ? 13 : 17), background: 'linear-gradient(150deg,rgba(1,43,54,.62),rgba(1,58,70,.38))', border: `1px solid ${C.line}`, boxShadow: '0 12px 28px rgba(0,25,35,.22)' }}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(10), marginBottom: s(11) }}>
-      <p style={{ fontSize: s(13), letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Reading journey</p>
+      <p style={{ fontSize: s(13), letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Advanced Reader</p>
       {data.readingSince && <span style={{ fontSize: s(11), fontWeight: 800, borderRadius: 999, padding: `${s(5)}px ${s(11)}px`, background: C.mint, color: C.deep2, whiteSpace: 'nowrap' }}>Since {data.readingSince}</span>}
     </div>
-    <div style={{ display: 'grid', gridTemplateColumns: isTall ? '1fr' : `repeat(${Math.max(1, journeyItems.length)},minmax(0,1fr))`, gap: s(8) }}>
-      {journeyItems.map(([label, value], i) => { const m = mv('slide', cue(0.08)); return <div key={label} className={m.className} style={{ ...m.style, minWidth: 0, borderRadius: s(14), padding: s(11), background: C.glass, border: `1px solid ${C.line}` }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isTall ? '1fr' : `repeat(${Math.max(1, journeyItems.length)},minmax(0,1fr))`, gridAutoRows: '1fr', alignItems: 'stretch', gap: s(8) }}>
+      {journeyItems.map(([label, value], i) => { const m = mv('slide', cue(0.08)); return <div key={label} className={m.className} style={{ ...m.style, minWidth: 0, height: '100%', boxSizing: 'border-box', borderRadius: s(14), padding: s(11), background: C.glass, border: `1px solid ${C.line}` }}>
         <p style={{ fontSize: s(8), letterSpacing: '.10em', textTransform: 'uppercase', fontWeight: 800, color: C.faint }}>{label}</p>
-        <p className="font-serif" style={{ fontSize: s(isTall ? 18 : 20), fontWeight: 600, marginTop: s(4), color: C.ink, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{sanitizeUserText(value, 160)}</p>
+        <p className="font-serif" style={{ fontSize: s(isTall ? 18 : 20), fontWeight: 600, marginTop: s(4), color: C.ink, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: s(42) }}>{sanitizeUserText(value, 160)}</p>
       </div>; })}
     </div>
   </div>;
@@ -500,46 +590,45 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
     { label: genres.join(', '), tone: 'genre' },
   ].filter(t => !!t.label);
   const fixedTags = fixedTagList;
-  const details = (fixedTags.length > 0 || bio || tagQuestions.length || answerQuestions.length) ? <div className={metaMv.className} style={{ ...metaMv.style, minWidth: 0, display: 'flex', flexDirection: 'column', gap: s(8) }}>
+  const details = (fixedTags.length > 0 || answerQuestions.length) ? <div className={metaMv.className} style={{ ...metaMv.style, minWidth: 0, display: 'flex', flexDirection: 'column', gap: s(8) }}>
     {fixedTags.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6) }}>{fixedTags.map((tag, i) => <Fragment key={i}>{topTag(tag.label, tag.tone)}</Fragment>)}</div>}
-    {bio && <div style={{ borderRadius: s(10), padding: `${s(6)}px ${s(9)}px`, background: 'rgba(255,255,255,.055)', border: `1px solid rgba(255,255,255,.12)`, color: C.soft, fontSize: s(8), lineHeight: 1.3 }}><b style={{ color: C.mint }}>Bio:</b> {sanitizeUserText(String(bio), 180)}</div>}
-    {!isFourFive && tagQuestions.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6) }}>{tagQuestions.map(q => { if (q.type === 'image_upload') return null; const values = sortValues(q, data.answers[q.key]); return values.map((v,i) => <span key={`${q.id}-${i}`} style={{ maxWidth: '100%', borderRadius: 999, padding: `${s(5)}px ${s(9)}px`, background: 'rgba(255,255,255,.10)', border: `1px solid rgba(255,255,255,.18)`, color: C.soft, fontSize: s(8), lineHeight: 1.2 }}>{q.profile_card_mode !== 'tag_no_question' && <b style={{ color: C.mint }}>{sanitizeUserText(q.question, 54)}: </b>}{sanitizeUserText(v, 120)}</span>); })}</div>}
   </div> : null;
 
   // On 4:5, question-tags are deliberately collected after the published shelf
   // rather than following their original section order. Answers then use a
   // three-column grid so the card reads like an editorial profile, not a list.
-  const questionTags = tagQuestions.length > 0 ? <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: s(6), width: '100%' }}>
+  const questionTags = tagQuestions.length > 0 ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', justifyContent: 'stretch', alignItems: 'stretch', gridAutoRows: 'minmax(36px,auto)', gap: s(7), width: '100%', position: 'relative', zIndex: 1 }}>
     {tagQuestions.flatMap((q) => {
       if (q.type === 'image_upload') return [];
-      return sortValues(q, data.answers[q.key]).map((v, i) => <span key={`${q.id}-${i}`} style={{ maxWidth: '100%', borderRadius: 999, padding: `${s(5)}px ${s(9)}px`, background: 'rgba(255,255,255,.10)', border: `1px solid rgba(255,255,255,.18)`, color: C.soft, fontSize: s(8), lineHeight: 1.2, textAlign: 'center' }}>{q.profile_card_mode !== 'tag_no_question' && q.profile_card_mode !== 'answer_no_question' && <b style={{ color: C.mint }}>{sanitizeUserText(q.question, 54)}: </b>}{sanitizeUserText(v, 120)}</span>);
+      return sortValues(q, data.answers[q.key]).map((v, i) => <span key={`${q.id}-${i}`} style={{ maxWidth: '100%', width: '100%', boxSizing: 'border-box', borderRadius: s(10), padding: `${s(7)}px ${s(9)}px`, background: 'linear-gradient(135deg,rgba(92,225,230,.19),rgba(255,255,255,.08))', border: `1px solid rgba(255,255,255,.18)`, color: C.soft, fontSize: s(12), fontWeight: 800, lineHeight: 1.25, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: s(36), overflowWrap: 'anywhere', wordBreak: 'normal' }}>{q.profile_card_mode !== 'tag_no_question' && q.profile_card_mode !== 'answer_no_question' && <b style={{ color: C.mint }}>{sanitizeUserText(q.question, 54)}: </b>}{sanitizeUserText(v, 120)}</span>);
     })}
   </div> : null;
 
-  const extra = answerQuestions.length > 0 ? <div style={{ display: 'grid', gridTemplateColumns: isFourFive ? 'repeat(3,minmax(0,1fr))' : isWide ? '1fr' : 'repeat(2,minmax(0,1fr))', gap: s(isFourFive ? 7 : 7), width: '100%' }}>
+  const extra = answerQuestions.length > 0 ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: s(isFourFive ? 7 : 7), width: '100%' }}>
     {answerQuestions.map((q) => {
       if (q.type === 'image_upload') return null;
       const values = sortValues(q, data.answers[q.key]);
       if (!values.length) return null;
-      return <div key={q.id} style={{ minWidth: 0, borderRadius: s(10), padding: `${s(isFourFive ? 7 : 6)}px ${s(isFourFive ? 8 : 9)}px`, background: 'rgba(255,255,255,.055)', border: `1px solid rgba(255,255,255,.12)`, color: C.soft, fontSize: s(isFourFive ? 7.5 : 8), lineHeight: 1.3, overflow: 'hidden' }}>{q.profile_card_mode !== 'answer_no_question' && <b style={{ color: C.mint }}>{sanitizeUserText(q.question, isFourFive ? 48 : 70)}: </b>}{sanitizeUserText(values.join(', '), isFourFive ? 120 : 180)}</div>;
+      return <div key={q.id} style={{ minWidth: 0, borderRadius: s(13), padding: `${s(isFourFive ? 9 : 8)}px ${s(isFourFive ? 10 : 11)}px`, background: 'linear-gradient(145deg,rgba(255,255,255,.11),rgba(255,255,255,.045))', border: `1px solid rgba(92,225,230,.25)`, color: C.soft, fontSize: s(isFourFive ? 7.5 : 8), lineHeight: 1.35, overflow: 'hidden', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>{q.profile_card_mode !== 'answer_no_question' && <b style={{ display: 'block', color: C.mint, fontSize: s(isFourFive ? 7 : 7.5), letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: s(4), overflowWrap: 'anywhere' }}>{sanitizeUserText(q.question, isFourFive ? 48 : 70)}</b>}<span style={{ display: 'block', color: C.ink, overflowWrap: 'anywhere' }}>{sanitizeUserText(values.join(', '), isFourFive ? 120 : 180)}</span></div>;
     })}
   </div> : null;
 
-  const fourFiveQuestions = isFourFive ? <div style={{ display: 'flex', flexDirection: 'column', gap: s(8), width: '100%', borderRadius: s(16), padding: s(9), background: 'rgba(1,43,54,.22)', border: `1px solid rgba(255,255,255,.12)` }}>
+  const fourFiveQuestions = <div style={{ display: 'flex', flexDirection: 'column', gap: s(8), width: '100%', borderRadius: s(16), padding: s(9), background: 'rgba(1,43,54,.22)', border: `1px solid rgba(255,255,255,.12)` }}>
     {questionTags}
     {extra}
-  </div> : null;
+  </div>;
 
   // ---- SuperBlitz: banner fills the card; profile lives inside the notched panel. ----
   if (superBlitz) {
     const sbAvatar = 136;
     const bannerUrl = safeExternalUrl(data.superBlitzBannerUrl || '');
-    const sbStats = <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: s(8) }}>
-      {stats.map((st, i) => { const m = mv('pop', statCues[i]); const sbTile: CSSProperties = { ...m.style, minWidth: 0, textAlign: 'center', borderRadius: s(14), padding: `${s(9)}px ${s(4)}px`, background: 'rgba(1,43,54,.30)', border: `1px solid ${C.line}` };
-        if (st.nl) return <div key={st.label} className={m.className} role="img" aria-label={`Average NL rating ${st.value}`} title="Average NL rating" style={{ ...sbTile, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(4) }}>
-          <p className="font-serif" style={{ fontSize: s(30), fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
-          <StarIcon size={s(28)} />
+    const sbStats = <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: s(6) }}>
+      {stats.map((st, i) => { const m = mv('pop', statCues[i]); const sbTile: CSSProperties = { ...m.style, minWidth: 0, textAlign: 'center', borderRadius: s(14), padding: `${s(7)}px ${s(3)}px`, background: st.rating === 'rw' ? 'rgba(92,225,230,.18)' : 'rgba(1,43,54,.30)', border: `1px solid ${st.rating === 'rw' ? 'rgba(92,225,230,.48)' : C.line}` };
+        if (st.rating) return <div key={st.label} className={m.className} role="img" aria-label={`${st.label} ${st.value}`} title={st.label} style={{ ...sbTile, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: s(3) }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(3) }}><p className="font-serif" style={{ fontSize: s(24), fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p><StarIcon size={s(20)} /></div>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(3), fontSize: s(6.5), letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 900, color: C.mint, lineHeight: 1.15 }}><BookOpen width={s(9)} height={s(9)} aria-hidden="true" />Avg R/W</span>
         </div>;
+
         return <div key={st.label} className={m.className} style={sbTile}>
         <p className="font-serif" style={{ fontSize: s(30), fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
         <p style={{ marginTop: s(5), fontSize: s(8), letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 800, color: C.soft, lineHeight: 1.2 }}>{st.label}</p>
@@ -547,6 +636,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
     </div>;
     const panelBg = `linear-gradient(160deg,${C.deep2} 0%,#00687f 45%,${C.teal} 100%)`;
     return <div ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: w, height: h, overflow: 'hidden', transform: `scale(${scale})`, transformOrigin: 'top left', background: '#fff', color: C.ink }}>
+      {data.userSince && <span style={{ position: 'absolute', zIndex: 15, top: 12, left: '50%', transform: 'translateX(-50%)', maxWidth: '72%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', borderRadius: 999, padding: '5px 13px', background: 'rgba(239,255,255,.96)', color: C.teal, border: `1px solid ${C.cyan}`, boxShadow: '0 6px 18px rgba(0,25,35,.24)', fontSize: 12, fontWeight: 800 }}>User since {sanitizeUserText(data.userSince, 32)}</span>}
       {/* Banner = the "white space" around the panel. */}
       {bannerUrl && <img className={still ? '' : 'nl-pc-a nl-pc-zoom'} src={bannerUrl} alt="" crossOrigin="anonymous" style={{ position: 'absolute', inset: 0, width: w, height: h, objectFit: 'cover', display: 'block' }} />}
       {!still && onSuperBlitzBannerUpload && <button type="button" onClick={(e) => { e.stopPropagation(); onSuperBlitzBannerUpload(); }} title={`Change banner (${SB_BANNER_SIZE.width} × ${SB_BANNER_SIZE.height} px)`} aria-label={`Change banner image, ${SB_BANNER_SIZE.width} by ${SB_BANNER_SIZE.height} pixels`} className="nl-pc-edit-chip" style={{ top: ui(28), right: ui(26), height: ui(28), padding: `0 ${ui(5)}px 0 ${ui(11)}px`, gap: ui(7), fontSize: ui(11) }}>{SB_BANNER_SIZE.width} × {SB_BANNER_SIZE.height} px<span className="nl-pc-edit-dot" style={{ width: ui(20), height: ui(20) }}><ImagePlus width={ui(12)} height={ui(12)} /></span></button>}
@@ -571,10 +661,11 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
 
       <div data-fit style={{ position: 'absolute', left: 45, width: 579, top: 240, height: 530, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(11) }}>
         {details}
+        {bio && <div style={{ width: '100%', boxSizing: 'border-box', borderRadius: 10, padding: '6px 10px', background: 'rgba(255,255,255,.07)', border: `1px solid rgba(255,255,255,.14)`, color: C.soft, fontSize: 10, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><b style={{ color: C.mint }}>Bio:</b> {sanitizeUserText(String(bio), 180)}</div>}
         {sbStats}
         {journey}
         {shelf}
-        {extra}
+        {fourFiveQuestions}
       </div>
 
       {/* Branding (same treatment as the other cards), tucked into the panel's lower lobes. */}
@@ -594,6 +685,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
     <div style={{ position: 'absolute', right: -w * 0.22, bottom: -w * 0.3, width: w * 0.8, height: w * 0.8, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,.9) 0%, rgba(255,255,255,.4) 24%, rgba(255,255,255,0) 58%)' }} />
     <div style={{ position: 'absolute', left: -w * 0.2, bottom: h * 0.18, width: w * 0.7, height: w * 0.7, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,151,178,.35) 0%, rgba(0,151,178,0) 65%)' }} />
 
+    {data.userSince && <span style={{ position: 'absolute', zIndex: 12, top: s(10), left: '50%', transform: 'translateX(-50%)', maxWidth: '72%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', borderRadius: 999, padding: `${s(5)}px ${s(13)}px`, background: 'rgba(239,255,255,.96)', color: C.teal, border: `1px solid ${C.cyan}`, boxShadow: '0 6px 18px rgba(0,25,35,.24)', fontSize: s(12), fontWeight: 800, letterSpacing: '.02em' }}>User since {sanitizeUserText(data.userSince, 32)}</span>}
     <div className={banner.className} style={{ ...banner.style, position: 'absolute', top: 0, left: 0, right: 0, height: bannerH, overflow: 'hidden', background: `linear-gradient(135deg,${C.deep} 0%,#02586b 55%,#16b5c4 100%)` }}>
       {data.headerImageUrl ? <img className={still ? '' : 'nl-pc-a nl-pc-zoom'} src={safeExternalUrl(data.headerImageUrl) || undefined} alt="" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <><svg width="100%" height="100%" viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, opacity: 0.5 }} aria-hidden="true">{[120,190,260,330,400].map((r) => <circle key={r} cx="880" cy="60" r={r} fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="1.5" />)}{[[120,70],[260,190],[420,90],[610,210],[730,70]].map(([x,y],i) => <circle key={i} className={still ? '' : 'nl-pc-loop nl-pc-twinkle'} style={{ animationDelay: `${i * .6}s`, transformOrigin: `${x}px ${y}px` }} cx={x} cy={y} r="3" fill="#fff" />)}</svg><NlLogo className={still ? '' : 'nl-pc-loop nl-pc-float'} style={{ position: 'absolute', right: pad, top: '50%', marginTop: -bannerH * .36, height: bannerH * .72, width: bannerH * .72, color: '#fff', opacity: .16 }} /></>}
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom,rgba(1,43,54,.05) 30%,rgba(1,43,54,.55) 100%)' }} />
@@ -602,7 +694,9 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
 
     <div style={{ position: 'absolute', left: pad, right: pad, top: Math.max(bannerH - avatar * .45, s(26)), bottom: pad * .7, display: 'flex', flexDirection: 'column', gap: s(isTall ? 11 : 15) }}>
       {/* Hero identity: same semantic order everywhere, composition changes with ratio. */}
-      {(() => { const hero = <div className={heroMv.className} style={{ ...heroMv.style, display: isTall ? 'block' : 'grid', gridTemplateColumns: isWide ? '1fr' : 'minmax(0,1fr) minmax(0,.82fr)', gap: s(18), alignItems: isWide ? 'start' : 'center', flexShrink: 0 }}>
+      {(() => {
+      const bioLine = cappedBio ? <div style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', borderRadius: s(10), padding: `${s(6)}px ${s(10)}px`, background: 'rgba(255,255,255,.07)', border: `1px solid rgba(255,255,255,.14)`, color: C.soft, fontSize: s(10), lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: isWide ? 'right' : 'left' }}><b style={{ color: C.mint }}>Bio:</b> {sanitizeUserText(String(cappedBio), 140)}</div> : null;
+      const hero = <div className={heroMv.className} style={{ ...heroMv.style, display: isTall ? 'block' : 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,.82fr)', gap: s(18), alignItems: 'center', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: s(18), minWidth: 0 }}>
           <div className={avatarMv.className} style={{ ...avatarMv.style, position: 'relative', width: avatar, height: avatar, flexShrink: 0 }}>
             {!still && <div className="nl-pc-a nl-pc-ring" style={{ ['--d' as string]: `${(tAvatar + .5).toFixed(2)}s`, position: 'absolute', inset: 0, borderRadius: '50%' } as CSSProperties} />}
@@ -613,29 +707,24 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
             <p style={{ fontSize: s(10), letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: s(5) }}>Novelty Library · Reader</p>
             <h2 className="font-serif" style={{ fontSize: s((isWide ? 54 : 48) * nameScale(data.name || 'Novelty Reader')), fontWeight: 700, lineHeight: 1.04, color: C.ink, textShadow: '0 4px 22px rgba(0,25,35,.5)', overflow: 'hidden', overflowWrap: 'anywhere' }}>{sanitizeUserText(data.name || 'Novelty Reader',120)}</h2>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: s(6), marginTop: s(6) }}><p style={{ display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: s(17), fontWeight: 700, padding: `${s(4)}px ${s(11)}px`, borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader',80)}</p><FollowerPill count={data.followerCount} fontSize={s(14)} padX={s(10)} padY={s(4)} onClick={still ? undefined : onFollowersClick} /></div>
-            {bio && isTall && <p style={{ marginTop: s(7), color: C.soft, fontSize: s(11), lineHeight: 1.3 }}>{sanitizeUserText(String(bio), 180)}</p>}
+            {bio && isTall && <p style={{ marginTop: s(7), color: C.soft, fontSize: s(11), lineHeight: 1.3 }}>{sanitizeUserText(String(cappedBio), 140)}</p>}
           </div>
         </div>
-        {details}
+        {isWide ? <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', gap: s(7) }}>{bioLine}{details}</div> : details}
       </div>;
 
-      const body = <div data-fit style={{ position: 'relative', minHeight: 0, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(isTall ? 10 : 13), flex: 1 }}>
+          const body = isWide ? <div data-fit style={{ position: 'relative', minHeight: 0, minWidth: 0, overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gridTemplateRows: 'auto minmax(0,1fr)', alignContent: 'start', gap: s(8), flex: 1, paddingBottom: s(3) }}>
+        <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: s(8) }}>{metrics}{journey}</div>
+        <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: s(12) }}>{shelf}{fourFiveQuestions}</div>
+      </div> : <div data-fit style={{ position: 'relative', minHeight: 0, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(isTall ? 10 : 13), flex: 1 }}>
+        {!isWide && bioLine}
         {metrics}
         {journey}
         {shelf}
-        {isFourFive ? fourFiveQuestions : <>{extra}</>}
+        {fourFiveQuestions}
       </div>;
 
-      // 16:9 only: split into two side-by-side sections instead of one
-      // stacked column — left holds the top identity content, right holds
-      // everything that normally follows underneath it. Every other format
-      // keeps the original single-column flow.
-      return isWide
-        ? <div style={{ display: 'flex', flexDirection: 'row', gap: s(22), flex: 1, minHeight: 0 }}>
-            <div style={{ flex: '1 1 46%', minWidth: 0, display: 'flex', flexDirection: 'column' }}>{hero}</div>
-            <div style={{ flex: '1 1 54%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>{body}</div>
-          </div>
-        : <>{hero}{body}</>;
+      return <>{hero}{body}</>;
       })()}
 
       <div className={footerMv.className} style={{ ...footerMv.style, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(12), flexShrink: 0, minHeight: s(isTall ? 52 : 66) }}>
@@ -643,7 +732,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
           {ig && <a href={safeExternalUrl(`https://instagram.com/${ig}`) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(7), maxWidth: '100%', borderRadius: 999, padding: `${s(6)}px ${s(10)}px`, background: 'linear-gradient(135deg,#feda75 0%,#fa7e1e 28%,#d62976 58%,#962fbf 82%,#4f5bd5 100%)', color: '#fff', fontWeight: 800, fontSize: s(11), boxShadow: '0 8px 20px rgba(0,25,35,.3)', textDecoration: 'none' }}><span style={{ display: 'grid', placeItems: 'center', width: s(23), height: s(23), borderRadius: '50%', background: 'rgba(255,255,255,.24)', flexShrink: 0 }}><Instagram width={s(13)} height={s(13)} /></span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{ig}</span></a>}
           {otherSocials.map((link) => <a key={link.platform} href={normalizeUrl(link.url)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: s(5), borderRadius: 999, padding: `${s(6)}px ${s(9)}px`, fontSize: s(10), fontWeight: 700, background: C.glassStrong, color: '#fff', border: `1px solid ${C.line}`, textDecoration: 'none' }}>{platformIcon(link.platform,s(12))}{sanitizeUserText(platformLabel(link.platform),40)}</a>)}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: s(10), flexShrink: 0, minWidth: isWide ? '42%' : '48%', borderRadius: s(16), padding: `${s(8)}px ${s(11)}px`, background: 'linear-gradient(135deg,rgba(255,255,255,.92),rgba(206,255,255,.78))', border: `1px solid rgba(159,243,245,.72)`, boxShadow: '0 12px 28px rgba(0,25,35,.25),inset 0 1px 0 rgba(255,255,255,.85)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: s(10), flexShrink: 0, minWidth: isWide ? '34%' : '48%', borderRadius: s(16), padding: `${s(8)}px ${s(11)}px`, background: 'linear-gradient(135deg,rgba(255,255,255,.92),rgba(206,255,255,.78))', border: `1px solid rgba(159,243,245,.72)`, boxShadow: '0 12px 28px rgba(0,25,35,.25),inset 0 1px 0 rgba(255,255,255,.85)' }}>
           <div style={{ display: 'grid', placeItems: 'center', width: s(58), height: s(58), borderRadius: s(14), flexShrink: 0, background: '#ffffff', boxShadow: '0 6px 14px rgba(0,65,80,.28)' }}><img src={LOGO} alt="Novelty Library" style={{ width: s(54), height: s(54), objectFit: 'contain', display: 'block' }} /></div>
           <div style={{ minWidth: 0 }}><p className="font-serif" style={{ fontSize: s(17), fontWeight: 800, lineHeight: 1, color: C.deep2 }}>Novelty Library</p><p style={{ fontSize: s(7), letterSpacing: '.12em', textTransform: 'uppercase', marginTop: s(4), color: C.teal, fontWeight: 900 }}>Readers&apos; personal archive · branding tool</p></div>
         </div>

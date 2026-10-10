@@ -939,9 +939,25 @@ export async function updateProfile(uid: string, fields: Partial<Profile>): Prom
     })).filter((link) => link.platform && link.url);
   }
   if ('profile_answers' in fields) (allowed as any).profile_answers = fields.profile_answers ?? {};
-  if ('books_read_this_month' in fields) (allowed as any).books_read_this_month = Math.max(0, Math.min(10000, Number(fields.books_read_this_month) || 0));
-  if ('total_books_read' in fields) (allowed as any).total_books_read = Math.max(0, Math.min(100000, Number(fields.total_books_read) || 0));
-  if ('reading_since' in fields) (allowed as any).reading_since = Number.isFinite(Number(fields.reading_since)) ? Number(fields.reading_since) : null;
+  if ('books_read_this_month' in fields) {
+    const value = fields.books_read_this_month;
+    const number = value == null ? null : Number(value);
+    (allowed as any).books_read_this_month = number == null || !Number.isFinite(number)
+      ? null
+      : Math.max(0, Math.min(10000, number));
+  }
+  if ('total_books_read' in fields) {
+    const value = fields.total_books_read;
+    const number = value == null ? null : Number(value);
+    (allowed as any).total_books_read = number == null || !Number.isFinite(number)
+      ? null
+      : Math.max(0, Math.min(100000, number));
+  }
+  if ('reading_since' in fields) {
+    const value = fields.reading_since;
+    const number = value == null || (typeof value === 'string' && !value.trim()) ? null : Number(value);
+    (allowed as any).reading_since = number == null || !Number.isFinite(number) ? null : number;
+  }
   if ('hide_followers' in fields) (allowed as any).hide_followers = Boolean(fields.hide_followers);
   if ('hide_following' in fields) (allowed as any).hide_following = Boolean(fields.hide_following);
   if ('profile_visibility' in fields) (allowed as any).profile_visibility = fields.profile_visibility ?? {};
@@ -950,8 +966,19 @@ export async function updateProfile(uid: string, fields: Partial<Profile>): Prom
     (allowed as any).selected_question_ids = picks.qa;
     (allowed as any).profile_display_tags = picks.tags;
   }
-  const { error } = await supabase.from('profiles').update({ ...allowed, updated_at: new Date().toISOString() }).eq('id', uid);
-  if (error) throw error;
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ ...allowed, updated_at: new Date().toISOString() })
+    .eq('id', uid)
+    .select('id')
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Profile save failed: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error('No profile row was updated. Your profile record may be missing, or Supabase permissions may be blocking the update.');
+  }
 }
 
 export interface AcceptedReviewCard {

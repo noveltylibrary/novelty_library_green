@@ -2,7 +2,7 @@
 
 Novelty Library is a React/Vite web application for book discovery, reader reviews, community engagement, reader profiles and editorial administration.
 
-This documentation set was generated from the uploaded `NL_WA_1_35.zip` archive after inspecting the `NL_WA_1_34` application source.
+This documentation set was generated from the uploaded `NL_WA_1_35.zip` archive after inspecting the `NL_WA_1_75` application source.
 
 ## Documentation
 
@@ -272,3 +272,12 @@ When behavior changes:
 - Database: run `sql/verdict_column.sql` (idempotent; the live project already has the column and `*_verdict_chk` CHECK constraints).
 
 - Admin -> Accepted Reviews: the **Verdict** can be set for older reviews (Cards -> edit, or click the Verdict cell in the table). Saving also copies just the verdict onto the already-published copy, so the banner appears without a republish. A **No verdict only** filter lists reviews still missing one, and an **exact Review No.** box works like the Publishing Queue's.
+
+
+## Version 1.75 — Profile card and reader Q&A
+
+- Added a distinct average R/W Rating star tile beside the average NL Rating tile. The two ratings remain separate.
+- Restyled profile-card question/answer boxes with clearer label hierarchy, stronger cyan/teal treatment, and improved wrapping.
+- Removed reader controls for choosing card questions and choosing Tag versus Answer; Tag/Answer presentation is admin-managed.
+- Automatically limits Advanced Reader (Reading Identity) card content to the first two questions. Questions in that section after the first two and later sections are shown in a Reader Questions area below the public profile card, subject to the reader's public/private visibility choices.
+- Removed the “Show on profile card” toggle from the admin question editor; legacy database fields are retained for backwards compatibility.
