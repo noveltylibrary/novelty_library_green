@@ -260,13 +260,15 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
   const COMPULSORY_FIELDS: (keyof FormState)[] = [
     'title', 'author', 'genre', 'language', 'traits', 'verdict', 'review_text', 'goodreads_rating', 'rw_rating',
   ];
+  const hasValidCover = Boolean(form.cover_image_url.trim()) && isValidHttpUrl(form.cover_image_url.trim());
   const compulsoryDone = COMPULSORY_FIELDS.filter((f) => {
     const v = form[f];
     if (f === 'review_text') return form.review_text.trim().length >= 100;
     if (f === 'goodreads_rating') return Boolean(form.goodreads_rating.trim()) && Number(form.goodreads_rating) >= 0 && Number(form.goodreads_rating) <= 5;
     return typeof v === 'string' ? v.trim().length > 0 : Boolean(v);
-  }).length + (form.undertaking_accepted ? 1 : 0);
-  const compulsoryTotal = COMPULSORY_FIELDS.length + 1; // +1 for the undertaking checkbox
+  }).length + (form.undertaking_accepted ? 1 : 0) + (hasValidCover ? 1 : 0);
+  // Cover is compulsory too: count it only when a valid HTTP(S) image URL is present.
+  const compulsoryTotal = COMPULSORY_FIELDS.length + 2; // undertaking + cover
   const formProgress = Math.round((compulsoryDone / compulsoryTotal) * 100);
 
   // Edit countdown timer
@@ -1488,8 +1490,11 @@ function SubmitFormFields({
             value={form.cover_image_url}
             onChange={(e) => { const value = e.target.value; update('cover_image_url', value); onCoverUrlChange(value); }}
             placeholder="Or paste image URL (required)"
-            className="input-field text-xs"
+            aria-label="Required book cover image URL"
+            aria-invalid={Boolean(form.cover_image_url.trim()) && !isValidHttpUrl(form.cover_image_url.trim())}
+            className={`input-field text-xs ${Boolean(form.cover_image_url.trim()) && !isValidHttpUrl(form.cover_image_url.trim()) ? 'input-error' : ''}`}
           />
+          {Boolean(form.cover_image_url.trim()) && !isValidHttpUrl(form.cover_image_url.trim()) && <p className="field-error">Enter a valid http:// or https:// cover image URL to complete this required field.</p>}
           <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
             <span className="cover-source-dot" data-source={coverSource || 'none'} />
             <span>{coverSource === 'open-library' ? 'Catalogue cover · Open Library' : coverSource === 'uploaded' ? 'Your uploaded cover' : coverSource === 'url' ? 'Cover from pasted image URL' : 'Cover image is required'}</span>

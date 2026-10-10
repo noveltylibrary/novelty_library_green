@@ -308,6 +308,16 @@ export async function submitReview(input: {
   undertaking_accepted?: boolean;
   verdict: Verdict;
 }): Promise<Review> {
+  // Guard the data layer as well as the form: no caller may create a submitted
+  // review without a usable HTTP(S) cover URL.
+  const coverUrl = (input.cover_image_url || '').trim();
+  let validCoverUrl = false;
+  try {
+    const parsedCoverUrl = new URL(coverUrl);
+    validCoverUrl = (parsedCoverUrl.protocol === 'http:' || parsedCoverUrl.protocol === 'https:') && Boolean(parsedCoverUrl.hostname);
+  } catch { /* invalid or missing cover */ }
+  if (!validCoverUrl) throw new Error('A book cover image is required. Upload a cover, choose an Open Library cover, or enter a valid image URL before submitting.');
+
   const slug = uniqueSlug(input.title);
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id || null;

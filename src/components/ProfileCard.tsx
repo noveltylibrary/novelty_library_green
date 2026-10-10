@@ -176,8 +176,8 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
       imagePlaceholder: IMAGE_PLACEHOLDER,
       style: { transform: 'none' },
     };
-    await toPng(canvasRef.current!, options).catch(() => undefined);
-    return { dataUrl: await toPng(canvasRef.current!, options), exportSelected };
+    const dataUrl = await toPng(canvasRef.current!, options);
+    return { dataUrl, exportSelected };
   };
 
   const downloadCard = async (formatOverride?: FormatKey) => {
@@ -199,20 +199,56 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
 
   const downloadPdf = async () => {
     if (!canvasRef.current || downloading) return;
-    // Open synchronously from the click so popup blockers allow the print-to-PDF sheet.
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) { window.alert('Please allow pop-ups to export a PDF.'); return; }
-    const exportFormat = format;
     setDownloading(true);
     try {
-      const { dataUrl } = await renderCardPng(exportFormat);
-      printWindow.document.open();
-      printWindow.document.write(`<!doctype html><html><head><title>Novelty Library Profile</title><style>@page{size:${exportSelected.width}px ${exportSelected.height}px;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff}img{display:block;width:100%;height:100vh;object-fit:contain;page-break-inside:avoid}@media print{img{height:100vh;width:100vw;object-fit:contain}}</style></head><body><img src="${dataUrl}" alt="Novelty Library profile card"><script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);
-      printWindow.document.close();
+      const { dataUrl, exportSelected } = await renderCardPng(format);
+      // Convert the rendered card to JPEG and embed it directly in a one-page PDF.
+      // This avoids pop-up blockers and the browser print dialog entirely.
+      const image = new Image();
+      image.src = dataUrl;
+      await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('Could not load profile card image')); });
+      const jpegCanvas = document.createElement('canvas');
+      jpegCanvas.width = exportSelected.width;
+      jpegCanvas.height = exportSelected.height;
+      const ctx = jpegCanvas.getContext('2d');
+      if (!ctx) throw new Error('Could not prepare PDF image');
+      ctx.fillStyle = format === 'SuperBlitz' ? '#ffffff' : C.deep2;
+      ctx.fillRect(0, 0, jpegCanvas.width, jpegCanvas.height);
+      ctx.drawImage(image, 0, 0, jpegCanvas.width, jpegCanvas.height);
+      const jpegData = await new Promise<Blob>((resolve, reject) => jpegCanvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not encode PDF image')), 'image/jpeg', 0.94));
+      const bytes = new Uint8Array(await jpegData.arrayBuffer());
+      const pageW = exportSelected.width * 0.75;
+      const pageH = exportSelected.height * 0.75;
+      const enc = new TextEncoder();
+      const chunks: Uint8Array[] = [];
+      let length = 0;
+      const push = (part: Uint8Array | string) => { const b = typeof part === 'string' ? enc.encode(part) : part; chunks.push(b); length += b.length; };
+      const offsets: number[] = [0];
+      push('%PDF-1.4\n%âãÏÓ\n');
+      const object = (id: number, body: string) => { offsets[id] = length; push(`${id} 0 obj\n${body}\nendobj\n`); };
+      object(1, '<< /Type /Catalog /Pages 2 0 R >>');
+      object(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+      object(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW.toFixed(2)} ${pageH.toFixed(2)}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`);
+      offsets[4] = length;
+      push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${exportSelected.width} /Height ${exportSelected.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`);
+      push(bytes); push('\nendstream\nendobj\n');
+      const stream = `q\n${pageW.toFixed(2)} 0 0 ${pageH.toFixed(2)} 0 0 cm\n/Im0 Do\nQ\n`;
+      offsets[5] = length;
+      push(`5 0 obj\n<< /Length ${enc.encode(stream).length} >>\nstream\n${stream}endstream\nendobj\n`);
+      const xref = length;
+      push(`xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+      const pdfParts = chunks;
+      const blob = new Blob(pdfParts, { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `novelty-library-profile-${data.username || 'reader'}-${format.replace(':', 'x')}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
       setDownloadMenuOpen(false);
     } catch (error) {
-      printWindow.close(); console.error(error);
-      window.alert('The profile card could not be prepared for PDF export.');
+      console.error('Profile PDF export failed:', error);
+      window.alert('PDF export failed while preparing the profile card. Please try again after the card images finish loading.');
     } finally { setDownloading(false); }
   };
 
@@ -290,7 +326,7 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
     {layout === 'rows' && (download || onViewPublicProfile) && <div className="nl-pc-dock" style={{ maxWidth: selected.width > selected.height ? 560 : 380 }}>
       {download && <div className="nl-pc-seg" role="radiogroup" aria-label="Card format to preview" style={{ '--n': FORMATS.length, '--idx': Math.max(0, FORMATS.findIndex((f) => f.key === format)) } as CSSProperties}>
         <span className="nl-pc-seg-pill" aria-hidden="true" />
-        {FORMATS.map((f) => <button key={f.key} type="button" role="radio" aria-checked={format === f.key} onClick={() => setFormat(f.key)} className="nl-pc-seg-btn" title={`${f.key} · ${f.width}×${f.height}`}>{f.key === 'SuperBlitz' ? 'Blitz' : f.key}</button>)}
+        {FORMATS.map((f) => <button key={f.key} type="button" role="radio" aria-checked={format === f.key} onClick={() => setFormat(f.key)} className="nl-pc-seg-btn" title={`${f.key} · ${f.width}×${f.height}`}>{f.key}</button>)}
       </div>}
       <div className="nl-pc-tiles">
         {download && <div className="nl-pc-tile-wrap" style={{ '--i': 0 } as CSSProperties}>

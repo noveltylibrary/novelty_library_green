@@ -116,16 +116,16 @@ export function HeroSection({ navigate, live }: HeroSectionProps) {
             Novelty Library is a clean, permanent digital archive for indie readers, built so great book takes never depend on a random social feed.
           </motion.p>
 
-          <motion.div variants={rise} className="mt-9 flex flex-wrap items-center justify-center gap-3">
+          <motion.div variants={rise} className="mt-9 flex flex-nowrap items-center justify-center gap-2 sm:gap-3 home-primary-actions">
             <button
               onClick={() => navigate('/submit')}
-              className="hero-cta-pulse group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 px-7 py-3.5 text-sm font-semibold tracking-wide text-slate-950 shadow-[0_0_25px_rgba(20,184,166,0.3)] transition-all duration-300 hover:from-cyan-300 hover:to-teal-300 hover:-translate-y-0.5"
+              className="hero-cta-pulse group inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 px-3 py-3 sm:gap-2 sm:px-7 sm:py-3.5 text-[11px] leading-tight sm:text-sm font-semibold tracking-normal sm:tracking-wide text-slate-950 shadow-[0_0_25px_rgba(20,184,166,0.3)] transition-all duration-300 hover:from-cyan-300 hover:to-teal-300 hover:-translate-y-0.5"
             >
               <PenTool className="h-4 w-4" /> Submit Nomination
             </button>
             <button
               onClick={() => navigate('/reviews')}
-              className="group inline-flex items-center gap-2 rounded-full border border-teal-600/30 bg-white px-7 py-3.5 text-sm font-medium tracking-wide text-slate-800 transition-all duration-300 hover:border-cyan-500/60 hover:text-cyan-700 hover:shadow-[0_0_20px_rgba(6,182,212,0.18)] dark:border-teal-500/30 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400/60 dark:hover:text-cyan-300"
+              className="group inline-flex min-w-0 items-center justify-center gap-1 rounded-full border border-teal-600/30 bg-white px-3 py-3 text-[11px] leading-tight sm:gap-2 sm:px-7 sm:py-3.5 sm:text-sm font-medium tracking-normal sm:tracking-wide text-slate-800 transition-all duration-300 hover:border-cyan-500/60 hover:text-cyan-700 hover:shadow-[0_0_20px_rgba(6,182,212,0.18)] dark:border-teal-500/30 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400/60 dark:hover:text-cyan-300"
             >
               Reviews <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </button>

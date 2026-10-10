@@ -117,6 +117,18 @@ export function AdminReviewsPage({ navigate, embedded = false }: AdminReviewsPag
   // next sequential number (MAX(review_no) + 1) is auto-calculated.
   const handleAccept = async (review: Review) => {
     setReviewNoError(null);
+    // Do not allow legacy/incomplete submissions to enter Accepted Reviews
+    // until a cover/poster has been attached.
+    const coverUrl = (review.cover_image_url || '').trim();
+    let validCover = false;
+    try {
+      const parsed = new URL(coverUrl);
+      validCover = (parsed.protocol === 'http:' || parsed.protocol === 'https:') && Boolean(parsed.hostname);
+    } catch { /* missing/invalid cover */ }
+    if (!validCover) {
+      setError(`Cannot accept “${review.title || 'Untitled review'}” without a valid book cover/poster. Ask the reviewer to add one or attach a valid cover before accepting.`);
+      return;
+    }
     let customNo: number | undefined;
     try {
       customNo = resolveCustomReviewNo(review.id);

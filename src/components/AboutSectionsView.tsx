@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react';
-import { BookOpen, Users, Heart, Sparkles, PenTool, ArrowRight, ChevronDown, Globe2, ShieldCheck, Languages, Sparkle, Library, Compass, Wand2, BarChart3 } from 'lucide-react';
+import { BookOpen, Users, Heart, Sparkles, PenTool, ArrowRight, ChevronDown, Globe2, ShieldCheck, Languages, Sparkle, Library, Compass, Wand2, BarChart3, FileText } from 'lucide-react';
 import type { AboutSection } from '@/lib/aboutSections';
 
 const ICONS: Record<string, ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
@@ -69,6 +69,11 @@ export function AboutSectionBlock({ section, email, navigate }: { section: About
     case 'grid':
       return <div className="mb-16">
         <Heading title={section.title} subtitle={section.subtitle} />
+        {section.title.toLowerCase().includes('why share your review') && <div className="flex justify-center mb-7 px-2">
+          <button type="button" className="nl-action-btn nl-about-guide-btn" onClick={() => navigate('/review-guidelines')}>
+            <FileText aria-hidden="true" /><span>Read the Review Guide</span><ArrowRight aria-hidden="true" />
+          </button>
+        </div>}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {section.items.map((it, i) => { const Icon = ICONS[it.icon || 'sparkles'] || Sparkles; return <div key={`${it.title}-${i}`} className="surface-card p-5 flex gap-3 nl-about-card">
             <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-teal-dark)' }} />
