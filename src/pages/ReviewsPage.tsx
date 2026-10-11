@@ -120,7 +120,7 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
               The Novelty Library review shelf
             </h1>
             <p className="max-w-3xl mt-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-              Reader reviews published by the Novelty Library editorial team, kept readable and easy to explore in one community shelf.
+              Didn't find your book here? Submit your review via our Submit page, or reserve it to submit later!
             </p>
           </div>
         </div>

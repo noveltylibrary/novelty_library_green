@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type ChangeEvent, type FormEvent, type CSSProperties } from 'react';
-import { ArrowLeft, Camera, CheckCircle, Eye, EyeOff, Globe, Instagram, Link2, Mail, Save, Upload, User, BookOpen, Library, Minus, Plus, Users, X, Lock, Unlock, ImagePlus, Download, Sparkles, ExternalLink, ChevronRight, Layers, Fingerprint, BookMarked, Compass, Feather, Lightbulb, Heart, Coffee, Smile } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle, Eye, EyeOff, Globe, Instagram, Link2, Mail, Save, Upload, User, BookOpen, Library, Minus, Plus, Users, X, Lock, Unlock, ImagePlus, Download, Sparkles, ExternalLink, ChevronRight, Layers, Fingerprint, BookMarked, Compass, Feather, Lightbulb, Heart, Coffee, Smile, ContactRound } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { fetchMyAcceptedReviews, fetchMyPublishedReviews, updateProfile, uploadAvatarImage, uploadProfileHeaderImage, type AcceptedReviewCard } from '@/lib/reviews';
 import { RwStarRating } from '@/components/RwStarRating';
@@ -308,12 +308,9 @@ function AcceptedCard({review,navigate,live=false,publishedNos}:{review:Accepted
 function sectionIcon(name:string,index:number):ReactNode{
   const n=name.trim().toLowerCase(); const c="w-5 h-5";
   if(/personal/.test(n)) return <Fingerprint className={c}/>;
-  if(/basic|reader\s*(info|detail|profile)|about\s*(the\s*)?reader/.test(n)) return <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M3.2 6.8c3.1-1.2 6.1-.5 8.8 1.6v11c-2.7-2.1-5.7-2.8-8.8-1.6z" />
-    <path d="M20.8 6.8c-3.1-1.2-6.1-.5-8.8 1.6v11c2.7-2.1 5.7-2.8 8.8-1.6z" />
-    <path d="M6 9.5c1.4-.2 2.8.1 4 1M6 12.4c1.4-.2 2.8.1 4 1M18 9.5c-1.4-.2-2.8.1-4 1M18 12.4c-1.4-.2-2.8.1-4 1" />
-    <path d="m12 2.1.9 2 2.1.3-1.5 1.5.4 2.1L12 7l-1.9 1 .4-2.1L9 4.4l2.1-.3z" fill="currentColor" strokeWidth="1.1" />
-  </svg>;
+  // A contact-card silhouette reads as a reader profile, without repeating the
+  // sparkle, book, or decorative SVG motifs used by other profile sections.
+  if(/basic|reader\s*(info|detail|profile)|about\s*(the\s*)?reader/.test(n)) return <ContactRound className={c}/>;
   if(/beyond|outside|hobb|interest|life/.test(n)) return <Compass className={c}/>;
   const pool=[<Layers className={c}/>,<Sparkles className={c}/>,<Feather className={c}/>,<Lightbulb className={c}/>,<Heart className={c}/>,<Coffee className={c}/>,<Smile className={c}/>];
   return pool[index%pool.length];

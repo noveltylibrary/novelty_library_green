@@ -94,7 +94,7 @@ export function FeedbackModal({ open, reviewTitle, existing, onClose, onSubmit }
         {/* 2. Review */}
         <div className="mb-5">
           <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--color-text-muted)' }} htmlFor="nl-feedback-text">Review</label>
-          <textarea id="nl-feedback-text" value={text} onChange={(e) => setText(e.target.value.slice(0, MAX_TEXT))} rows={4} placeholder="What did you think of this review or the book?" className="input-field resize-none" />
+          <textarea id="nl-feedback-text" value={text} onChange={(e) => setText(e.target.value.slice(0, MAX_TEXT))} rows={4} placeholder="Share your own two-minute take about this book!" className="input-field resize-none" />
           <p className="text-[11px] text-right mt-1" style={{ color: 'var(--color-text-muted)' }}>{text.length}/{MAX_TEXT}</p>
         </div>
 
