@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCookieConsent } from '@/lib/cookieConsent';
 
 interface AdsterraAdSlotProps {
@@ -27,6 +27,19 @@ export function AdsterraAdSlot({ className = '', active = true }: AdsterraAdSlot
   const consent = useCookieConsent();
   const [state, setState] = useState<SlotState>('loading');
   const personalised = consent === 'all' && FRAME_IS_SEPARATE_ORIGIN;
+  const frameRef = useRef<HTMLIFrameElement>(null);
+
+  // ad-frame.js reports whether the network actually rendered a creative, so an empty slot collapses
+  // instead of leaving a bare "SPONSORED" label (iframe onLoad fires even when no ad came back).
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.source !== frameRef.current?.contentWindow) return;
+      const d = e.data as { type?: string; filled?: boolean } | null;
+      if (d && d.type === 'nl-ad-status') setState(d.filled ? 'filled' : 'empty');
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
 
   useEffect(() => { if (consent && active) setState('loading'); }, [consent, active]);
 
@@ -38,6 +51,7 @@ export function AdsterraAdSlot({ className = '', active = true }: AdsterraAdSlot
       <div className="adsterra-label"><span>SPONSORED</span></div>
       <div className="adsterra-frame">
         <iframe
+          ref={frameRef}
           key={personalised ? 'personalised' : 'basic'}
           data-ad-mode={personalised ? 'personalised' : 'non-personalised'}
           title="Advertisement"
@@ -46,10 +60,10 @@ export function AdsterraAdSlot({ className = '', active = true }: AdsterraAdSlot
           height={250}
           scrolling="no"
           loading="lazy"
-          referrerPolicy={personalised ? 'no-referrer-when-downgrade' : 'no-referrer'}
+          referrerPolicy={personalised ? 'no-referrer-when-downgrade' : 'origin'}
           sandbox={`allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation${personalised ? ' allow-same-origin' : ''}`}
           style={{ border: 0, display: 'block', width: 300, height: 250, maxWidth: '100%' }}
-          onLoad={() => window.setTimeout(() => setState('filled'), 400)}
+          onLoad={() => window.setTimeout(() => setState(s => (s === 'loading' ? 'filled' : s)), 6000)}
           onError={() => setState('empty')}
         />
       </div>

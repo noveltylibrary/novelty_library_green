@@ -1,4 +1,4 @@
-import { Shield, BookMarked, ArrowLeft, LogOut, UserCog, Database, ExternalLink, Users, WalletCards, FileText } from 'lucide-react';
+import { Shield, BookMarked, ArrowLeft, LogOut, UserCog, Database, ExternalLink, Users, WalletCards, FileText, Bell } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 
 // Derive the Supabase project ref from the project URL so admins can jump
@@ -86,6 +86,13 @@ export function AdminHubPage({ navigate }: AdminHubPageProps) {
       icon: FileText,
       path: '/admin/pages',
       gradient: 'linear-gradient(135deg, #164e63 0%, #0f766e 100%)',
+    },
+    {
+      title: 'Notify Users',
+      desc: 'Browse your contacts and send a typed notification to one reader or everyone, straight to their notification bell.',
+      icon: Bell,
+      path: '/admin/notify',
+      gradient: 'linear-gradient(135deg, #0e7490 0%, #5ce1e6 100%)',
     },
   ];
 

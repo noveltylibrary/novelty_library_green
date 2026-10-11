@@ -32,6 +32,7 @@ import { NotificationsPage } from '@/pages/NotificationsPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { AdminFinancesPage } from '@/pages/AdminFinancesPage';
 import { AdminPagesModerationPage } from '@/pages/AdminPagesModerationPage';
+import { AdminNotifyPage } from '@/pages/AdminNotifyPage';
 import { AdminReservedBookReviewsPage } from '@/pages/AdminReservedBookReviewsPage';
 
 
@@ -89,6 +90,7 @@ function AppContent() {
         {route.name === 'admin-users' && <AdminUsersPage navigate={navigate} />}
         {route.name === 'admin-finances' && <AdminFinancesPage navigate={navigate} />}
         {route.name === 'admin-pages' && <AdminPagesModerationPage navigate={navigate} />}
+        {route.name === 'admin-notify' && <AdminNotifyPage navigate={navigate} />}
         {route.name === 'profile' && (route.username ? <PublicProfilePage username={route.username} navigate={navigate} /> : <ProfilePage navigate={navigate} />)}
         {route.name === 'account' && <AccountPage navigate={navigate} />}
         {route.name === 'notifications' && <NotificationsPage navigate={navigate} />}

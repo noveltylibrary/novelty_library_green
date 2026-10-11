@@ -22,6 +22,7 @@ export type Route =
   | { name: 'admin-users' }
   | { name: 'admin-finances' }
   | { name: 'admin-pages' }
+  | { name: 'admin-notify' }
   | { name: 'profile'; username?: string }
   | { name: 'account' }
   | { name: 'notifications' }
@@ -51,6 +52,7 @@ function parseHash(): Route {
     if (parts[1] === 'users') return { name: 'admin-users' };
     if (parts[1] === 'finances') return { name: 'admin-finances' };
     if (parts[1] === 'pages') return { name: 'admin-pages' };
+    if (parts[1] === 'notify') return { name: 'admin-notify' };
     if (parts[1] === 'book-reviews') {
       const validTabs = ['submitted', 'accepted', 'published', 'reserved', 'posters', 'community'] as const;
       const requested = parts[2] as (typeof validTabs)[number] | undefined;

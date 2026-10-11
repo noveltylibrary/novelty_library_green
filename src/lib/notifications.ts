@@ -61,3 +61,28 @@ export function useUnreadNotifications() {
 
   return { unreadCount: count, refresh };
 }
+
+export type AdminNotificationKind = 'system' | 'reservation_accepted' | 'reservation_rejected' | 'review_published';
+
+/**
+ * Admin → user notification (needs sql/admin_notifications_1_89.sql). userId = null sends to every registered user.
+ * Returns how many notifications were created. `dedupe` skips users who already got the identical message in the
+ * last 10 minutes — used by the automatic "accepted" messages so a database trigger can never cause doubles.
+ */
+export async function adminSendNotification(input: {
+  userId: string | null;
+  title: string;
+  body: string;
+  kind?: AdminNotificationKind;
+  dedupe?: boolean;
+}): Promise<number> {
+  const { data, error } = await supabase.rpc('admin_send_notification', {
+    p_user_id: input.userId,
+    p_title: input.title,
+    p_body: input.body,
+    p_kind: input.kind ?? 'system',
+    p_dedupe: input.dedupe ?? false,
+  });
+  if (error) throw error;
+  return Number(data ?? 0);
+}

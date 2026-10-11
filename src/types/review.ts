@@ -20,7 +20,7 @@ export interface Review {
   published_at: string;
   created_at: string;
   updated_at: string;
-  status: 'pending' | 'approved' | 'declined';
+  status: 'pending' | 'approved' | 'declined' | 'marked';
   is_published: boolean;
   admin_notes: string | null;
   series_name: string | null;
@@ -85,4 +85,4 @@ export interface ReviewDraft {
   updated_at: string;
 }
 
-export type ReviewStatus = 'pending' | 'approved' | 'declined';
+export type ReviewStatus = 'pending' | 'approved' | 'declined' | 'marked';
