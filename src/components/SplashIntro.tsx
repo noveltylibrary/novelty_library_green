@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatedBook } from '@/components/AnimatedBook';
 
 const KEY = 'nl-splash-seen';
 const INTRO_DURATION = 4400;
@@ -59,6 +58,7 @@ export function SplashIntro({ onComplete }: SplashIntroProps) {
     <div className={`nl-splash${leaving ? ' is-leaving' : ''}`} aria-label="Novelty Library introduction" role="status">
       <div className="nl-splash-scene" aria-hidden="true">
         <div className="nl-splash-horizon" />
+        <div className="nl-splash-scene-clean-center" />
         <div className="nl-splash-shelf nl-splash-shelf-left" />
         <div className="nl-splash-shelf nl-splash-shelf-right" />
         <span className="nl-splash-particle nl-splash-particle-1" />
@@ -66,20 +66,17 @@ export function SplashIntro({ onComplete }: SplashIntroProps) {
         <span className="nl-splash-particle nl-splash-particle-3" />
         <span className="nl-splash-particle nl-splash-particle-4" />
       </div>
-      <div className="nl-splash-editorial nl-splash-editorial-left" aria-hidden="true">Stories change\n everything.</div>
+      <div className="nl-splash-editorial nl-splash-editorial-left" aria-hidden="true">Stories change<br />everything.</div>
       <div className="nl-splash-editorial nl-splash-editorial-right" aria-hidden="true">Read · Explore · Belong</div>
       <div className="nl-splash-content">
-        <div className="nl-splash-book-wrap"><AnimatedBook size={clampBookSize()} /></div>
-        <img className="nl-splash-logo" src="/novelty-library-logo-white.png" alt="" />
+        <img className="nl-splash-logo" src="/novelty-library-logo-white.png" alt="Novelty Library" />
+        <div className="nl-splash-brand">NOVELTY LIBRARY</div>
         <div className="nl-splash-title">Every book opens a world.</div>
-        <div className="nl-splash-subtitle">Discover yours at Novelty Library.</div>
+        <div className="nl-splash-subtitle">Discover your next chapter.</div>
+        <div className="nl-splash-ornament" aria-hidden="true"><span /><i>✦</i><span /></div>
       </div>
       <button className="nl-splash-skip" type="button" onClick={skip} aria-label="Skip introduction">Skip intro <span aria-hidden="true">↗</span></button>
     </div>
   );
 }
 
-function clampBookSize() {
-  if (typeof window === 'undefined') return 142;
-  return Math.min(154, Math.max(112, Math.round(window.innerWidth * 0.28)));
-}
