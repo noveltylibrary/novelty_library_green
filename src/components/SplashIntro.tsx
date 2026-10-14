@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatedBook } from '@/components/AnimatedBook';
 
 const KEY = 'nl-splash-seen';
-const INTRO_DURATION = 2380;
-const EXIT_AT = 1980;
+const INTRO_DURATION = 4400;
+const EXIT_AT = 3970;
 
 function alreadySeen() {
   try { return sessionStorage.getItem(KEY) === '1'; } catch { return false; }
@@ -66,6 +66,8 @@ export function SplashIntro({ onComplete }: SplashIntroProps) {
         <span className="nl-splash-particle nl-splash-particle-3" />
         <span className="nl-splash-particle nl-splash-particle-4" />
       </div>
+      <div className="nl-splash-editorial nl-splash-editorial-left" aria-hidden="true">Stories change\n everything.</div>
+      <div className="nl-splash-editorial nl-splash-editorial-right" aria-hidden="true">Read · Explore · Belong</div>
       <div className="nl-splash-content">
         <div className="nl-splash-book-wrap"><AnimatedBook size={clampBookSize()} /></div>
         <img className="nl-splash-logo" src="/novelty-library-logo-white.png" alt="" />

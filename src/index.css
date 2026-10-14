@@ -868,22 +868,34 @@ html[data-nl-ads-restricted="true"] iframe[src*="googleadservices.com"] {
 .nl-splash::before, .nl-splash::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
 .nl-splash::before { z-index: -2; background: radial-gradient(ellipse at 50% 46%, rgba(0,177,205,.25), transparent 34%), radial-gradient(ellipse at 50% 100%, rgba(0,105,128,.28), transparent 54%), linear-gradient(135deg,#04151b 0%,#082b33 50%,#031319 100%); }
 .nl-splash::after { z-index: -1; opacity: .26; background: repeating-linear-gradient(90deg, transparent 0 11.5%, rgba(90,220,235,.09) 11.6% 11.75%, transparent 11.85% 23%); mask-image: linear-gradient(90deg,#000,transparent 43%,transparent 57%,#000); }
-.nl-splash-scene { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.nl-splash-horizon { position: absolute; left: 50%; top: 47%; width: min(72vw,760px); aspect-ratio: 1; transform: translate(-50%,-50%); border-radius: 50%; background: radial-gradient(circle,rgba(71,224,242,.19),rgba(12,119,146,.07) 35%,transparent 68%); filter: blur(8px); animation: nl-splash-bloom 2.3s ease-out both; }
+ .nl-splash-scene { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.nl-splash-scene::before {
+  content: ""; position: absolute; inset: -2%;
+  background: url("/novelty-library-intro-scene.png") center 52% / cover no-repeat;
+  opacity: .30; filter: saturate(.9);
+  animation: nl-splash-scene-drift 8s ease-in-out both;
+}
+.nl-splash-scene::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(2,15,20,.42), rgba(3,24,30,.24) 48%, rgba(2,15,20,.32)),
+              linear-gradient(0deg, rgba(2,13,18,.42), transparent 35%, rgba(2,13,18,.24));
+}
+@keyframes nl-splash-scene-drift { from { transform: scale(1.04); opacity: .12; } to { transform: scale(1); opacity: .30; } }
+.nl-splash-horizon { position: absolute; left: 50%; top: 47%; width: min(72vw,760px); aspect-ratio: 1; transform: translate(-50%,-50%); border-radius: 50%; background: radial-gradient(circle,rgba(71,224,242,.19),rgba(12,119,146,.07) 35%,transparent 68%); filter: blur(8px); animation: nl-splash-bloom 3.8s ease-out both; }
 .nl-splash-shelf { position: absolute; top: 13%; bottom: 12%; width: min(24vw,260px); opacity: .22; border-top: 1px solid rgba(87,223,239,.4); border-bottom: 1px solid rgba(87,223,239,.3); background: repeating-linear-gradient(180deg,transparent 0 12%,rgba(28,133,153,.22) 12.2% 12.6%,transparent 12.8% 25%), linear-gradient(90deg,rgba(3,12,18,.9),rgba(8,62,74,.12)); box-shadow: inset 0 0 45px rgba(0,0,0,.45); }
 .nl-splash-shelf-left { left: -7%; transform: perspective(500px) rotateY(18deg); }
 .nl-splash-shelf-right { right: -7%; transform: perspective(500px) rotateY(-18deg); }
-.nl-splash-particle { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #a8f8ff; box-shadow: 0 0 13px 3px rgba(70,224,245,.5); animation: nl-splash-drift 2.1s ease-out both; }
+.nl-splash-particle { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #a8f8ff; box-shadow: 0 0 13px 3px rgba(70,224,245,.5); animation: nl-splash-drift 3.6s ease-out both; }
 .nl-splash-particle-1 { left: 25%; top: 38%; animation-delay: .12s; }
 .nl-splash-particle-2 { left: 72%; top: 33%; animation-delay: .32s; }
 .nl-splash-particle-3 { left: 31%; top: 66%; animation-delay: .48s; }
 .nl-splash-particle-4 { left: 68%; top: 63%; animation-delay: .2s; }
 .nl-splash-content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; text-align: center; width: min(100%,720px); transform: translateY(-1vh); }
-.nl-splash-book-wrap { height: clamp(112px, 17vh, 160px); display: grid; place-items: center; margin-bottom: 3px; filter: drop-shadow(0 0 28px rgba(42,216,236,.24)); animation: nl-splash-book-arrive .8s cubic-bezier(.2,.8,.2,1) both; }
+.nl-splash-book-wrap { height: clamp(112px, 17vh, 160px); display: grid; place-items: center; margin-bottom: 3px; filter: drop-shadow(0 0 28px rgba(42,216,236,.24)); animation: nl-splash-book-arrive 1.05s cubic-bezier(.2,.8,.2,1) both; }
 .nl-splash-book-wrap .nl-book { --bk-cover-a:#21d4e5; --bk-cover-b:#08768d; --bk-page:#f9ffff; --bk-page-2:#d9faff; --bk-page-flip:#fff; --bk-line:#39b7c8; --bk-spine:#07343e; --bk-accent:#7df5ff; --bk-glow:rgba(42,223,243,.4); }
-.nl-splash-logo { display: block; width: clamp(58px,8vw,76px); height: clamp(58px,8vw,76px); object-fit: contain; margin: -1px 0 18px; opacity: 0; filter: drop-shadow(0 0 16px rgba(77,225,242,.34)); animation: nl-splash-logo-in .55s ease .78s forwards; }
-.nl-splash-title { margin: 0; font-family: 'Fraunces', Georgia, serif; font-size: clamp(1.55rem,3.2vw,2.45rem); line-height: 1.12; font-weight: 600; letter-spacing: -.025em; color: #f2fcff; text-wrap: balance; opacity: 0; animation: nl-splash-text-in .55s cubic-bezier(.2,.7,.2,1) .98s forwards; text-shadow: 0 2px 28px rgba(54,203,226,.13); }
-.nl-splash-subtitle { margin-top: 12px; color: #83dce7; font-size: clamp(.78rem,1.35vw,.94rem); letter-spacing: .12em; text-transform: uppercase; opacity: 0; animation: nl-splash-text-in .5s ease 1.2s forwards; }
+.nl-splash-logo { display: block; width: clamp(58px,8vw,76px); height: clamp(58px,8vw,76px); object-fit: contain; margin: -1px 0 18px; opacity: 0; filter: drop-shadow(0 0 16px rgba(77,225,242,.34)); animation: nl-splash-logo-in .7s ease 1.05s forwards; }
+.nl-splash-title { margin: 0; font-family: 'Fraunces', Georgia, serif; font-size: clamp(1.55rem,3.2vw,2.45rem); line-height: 1.12; font-weight: 600; letter-spacing: -.025em; color: #f2fcff; text-wrap: balance; opacity: 0; animation: nl-splash-text-in .7s cubic-bezier(.2,.7,.2,1) 1.45s forwards; text-shadow: 0 2px 28px rgba(54,203,226,.13); }
+.nl-splash-subtitle { margin-top: 12px; color: #83dce7; font-size: clamp(.78rem,1.35vw,.94rem); letter-spacing: .12em; text-transform: uppercase; opacity: 0; animation: nl-splash-text-in .65s ease 1.75s forwards; }
 .nl-splash-skip { position: absolute; z-index: 2; right: max(18px,env(safe-area-inset-right)); bottom: max(16px,env(safe-area-inset-bottom)); padding: 9px 12px; border: 1px solid rgba(150,230,240,.24); border-radius: 999px; background: rgba(3,22,28,.45); color: rgba(231,250,253,.78); font: inherit; font-size: .75rem; cursor: pointer; transition: background .18s ease,color .18s ease,border-color .18s ease; }
 .nl-splash-skip:hover, .nl-splash-skip:focus-visible { color: #fff; border-color: rgba(120,238,248,.65); background: rgba(14,89,102,.65); outline: none; }
 @keyframes nl-splash-bloom { 0% { opacity: 0; transform: translate(-50%,-46%) scale(.65); } 40% { opacity: 1; } 100% { opacity: .75; transform: translate(-50%,-50%) scale(1.08); } }
@@ -2341,3 +2353,36 @@ header.fixed { max-width: 100vw; z-index: 60; }
   .nl-live-page-count { font-size: .67rem; }
   .nl-live-ad-rail { display: none !important; }
 }
+
+/* Longer cinematic hold and bookish editorial details */
+.nl-splash-title { animation-delay: 1.45s; }
+.nl-splash-subtitle { animation-delay: 1.78s; }
+.nl-splash-shelf { opacity: .30; }
+@media (min-width: 900px) {
+  .nl-splash-scene::before { opacity: .36; }
+  .nl-splash-content { transform: translateY(-1vh); }
+}
+@media (max-width: 520px) {
+  .nl-splash-scene::before { background-position: 48% center; opacity: .22; }
+  .nl-splash-content { transform: translateY(-1vh) scale(.94); }
+}
+
+.nl-splash-editorial {
+  position: absolute; z-index: 1; top: 35%; max-width: 180px;
+  color: rgba(107,231,243,.84); font: italic 500 clamp(.8rem,1.3vw,1.02rem)/1.5 Georgia,serif;
+  letter-spacing: .12em; text-align: center; opacity: 0;
+  animation: nl-splash-editorial-in .75s ease 2.05s forwards;
+  text-shadow: 0 0 22px rgba(48,211,231,.28);
+}
+.nl-splash-editorial-left { left: max(4vw,24px); }
+.nl-splash-editorial-right { right: max(4vw,24px); animation-delay: 2.35s; }
+@keyframes nl-splash-editorial-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: .92; transform: translateY(0); }
+}
+@media (max-width: 700px) {
+  .nl-splash-editorial { top: auto; bottom: 17%; max-width: 125px; font-size: .68rem; letter-spacing: .06em; }
+  .nl-splash-editorial-left { left: 8px; }
+  .nl-splash-editorial-right { right: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .nl-splash-editorial { animation: none; opacity: .8; } }
