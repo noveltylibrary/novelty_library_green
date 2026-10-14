@@ -234,7 +234,12 @@ export function AdminMasterListPage({ navigate, embedded = false }: MasterListPa
     setSyncing(true);
     setSyncMsg(null);
     try {
-      const res = await fetch(SHEET_IMPORT_URL, {
+      // This import endpoint is a GET Edge Function. Bypass browser/CDN caches
+      // so Sync Now always asks the server to re-read the current Google Sheet.
+      const freshImportUrl = `${SHEET_IMPORT_URL}&_=${Date.now()}`;
+      const res = await fetch(freshImportUrl, {
+        method: 'GET',
+        cache: 'no-store',
         headers: await adminFunctionHeaders(),
       });
       if (!res.ok) throw new Error(`Sync failed (${res.status})`);

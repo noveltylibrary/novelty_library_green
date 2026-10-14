@@ -11,7 +11,7 @@
   ],
   "headers": [
     {
-      "source": "/((?!ad-frame\\.html$).*)",
+      "source": "/(.*)",
       "headers": [
         {
           "key": "X-Frame-Options",
@@ -31,24 +31,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; frame-src 'self' https:; script-src 'self' https://va.vercel-scripts.com https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com/gsi/ https://*.supabase.co wss://*.supabase.co https://openlibrary.org https://vitals.vercel-insights.com https://va.vercel-scripts.com; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
-        }
-      ]
-    },
-    {
-      "source": "/ad-frame.html",
-      "headers": [
-        {
-          "key": "Content-Security-Policy",
-          "value": "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src https: data: blob:; connect-src https:; frame-src https:; object-src 'none'; base-uri 'self'; form-action https:; frame-ancestors 'self'"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "SAMEORIGIN"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=3600"
+          "value": "default-src 'self'; frame-src 'self' https://challenges.cloudflare.com https:; script-src 'self' https://challenges.cloudflare.com https://www.googletagmanager.com https://va.vercel-scripts.com https://accounts.google.com/gsi/client https://*.googlesyndication.com https://*.googleadservices.com https://*.googletagservices.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://challenges.cloudflare.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.googlesyndication.com https://*.googleadservices.com https://*.googletagservices.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google https://accounts.google.com/gsi/ https://*.supabase.co wss://*.supabase.co https://openlibrary.org https://vitals.vercel-insights.com https://va.vercel-scripts.com; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
         }
       ]
     },
@@ -67,6 +50,15 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive, nosnippet"
         }
       ]
     }

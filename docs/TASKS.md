@@ -220,3 +220,11 @@ A feature is done when:
 
 ## Version 1.83
 - Replaced the generic Basic Reader section icon with a custom inline SVG emblem combining an open book and a star, matching the Novelty Library teal visual language.
+
+
+## 1.93
+
+- [x] Admin can blacklist / restore any user from Users & Accounts (`sql/admin_blacklist_1_93.sql`).
+- [x] Notify Users moved under Admins & Contacts; `#/admin/notify` redirects there.
+- [ ] Run `sql/admin_blacklist_1_93.sql` in Supabase, then `npm run typecheck`, `npm run lint`, `npm run build` (not run in the authoring sandbox: no network for `npm install`).
+- [x] Blog link field in Publishing Queue, auto-match attaches it, "View in Blog" on review page (`sql/blog_url_1_93.sql`).

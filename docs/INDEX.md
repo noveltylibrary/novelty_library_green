@@ -20,3 +20,5 @@ This folder includes editable Markdown source documents and matching Microsoft W
 - Use `.pdf` for sharing and read-only distribution.
 
 **Important:** The documentation describes the codebase and requirements captured in the existing source documents. Verify all deployment-critical details and checklist items against the exact release before production deployment.
+
+- `CHANGELOG_1_89.md`, `CHANGELOG_1_90.md`, `CHANGELOG_1_93.md` — later release notes (1.93: admin blacklist, notifications under Admins & Contacts).

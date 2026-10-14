@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, Component, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useState, Component, type ReactNode } from 'react';
 import { useRouter } from '@/lib/router';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { ThemeProvider } from '@/lib/theme';
@@ -30,9 +30,9 @@ import { PublicProfilePage } from '@/pages/PublicProfilePage';
 import { AccountPage } from '@/pages/AccountPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
+import { LiveRankingsPage } from '@/pages/LiveRankingsPage';
 import { AdminFinancesPage } from '@/pages/AdminFinancesPage';
 import { AdminPagesModerationPage } from '@/pages/AdminPagesModerationPage';
-import { AdminNotifyPage } from '@/pages/AdminNotifyPage';
 import { AdminReservedBookReviewsPage } from '@/pages/AdminReservedBookReviewsPage';
 
 
@@ -53,6 +53,38 @@ function AppContent() {
   const [splashComplete, setSplashComplete] = useState(false);
 
   const currentRouteName = route.name;
+  const adsRestrictedRoute =
+    ['submit', 'account', 'profile', 'auth', 'analytics', 'notifications'].includes(currentRouteName) ||
+    currentRouteName.startsWith('admin');
+
+  // Restricted pages must not display ads, including Auto Ads injected while the visitor
+  // was on a public route. The attribute also hides any late Google-injected ad markup.
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    if (!adsRestrictedRoute) {
+      delete root.dataset.nlAdsRestricted;
+      return;
+    }
+
+    root.dataset.nlAdsRestricted = 'true';
+    document
+      .querySelectorAll<HTMLScriptElement>('script[data-nl-adsense], script[src*="pagead/js/adsbygoogle.js"]')
+      .forEach((script) => script.remove());
+
+    // Clear already-rendered ads from the previous route as well as their loader script.
+    document
+      .querySelectorAll<HTMLElement>([
+        '.adsense-slot',
+        'ins.adsbygoogle',
+        '.google-auto-placed',
+        '[data-google-query-id]',
+        '[id*="google_ads_iframe"]',
+        'iframe[src*="googlesyndication.com"]',
+        'iframe[src*="doubleclick.net"]',
+        'iframe[src*="googleadservices.com"]',
+      ].join(','))
+      .forEach((element) => element.remove());
+  }, [adsRestrictedRoute]);
 
   // After re-verifying with Google from the Account page, return there.
   useEffect(() => {
@@ -72,6 +104,7 @@ function AppContent() {
         {route.name === 'home' && <HomePage navigate={navigate} />}
         {route.name === 'reviews' && <ReviewsPage navigate={navigate} />}
         {route.name === 'analytics' && <AnalyticsPage navigate={navigate} />}
+        {route.name === 'live-rankings' && <LiveRankingsPage navigate={navigate} />}
         {route.name === 'review' && <ReviewPage slug={route.slug} navigate={navigate} />}
         {route.name === 'blog-review' && <BlogReviewPage id={route.id} navigate={navigate} />}
         {route.name === 'submit' && <SubmitPage navigate={navigate} />}
@@ -90,7 +123,6 @@ function AppContent() {
         {route.name === 'admin-users' && <AdminUsersPage navigate={navigate} />}
         {route.name === 'admin-finances' && <AdminFinancesPage navigate={navigate} />}
         {route.name === 'admin-pages' && <AdminPagesModerationPage navigate={navigate} />}
-        {route.name === 'admin-notify' && <AdminNotifyPage navigate={navigate} />}
         {route.name === 'profile' && (route.username ? <PublicProfilePage username={route.username} navigate={navigate} /> : <ProfilePage navigate={navigate} />)}
         {route.name === 'account' && <AccountPage navigate={navigate} />}
         {route.name === 'notifications' && <NotificationsPage navigate={navigate} />}

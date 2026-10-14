@@ -365,3 +365,10 @@ Expected deployment model is a static/client-rendered Vite build hosted on a pla
 5. Keep external blog/archive enrichment optional.
 6. Keep admin configuration backwards-compatible with built-in defaults.
 7. Preserve hash-route compatibility unless a migration is explicitly planned.
+
+
+### 1.93 additions
+
+- RPCs: `admin_blacklist_user`, `admin_unblacklist_user` (admin-only). `profiles` gains `blacklisted_by_admin`.
+- `AdminNotifyPanel` component is embedded in `AdminManageAdminsPage`.
+- `community_reviews.blog_url` (1.93): optional blog post link, carried through every re-snapshot (`blogUrlField`), validated by `normalizeBlogUrl`.

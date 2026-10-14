@@ -14,6 +14,8 @@ export interface Review {
   cover_storage_path: string | null;
   poster_url: string | null;
   poster_link: string | null;
+  /** Link to this review's post on the Novelty Library blog (optional, set in the Publishing Queue). */
+  blog_url?: string | null;
   published_on: string | null;
   buy_link: string | null;
   labels: string[];

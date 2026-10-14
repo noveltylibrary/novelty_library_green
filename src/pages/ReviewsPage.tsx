@@ -3,13 +3,37 @@ import { Search, ArrowUp, Sparkles, FileText, BookMarked, PenTool, BarChart3 } f
 import type { Review } from '@/types/review';
 import { loadReviewCached, fetchReviews } from '@/lib/reviews';
 import { CommunityReviewCard, type CommunityReviewCardData } from '@/components/CommunityReviewCard';
-import { AdsterraAdSlot } from '@/components/AdsterraAdSlot';
+import { AdSenseAdSlot } from '@/components/AdSenseAdSlot';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { useAuth } from '@/lib/auth';
 import { fetchFeedback, saveFeedback, useEngagement, type FeedbackEntry, type FeedbackInput } from '@/lib/engagement';
 
 interface ReviewsPageProps {
   navigate: (path: string) => void;
+}
+
+/** Extract a numeric Review No. from modern and legacy formats such as 48, "#48", or "Review No. 48". */
+function getNumericReviewNo(review: Review): number | null {
+  for (const value of [review.review_number, review.master_review_no]) {
+    if (value === null || value === undefined || value === '') continue;
+    const match = String(value).match(/\d+/);
+    if (!match) continue;
+    const number = Number(match[0]);
+    if (Number.isFinite(number) && number > 0) return number;
+  }
+  return null;
+}
+
+/** Order the reader-facing Community Reviews by Review No., not publish date or text ordering. */
+function sortCommunityReviewsByNumber(reviews: Review[]): Review[] {
+  return [...reviews].sort((a, b) => {
+    const aNo = getNumericReviewNo(a);
+    const bNo = getNumericReviewNo(b);
+    if (aNo === null && bNo === null) return 0;
+    if (aNo === null) return 1;
+    if (bNo === null) return -1;
+    return bNo - aNo;
+  });
 }
 
 function mapCommunityReviews(reviews: Review[]): CommunityReviewCardData[] {
@@ -73,7 +97,12 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
       });
   }, []);
 
-  const communityItems = useMemo(() => mapCommunityReviews(reviews), [reviews]);
+  // This affects only the public Community Reviews feed; keep the admin Publishing Queue untouched.
+  // Review No. may be stored as text, so sort on normalized numeric values after fetching.
+  const communityItems = useMemo(
+    () => mapCommunityReviews(sortCommunityReviewsByNumber(reviews)),
+    [reviews],
+  );
 
   const filteredCommunity = useMemo(() => {
     let result = communityItems;
@@ -171,12 +200,12 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
                   onRate={() => void openFeedback(item)}
                   onReview={() => void openFeedback(item)}
                 />
-                {i === 11 && <div className="col-span-full"><AdsterraAdSlot /></div>}
+                {i === 7 && <div className="col-span-full"><AdSenseAdSlot /></div>}
               </Fragment>
             ))}
           </div>
 
-          <AdsterraAdSlot className="mt-8" />
+          <AdSenseAdSlot className="mt-8" />
         </>
       )}
 

@@ -3,7 +3,7 @@ import { ArrowLeft, ChevronDown, X, ZoomIn } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { fetchReviewGuidelineSections, withNlRating, type ReviewGuidelineSection } from '@/lib/reviewGuidelines';
 import { GUIDE_CSS } from '@/components/ReviewGuidelinesModal';
-import AdsterraAdSlot from '@/components/AdsterraAdSlot';
+import AdSenseAdSlot from '@/components/AdSenseAdSlot';
 import { RatingGuideCard, RATING_GUIDE_CSS } from '@/components/RatingGuideCard';
 
 interface ReviewGuidelinesPageProps {
@@ -101,7 +101,7 @@ const PAGE_CSS = `
   /* Ad strip inside each dropdown: collapses to one slim line when there is no ad */
   .ng-ad { display: flex; justify-content: center; padding: 6px 22px 14px; background: rgba(255,255,255,.66); }
   .dark .novelty-guide-outer-wrapper .ng-ad { background: rgba(3,20,27,.44); }
-  .ng-ad .adsterra-slot { margin: 0 auto; }
+  .ng-ad .adsense-slot { margin: 0 auto; }
 
   @media (prefers-reduced-motion: reduce) {
     .ng-header-frame, .ng-header-frame::before, .ng-sheen::after, .ng-sparkles span, .ng-glow::before, .ng-figure figcaption::before, .novelty-section[open] .novelty-content { animation: none !important; }
@@ -187,7 +187,7 @@ function GuideSection({ section, index, navigate, showRating, onZoom }: { sectio
         <figcaption>{img.caption}</figcaption>
       </figure></Reveal>)}
     </div>}
-    {everOpen && <div className="ng-ad"><AdsterraAdSlot active={open} /></div>}
+    {everOpen && <div className="ng-ad"><AdSenseAdSlot active={open} /></div>}
   </details>;
 }
 

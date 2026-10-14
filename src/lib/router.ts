@@ -4,6 +4,7 @@ export type Route =
   | { name: 'home' }
   | { name: 'reviews' }
   | { name: 'analytics' }
+  | { name: 'live-rankings' }
   | { name: 'review'; slug: string }
   | { name: 'blog-review'; id: string }
   | { name: 'submit' }
@@ -22,7 +23,6 @@ export type Route =
   | { name: 'admin-users' }
   | { name: 'admin-finances' }
   | { name: 'admin-pages' }
-  | { name: 'admin-notify' }
   | { name: 'profile'; username?: string }
   | { name: 'account' }
   | { name: 'notifications' }
@@ -48,11 +48,10 @@ function parseHash(): Route {
     if (parts[1] === 'reviews') return { name: 'admin-reviews' };
     if (parts[1] === 'master-list') return { name: 'admin-master-list' };
     if (parts[1] === 'posters') return { name: 'admin-posters' };
-    if (parts[1] === 'admins') return { name: 'admin-admins' };
+    if (parts[1] === 'admins' || parts[1] === 'notify') return { name: 'admin-admins' };
     if (parts[1] === 'users') return { name: 'admin-users' };
     if (parts[1] === 'finances') return { name: 'admin-finances' };
     if (parts[1] === 'pages') return { name: 'admin-pages' };
-    if (parts[1] === 'notify') return { name: 'admin-notify' };
     if (parts[1] === 'book-reviews') {
       const validTabs = ['submitted', 'accepted', 'published', 'reserved', 'posters', 'community'] as const;
       const requested = parts[2] as (typeof validTabs)[number] | undefined;
@@ -67,6 +66,7 @@ function parseHash(): Route {
   if (parts[0] === 'notifications') return { name: 'notifications' };
   if (parts[0] === 'reviews') return { name: 'reviews' };
   if (parts[0] === 'analytics') return { name: 'analytics' };
+  if (parts[0] === 'live-rankings' || parts[0] === 'love-rankings' || parts[0] === 'rankings') return { name: 'live-rankings' };
   if (parts[0] === 'genre' && parts[1]) return { name: 'genre', genre: decodeURIComponent(parts[1]) };
   return { name: 'home' };
 }

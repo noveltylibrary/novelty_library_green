@@ -1,6 +1,7 @@
 import { useState, type ComponentType } from 'react';
-import { BookOpen, Users, Heart, Sparkles, PenTool, ArrowRight, ChevronDown, Globe2, ShieldCheck, Languages, Sparkle, Library, Compass, Wand2, BarChart3, FileText } from 'lucide-react';
+import { BookOpen, Users, Heart, Sparkles, PenTool, ArrowRight, ChevronDown, Globe2, ShieldCheck, Languages, Sparkle, Library, Compass, Wand2, BarChart3, FileText, Newspaper, Instagram } from 'lucide-react';
 import type { AboutSection } from '@/lib/aboutSections';
+import { BLOG_URL, INSTAGRAM_URL } from '@/lib/links';
 
 const ICONS: Record<string, ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
   book: BookOpen, sparkles: Sparkle, heart: Heart, users: Users, globe: Globe2, languages: Languages, shield: ShieldCheck, library: Library, compass: Compass, wand: Wand2, pen: PenTool,
@@ -98,12 +99,18 @@ export function AboutSectionBlock({ section, email, navigate }: { section: About
 
     case 'cta': {
       const link = safeLink(section.button_link);
-      return <div className="text-center p-8 sm:p-10 rounded-3xl gradient-teal text-white mb-8">
+      return <>
+      <div className="nl-about-social" aria-label="Follow Novelty Library">
+        <a href={BLOG_URL} target="_blank" rel="noopener noreferrer" className="nl-about-social-btn is-blog"><Newspaper aria-hidden="true" /><span>Blog</span><ArrowRight className="nl-about-social-arrow" aria-hidden="true" /></a>
+        <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="nl-about-social-btn is-ig"><Instagram aria-hidden="true" /><span>Follow on Instagram</span><ArrowRight className="nl-about-social-arrow" aria-hidden="true" /></a>
+      </div>
+      <div className="text-center p-8 sm:p-10 rounded-3xl gradient-teal text-white mb-8">
         <PenTool className="w-8 h-8 text-white/70 mx-auto mb-4" />
         <h2 className="font-serif text-3xl font-semibold mb-3">{section.title}</h2>
         {section.body && <p className="text-white/70 leading-relaxed mb-6 max-w-md mx-auto">{section.body}</p>}
         {section.button_label && link && <button type="button" onClick={() => (link.startsWith('/') ? navigate(link) : window.open(link, '_blank', 'noopener,noreferrer'))} className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-medium text-sm tracking-wide bg-white/15 hover:bg-white/25 transition-all duration-300">{section.button_label} <ArrowRight className="w-4 h-4" /></button>}
-      </div>;
+      </div>
+      </>;
     }
 
     default:

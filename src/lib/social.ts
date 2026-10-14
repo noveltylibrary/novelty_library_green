@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { prepareImageForUpload, extForImageType } from '@/lib/imageUpload';
+import { compressImageForUpload, extForImageType } from '@/lib/imageUpload';
 
 export interface FollowStats { followers: number; following: number; is_following: boolean; }
 export interface ConnectionProfile { id: string; novelty_username: string | null; name: string | null; avatar_url: string | null; }
@@ -56,7 +56,7 @@ export async function toggleStoryLike(userId: string, storyId: string, liked: bo
 export async function repostStory(storyId: string): Promise<void> { const { error } = await supabase.rpc('repost_story', { p_story_id: storyId }); if (error) throw error; }
 
 export async function uploadStoryImage(rawFile: File, userId: string): Promise<string> {
-  const file = await prepareImageForUpload(rawFile); const ext = extForImageType(file.type);
+  const file = await compressImageForUpload(rawFile, 1080, 0.82); const ext = extForImageType(file.type);
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await supabase.storage.from('stories').upload(fileName, file, { contentType: file.type, cacheControl: '86400' });
   if (error) throw error;

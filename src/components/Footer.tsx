@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowUpRight, Download, ExternalLink, Instagram, Mail, Share, Smartphone, Sparkles, Zap } from 'lucide-react';
 import { useSupportEmail } from '@/lib/siteSettings';
 import { usePwaInstall } from '@/lib/pwa';
+import { BLOG_URL, INSTAGRAM_URL } from '@/lib/links';
 
 interface FooterProps {
   navigate: (path: string) => void;
@@ -81,6 +82,7 @@ export function Footer({ navigate }: FooterProps) {
               {LINKS.map(([label, path]) => (
                 <button key={path} onClick={() => navigate(path)} className="nl-footer-link">{label}</button>
               ))}
+              <a href={BLOG_URL} target="_blank" rel="noopener noreferrer" className="nl-footer-link">Blog</a>
             </div>
           </nav>
 
@@ -88,7 +90,7 @@ export function Footer({ navigate }: FooterProps) {
             <h4 className="nl-footer-h">Connect</h4>
             <div className="flex flex-col gap-2">
               <a href={`mailto:${supportEmail}`} className="nl-footer-pill"><Mail className="w-4 h-4" /> <span className="truncate">{supportEmail}</span></a>
-              <a href="https://instagram.com/novelty.lib" target="_blank" rel="noopener noreferrer" className="nl-footer-pill nl-footer-pill-ig">
+              <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="nl-footer-pill nl-footer-pill-ig">
                 <Instagram className="w-4 h-4" /> @novelty.lib <ArrowUpRight className="w-3.5 h-3.5 ml-auto" />
               </a>
             </div>

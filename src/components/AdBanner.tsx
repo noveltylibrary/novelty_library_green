@@ -1,2 +1,2 @@
 /** Backward-compatible ad component alias. */
-export { AdsterraAdSlot as AdBanner } from '@/components/AdsterraAdSlot';
+export { AdSenseAdSlot as AdBanner } from '@/components/AdSenseAdSlot';

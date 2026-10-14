@@ -193,3 +193,10 @@ A change is not production-ready if any of these fail unless the failure is docu
 2. The profile card shows these six through its fixed stat/rows layout; they must be excluded from the dynamic question list to avoid duplicates.
 3. Total Books Read is still floored at the reader's accepted-review count on save.
 4. The conversion is done by `convertReadingJourneyToQuestions()` (`src/lib/profileReadingMigration.ts`) and marks `reading_journey.converted` in `profile-section-layout`; it must stay idempotent.
+
+## 22. Blacklisting
+
+1. Only admins may blacklist or restore users, enforced by `is_admin()` inside the RPCs; the UI buttons are UX only.
+2. A manual blacklist requires a reason, and admins cannot blacklist their own account.
+3. Manual and automatic (30 reports) blacklists share the `profiles.blacklisted_at` flag; `blacklisted_by_admin` tells them apart.
+4. Blog links (`community_reviews.blog_url`) must be http(s), validated before saving and again through `safeExternalUrl` before rendering. Auto-match never overwrites an existing link during Instant/Batch Publish.

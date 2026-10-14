@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { getCaptchaToken } from '@/lib/captcha';
 import { updateProfile } from '@/lib/reviews';
 import { fetchProfileQuestions, type ProfileQuestion } from '@/lib/profileQuestions';
 import { ProfileQuestionAnswer, answerText } from '@/components/ProfileQuestionAnswer';
@@ -257,14 +258,16 @@ export function OnboardingModal({ splashComplete, navigate, suppressOnPublicRout
       if (!data.password || data.password.length < 6) throw new Error('Password must be at least 6 characters.');
 
       if (authMode === 'signin') {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: data.password });
+        const captchaToken = await getCaptchaToken();
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: data.password, options: { captchaToken } });
         if (signInError) throw signInError;
         setInfo('Signed in. Let’s finish your reader profile.');
       } else {
+        const captchaToken = await getCaptchaToken();
         const { data: authResult, error: signUpError } = await supabase.auth.signUp({
           email,
           password: data.password,
-          options: { data: { full_name: name, display_name: name }, emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL || '/'}` },
+          options: { captchaToken, data: { full_name: name, display_name: name }, emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL || '/'}` },
         });
         if (signUpError) throw signUpError;
         if (!authResult.session) {

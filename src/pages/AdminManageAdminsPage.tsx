@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, UserCog, Trash2, AlertCircle, Shield } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { AdminNotifyPanel } from '@/components/AdminNotifyPanel';
 import { fetchSupportEmail, updateSupportEmail } from '@/lib/siteSettings';
 
 interface AdminManageAdminsPageProps {
@@ -110,7 +111,7 @@ export function AdminManageAdminsPage({ navigate }: AdminManageAdminsPageProps) 
           <h1 className="font-serif text-3xl font-semibold tracking-tight" style={{ color: 'var(--color-text)' }}>Admins &amp; Contacts</h1>
         </div>
         <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
-          Manage which email addresses have access to the admin panel.
+          Manage admin access and the Support contact, and notify your readers.
         </p>
       </div>
 
@@ -164,6 +165,8 @@ export function AdminManageAdminsPage({ navigate }: AdminManageAdminsPageProps) 
           </div>
         </div>
       </div>
+
+      <AdminNotifyPanel />
     </div>
   );
 }

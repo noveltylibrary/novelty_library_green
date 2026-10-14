@@ -1,12 +1,13 @@
 import { VerdictBanner } from '@/components/VerdictBanner';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, ExternalLink, Instagram, Calendar, Globe, Tag, Star } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Instagram, Calendar, Globe, Tag, Star, Newspaper } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { loadReviewCached, peekReview, storeReviewInCache } from '@/lib/reviews';
 import { fetchBlogPosts, blogPostDate, htmlToText } from '@/lib/blog';
+import { findBlogMetadataFromPosts } from '@/lib/posterMatch';
 import { formatDate } from '@/lib/format';
 import { RatingBadge } from '@/components/RatingBadge';
-import { AdsterraAdSlot } from '@/components/AdsterraAdSlot';
+import { AdSenseAdSlot } from '@/components/AdSenseAdSlot';
 import { PosterImage } from '@/components/PosterImage';
 import { EngagementBar } from '@/components/EngagementBar';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -32,6 +33,36 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const myFeedback = feedback.find((f) => f.user_id === user?.id) ?? null;
   const safeImageUrl = (value: string | null | undefined) => safeExternalUrl(value) || null;
+
+  // Warm the Blogger connection while the review is being read so the
+  // external blog opens without waiting for a fresh DNS/TLS connection.
+  useEffect(() => {
+    const url = safeExternalUrl(review?.blog_url);
+    if (!url) return;
+    try {
+      const origin = new URL(url).origin;
+      const existing = document.head.querySelector(`link[rel=\"preconnect\"][href=\"${origin}\"]`);
+      if (existing) return;
+      const link = document.createElement('link');
+      link.rel = 'preconnect';
+      link.href = origin;
+      link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+    } catch { /* Invalid URLs are already rejected by safeExternalUrl. */ }
+  }, [review?.blog_url]);
+
+  const prefetchBlog = () => {
+    const url = safeExternalUrl(review?.blog_url);
+    if (!url) return;
+    try {
+      const existing = document.head.querySelector(`link[rel=\"prefetch\"][href=\"${url}\"]`);
+      if (existing) return;
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = url;
+      document.head.appendChild(link);
+    } catch { /* Navigation remains the fallback. */ }
+  };
 
   const loadFeedback = (reviewId: string) => { fetchFeedback(reviewId).then(setFeedback).catch(() => setFeedback([])); };
   useEffect(() => { if (review?.id) loadFeedback(review.id); }, [review?.id]);
@@ -68,20 +99,37 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
         if (!data) { setReview(null); setLoading(false); return; }
         setReview((prev) => prev && prev.id === data.id ? prev : data);
         setLoading(false);
+        // Fetch the Blogger archive once. Use the same Review No./title matcher
+        // as Publishing Queue, so the public post can show its blog link even
+        // when this deployment has no optional `blog_url` database column.
         fetchBlogPosts().catch(() => [])
           .then((posts) => {
-            if (!alive) return;
-            const blogPost = posts.find((post) => post.title.trim().toLowerCase() === data.title.trim().toLowerCase());
-            if (!blogPost) return;
-            const blogTime = new Date(blogPostDate(blogPost)).getTime();
+            if (!alive || !posts.length) return;
+            const metadata = findBlogMetadataFromPosts([data], posts);
+            const no = Number(data.review_number ?? data.master_review_no);
+            const matched = Number.isInteger(no) ? metadata[String(no)] : undefined;
+            const blogPost = (matched?.blogUrl && posts.find((post) => post.url === matched.blogUrl))
+              || posts.find((post) => post.title.trim().toLowerCase() === data.title.trim().toLowerCase());
+            if (!matched?.blogUrl && !blogPost) return;
+
+            const blogDate = blogPost ? blogPostDate(blogPost) : matched?.publishedOn;
+            const blogTime = blogDate ? new Date(blogDate).getTime() : Number.NaN;
             const appTime = new Date(data.updated_at || data.published_at).getTime();
-            if (Number.isFinite(blogTime) && Number.isFinite(appTime) && blogTime > appTime) {
-              const merged = {
-                ...data,
+            const blogIsNewer = Number.isFinite(blogTime) && Number.isFinite(appTime) && blogTime > appTime;
+            const merged: Review = {
+              ...data,
+              // A URL saved by an admin is authoritative; the Blogger crawl is only a fallback.
+              blog_url: data.blog_url || matched?.blogUrl || blogPost?.url || null,
+              // Recover missing affiliate links for older community rows without
+              // writing any additional fields/columns into Supabase.
+              poster_link: data.poster_link || matched?.posterLink || null,
+              ...(blogIsNewer && blogPost ? {
                 review_text: htmlToText(blogPost.content || blogPost.summary) || data.review_text,
                 cover_image_url: data.cover_image_url || blogPost.thumbnail,
-                published_at: blogPostDate(blogPost),
-              };
+                published_at: blogDate || data.published_at,
+              } : {}),
+            };
+            if (merged.blog_url !== data.blog_url || merged.poster_link !== data.poster_link || blogIsNewer) {
               storeReviewInCache(slug, merged);
               setReview(merged);
             }
@@ -171,6 +219,19 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
                 className="nl-buy-now w-full mt-4"
               >
                 <ExternalLink className="w-4 h-4" /> Buy Now
+              </a>
+            )}
+
+            {safeExternalUrl(review.blog_url) && (
+              <a
+                href={safeExternalUrl(review.blog_url) || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                onMouseEnter={prefetchBlog}
+                onFocus={prefetchBlog}
+                className="nl-view-blog w-full mt-3"
+              >
+                <Newspaper className="w-4 h-4" aria-hidden="true" /> View in Blog <ArrowLeft className="w-4 h-4 rotate-180 nl-view-blog-arrow" aria-hidden="true" />
               </a>
             )}
           </div>
@@ -281,7 +342,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
 
             <ReviewComments reviewId={review.id} navigate={navigate} />
 
-            <AdsterraAdSlot className="mt-8 mb-8" />
+            <AdSenseAdSlot className="mt-8 mb-8" />
 
             {/* Disclaimer */}
             <div className="mt-8 p-4 rounded-xl" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>

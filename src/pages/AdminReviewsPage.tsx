@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import type { Review, ReviewStatus } from '@/types/review';
 import {
-  fetchAllReviewsForAdmin, updateReviewStatus, updateReview, deleteReview, publishReviewToMasterList
+  fetchAllReviewsForAdmin, updateReviewStatus, updateReview, deleteReview, publishReviewToMasterList, syncAcceptedReviewsFromSheet
 } from '@/lib/reviews';
 import { useAuth } from '@/lib/auth';
 import { formatShortDate, getErrorMessage } from '@/lib/format';
@@ -84,14 +84,25 @@ export function AdminReviewsPage({ navigate, embedded = false }: AdminReviewsPag
     all: reviews.length,
   }), [reviews]);
 
-  // Generic status change for Reject / Mark for Review — Accept has its own
-  // handler below because it also needs to resolve a Review No.
-  const handleStatusChange = async (id: string, status: ReviewStatus) => {
+  // Pending submissions have one workflow suggestion: Mark for Review.
+  // Once marked, the admin gets the two final decisions: Approve or Decline.
+  // Decline removes the submission entirely instead of leaving a declined row.
+  const handleMarkForReview = async (id: string) => {
     try {
-      await updateReviewStatus(id, status);
+      await updateReviewStatus(id, 'marked');
       await loadReviews();
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to update status'));
+      setError(getErrorMessage(err, 'Failed to mark review for review'));
+    }
+  };
+
+  const handleDecline = async (review: Review) => {
+    if (!confirm(`Decline and permanently remove “${review.title || 'Untitled review'}” from Submitted Reviews?`)) return;
+    try {
+      await deleteReview(review.id);
+      await loadReviews();
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to decline review'));
     }
   };
 
@@ -133,9 +144,11 @@ export function AdminReviewsPage({ navigate, embedded = false }: AdminReviewsPag
     }
   };
 
-  // Accepting a review: sets its status to 'approved' (moving it out of
-  // Submitted) and creates its Master List row, which is what makes it show
-  // up in Accepted Reviews List. If the admin typed a Review No. into the
+  // Accepting a review is deliberately transactional at the UI workflow level:
+  // 1) refresh the Accepted Reviews Google Sheet into master_list,
+  // 2) reject duplicate Review No. values before changing the submission status,
+  // 3) create the new master row, then
+  // 4) mark the submitted review approved. A failed sync/duplicate never accepts it. If the admin typed a Review No. into the
   // editable column, that exact number is used; if they left it blank, the
   // next sequential number (MAX(review_no) + 1) is auto-calculated.
   const handleAccept = async (review: Review) => {
@@ -161,10 +174,14 @@ export function AdminReviewsPage({ navigate, embedded = false }: AdminReviewsPag
     }
 
     try {
-      await updateReviewStatus(review.id, 'approved');
       setPublishingId(review.id);
       try {
+        // Always refresh Accepted Reviews from the Google Sheet BEFORE trying
+        // to create the Supabase master row. This catches a Review No. that
+        // was added to the sheet by another admin/process since the last sync.
+        await syncAcceptedReviewsFromSheet();
         const { reviewNo, alreadyPublished } = await publishReviewToMasterList(review, customNo);
+        await updateReviewStatus(review.id, 'approved');
         const notifyErr = alreadyPublished ? null : await notifyAccepted(review, reviewNo);
         setPublishMsg(
           alreadyPublished
@@ -175,7 +192,7 @@ export function AdminReviewsPage({ navigate, embedded = false }: AdminReviewsPag
         clearReviewNoInput(review.id);
       } catch (publishErr) {
         setError(
-          `Review accepted, but adding it to the Master List failed: ${getErrorMessage(publishErr, 'unknown error')}`
+          `Approval stopped — the Accepted Reviews sheet/master sync check failed: ${getErrorMessage(publishErr, 'unknown error')}. The submission was not approved. Reapply after fixing the issue.`
         );
       } finally {
         setPublishingId(null);
@@ -316,8 +333,8 @@ export function AdminReviewsPage({ navigate, embedded = false }: AdminReviewsPag
             <h1 className="font-serif text-3xl font-semibold tracking-tight" style={{ color: 'var(--color-text)' }}>Submitted Reviews List</h1>
           </div>
           <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
-            Review user submissions. Set a Review No. (or leave it blank to auto-assign the next one) and Accept to
-            move a review into the Accepted Reviews List.
+            Review user submissions. Pending entries can be marked for review; marked entries can then be approved or declined.
+            Approval syncs the Accepted Reviews Google Sheet first, checks the Review No., and only then creates the Supabase Accepted Reviews row.
           </p>
         </div>
       </div>
@@ -524,42 +541,27 @@ export function AdminReviewsPage({ navigate, embedded = false }: AdminReviewsPag
                           </div>
                         )}
                         <div className="flex flex-wrap gap-2">
-                          {review.status !== 'approved' && (
-                            <button onClick={() => handleAccept(review)} disabled={publishingId === review.id} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style={{ background: 'rgba(53, 211, 217, 0.1)', color: 'var(--color-teal-dark)' }}>
-                              <Check className="w-3.5 h-3.5" /> {publishingId === review.id ? 'Accepting...' : 'Accept'}
+                          {review.status === 'pending' && (
+                            <button onClick={() => handleMarkForReview(review.id)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#d97706' }}>
+                              <Flag className="w-3.5 h-3.5" /> Mark for Review
                             </button>
+                          )}
+                          {review.status === 'marked' && (
+                            <>
+                              <button onClick={() => handleAccept(review)} disabled={publishingId === review.id} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style={{ background: 'rgba(53, 211, 217, 0.1)', color: 'var(--color-teal-dark)' }}>
+                                <Check className="w-3.5 h-3.5" /> {publishingId === review.id ? 'Accepting...' : 'Approve'}
+                              </button>
+                              <button onClick={() => handleDecline(review)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                                <X className="w-3.5 h-3.5" /> Decline
+                              </button>
+                            </>
                           )}
                           <button onClick={() => startEdit(review)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style={{ background: 'rgba(0, 151, 178, 0.06)', color: 'var(--color-text-muted)' }}>
                             <Edit3 className="w-3.5 h-3.5" /> Edit
                           </button>
-                          {review.status !== 'declined' && (
-                            <button onClick={() => handleStatusChange(review.id, 'declined')} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-                              <X className="w-3.5 h-3.5" /> Reject
-                            </button>
-                          )}
-                          {review.status !== 'marked' && (
-                            <button onClick={() => handleStatusChange(review.id, 'marked')} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#d97706' }}>
-                              <Flag className="w-3.5 h-3.5" /> Mark for Review
-                            </button>
-                          )}
-                          {review.status !== 'pending' && (
-                            <button onClick={() => handleStatusChange(review.id, 'pending')} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style={{ background: 'rgba(0, 151, 178, 0.06)', color: 'var(--color-text-muted)' }}>
-                              <Clock className="w-3.5 h-3.5" /> Move to Pending
-                            </button>
-                          )}
                           {review.user_id && (
                             <button onClick={() => setNotifyTarget(review)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style={{ background: 'rgba(0, 151, 178, 0.1)', color: 'var(--color-teal-dark)' }} title="Send this reviewer a notification">
                               <Bell className="w-3.5 h-3.5" /> Notify
-                            </button>
-                          )}
-                          {review.status === 'approved' && !review.master_review_no && (
-                            <button
-                              onClick={() => handleAddToMasterList(review)}
-                              disabled={publishingId === review.id}
-                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                              style={{ background: 'var(--color-teal-dark)', color: 'white' }}
-                            >
-                              <Send className="w-3.5 h-3.5" /> {publishingId === review.id ? 'Adding...' : 'Add to Master List'}
                             </button>
                           )}
                           <button onClick={() => handleDelete(review.id)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style={{ background: 'rgba(239, 68, 68, 0.06)', color: 'rgba(239, 68, 68, 0.6)' }}>

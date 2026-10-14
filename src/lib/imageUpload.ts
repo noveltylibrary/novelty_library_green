@@ -83,9 +83,47 @@ export async function prepareImageForUpload(file: File, maxWidth = 3000, maxHeig
   throw new Error('That image is larger than 5 MB and could not be compressed. Please pick a smaller one.');
 }
 
+/**
+ * Always-on compression for uploads: scales the longest side down to `maxSide` and re-encodes as WebP
+ * (JPEG where the browser cannot encode WebP). If that would not make the file smaller, the original is kept.
+ * Typical result: a 2-4 MB phone/poster image becomes ~60-200 KB, which keeps Supabase storage and egress low.
+ */
+export async function compressImageForUpload(raw: File, maxSide: number, quality = 0.82): Promise<File> {
+  const prepared = await prepareImageForUpload(raw); // validates type + enforces the 5 MB gate
+  let bitmap: ImageBitmap;
+  try { bitmap = await createImageBitmap(prepared); } catch { return prepared; }
+  try {
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return prepared;
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    let blob = await canvasToBlob(canvas, 'image/webp', quality);
+    if (!blob || blob.type !== 'image/webp') {
+      // Browser cannot encode WebP: JPEG needs a solid background behind any transparency.
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      blob = await canvasToBlob(canvas, 'image/jpeg', quality);
+    }
+    if (!blob || (scale === 1 && blob.size >= prepared.size)) return prepared;
+    const base = prepared.name.replace(/\.[^.]+$/, '') || 'image';
+    return new File([blob], `${base}.${extForImageType(blob.type)}`, { type: blob.type });
+  } finally {
+    bitmap.close();
+  }
+}
+
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 export async function uploadProfileQuestionImage(rawFile: File, userId: string, questionKey: string, limits?: { maxWidth?: number; maxHeight?: number }): Promise<{ path: string; publicUrl: string }> {
-  const file = await prepareImageForUpload(rawFile, limits?.maxWidth ?? 3000, limits?.maxHeight ?? 3000);
+  const file = await compressImageForUpload(rawFile, Math.min(1600, Math.max(limits?.maxWidth ?? 1600, limits?.maxHeight ?? 1600)), 0.82);
   const safeQuestionKey = questionKey.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'question';
   const ext = extForImageType(file.type);
   const path = `${userId}/${safeQuestionKey}/${crypto.randomUUID()}.${ext}`;

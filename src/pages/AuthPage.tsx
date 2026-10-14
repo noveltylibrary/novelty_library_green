@@ -3,6 +3,31 @@ import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { BookOpen, Lock, Mail, ArrowRight, AlertCircle, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 
+/**
+ * Client-side sign-in cooldown (deterrent only; Supabase enforces the real server-side limits).
+ * After MAX_FAILS wrong-password attempts the Sign In button is disabled for a growing delay.
+ */
+const LOCK_KEY = 'nl_signin_lock';
+const MAX_FAILS = 5;
+const LOCK_STEPS_SECONDS = [30, 60, 120, 300];
+
+interface LockState { fails: number; level: number; until: number }
+
+function readLock(): LockState {
+  try {
+    const v = JSON.parse(localStorage.getItem(LOCK_KEY) || 'null');
+    if (v && Number.isFinite(v.fails) && Number.isFinite(v.level) && Number.isFinite(v.until)) return v as LockState;
+  } catch { /* storage unavailable or corrupt */ }
+  return { fails: 0, level: 0, until: 0 };
+}
+
+function writeLock(state: LockState): void {
+  try {
+    if (state.fails === 0 && state.level === 0 && state.until === 0) localStorage.removeItem(LOCK_KEY);
+    else localStorage.setItem(LOCK_KEY, JSON.stringify(state));
+  } catch { /* storage unavailable */ }
+}
+
 interface AuthPageProps {
   navigate: (path: string) => void;
 }
@@ -20,6 +45,35 @@ export function AuthPage({ navigate }: AuthPageProps) {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [needsResend, setNeedsResend] = useState(false);
+  const [lock, setLock] = useState<LockState>(() => readLock());
+  const [now, setNow] = useState(() => Date.now());
+  const lockSecondsLeft = Math.max(0, Math.ceil((lock.until - now) / 1000));
+  const signInLocked = lockSecondsLeft > 0;
+
+  // Tick once a second while locked so the countdown updates and the button re-enables itself.
+  useEffect(() => {
+    if (lock.until <= Date.now()) return;
+    setNow(Date.now());
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [lock.until]);
+
+  const registerSignInFailure = () => {
+    const current = readLock();
+    const fails = current.fails + 1;
+    const next: LockState = fails >= MAX_FAILS
+      ? { fails: 0, level: Math.min(current.level + 1, LOCK_STEPS_SECONDS.length), until: Date.now() + LOCK_STEPS_SECONDS[Math.min(current.level, LOCK_STEPS_SECONDS.length - 1)] * 1000 }
+      : { ...current, fails };
+    writeLock(next);
+    setLock(next);
+    setNow(Date.now());
+  };
+
+  const clearSignInFailures = () => {
+    const cleared: LockState = { fails: 0, level: 0, until: 0 };
+    writeLock(cleared);
+    setLock(cleared);
+  };
 
   // Already signed in (e.g. just came back from Google): nothing to do here.
   useEffect(() => {
@@ -44,6 +98,10 @@ export function AuthPage({ navigate }: AuthPageProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === 'signin' && !recovering && signInLocked) {
+      setError(`Too many failed attempts. Please try again in ${lockSecondsLeft}s.`);
+      return;
+    }
     setError(null);
     setNotice(null);
     setNeedsResend(false);
@@ -64,6 +122,7 @@ export function AuthPage({ navigate }: AuthPageProps) {
       }
       if (mode === 'signin') {
         await signIn(email, password);
+        clearSignInFailures();
         navigate('/');
       } else {
         if (!privacyAccepted || !termsAccepted) {
@@ -91,7 +150,10 @@ export function AuthPage({ navigate }: AuthPageProps) {
       } else if (/email not confirmed/i.test(raw)) {
         setNeedsResend(true);
         setError('Please confirm your email first. Click the link we sent you, or request a new one below.');
+      } else if (/captcha|security check/i.test(raw)) {
+        setError(/security check/i.test(raw) ? raw : 'The security check failed. Please try again.');
       } else if (/invalid login credentials/i.test(raw)) {
+        if (mode === 'signin' && !recovering) registerSignInFailure();
         setError('Wrong email or password. If you signed up with Google, use "Continue with Google" instead.');
       } else {
         setError(raw);
@@ -239,8 +301,8 @@ export function AuthPage({ navigate }: AuthPageProps) {
             </button>
           )}
 
-          <button type="submit" disabled={loading || (mode === 'signup' && !recovering && (!privacyAccepted || !termsAccepted))} className="btn-primary w-full disabled:opacity-50">
-            {loading ? 'Please wait...' : (<>{recovering ? 'Update Password' : mode === 'forgot' ? 'Send Reset Link' : mode === 'signin' ? 'Sign In' : 'Create Account'}<ArrowRight className="w-4 h-4" /></>)}
+          <button type="submit" disabled={loading || (mode === 'signin' && !recovering && signInLocked) || (mode === 'signup' && !recovering && (!privacyAccepted || !termsAccepted))} className="btn-primary w-full disabled:opacity-50">
+            {loading ? 'Please wait...' : (mode === 'signin' && !recovering && signInLocked) ? `Try again in ${lockSecondsLeft}s` : (<>{recovering ? 'Update Password' : mode === 'forgot' ? 'Send Reset Link' : mode === 'signin' ? 'Sign In' : 'Create Account'}<ArrowRight className="w-4 h-4" /></>)}
           </button>
 
           {!recovering && <div className="text-center pt-2 space-y-2">

@@ -19,3 +19,9 @@
 
 ## Database — run once
 `sql/admin_notifications_1_89.sql` (adds the `marked` status and `admin_send_notification`).
+
+## Ads: Adsterra replaced with Google AdSense
+- New `AdSenseAdSlot` (in-page `<ins class="adsbygoogle">`, responsive). Adsterra component, `ad-frame.html/js` and their headers removed.
+- Cookie choice: "Accept all" = personalised, "Essential only" = non-personalised. Slot collapses if blocked/unfilled.
+- Publisher ID ca-pub-4287486804733527 is built in (index.html tag, ads.txt, slot default). Ad unit 7417970298 ("Novelty Library WebApp") is the built-in default, so no Vercel variables are needed.
+- CSP in `vercel.json` now allows Google ad domains.

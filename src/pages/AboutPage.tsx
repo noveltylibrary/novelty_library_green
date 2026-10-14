@@ -2,7 +2,7 @@ import { useSupportEmail } from '@/lib/siteSettings';
 import { useEditableOverride, EditablePageOverride } from '@/components/EditablePageOverride';
 import { useAboutSections } from '@/lib/aboutSections';
 import { AboutSectionBlock } from '@/components/AboutSectionsView';
-import AdsterraAdSlot from '@/components/AdsterraAdSlot';
+import AdSenseAdSlot from '@/components/AdSenseAdSlot';
 import { ArrowLeft, Home, BookOpen, Send, BarChart3 } from 'lucide-react';
 
 interface AboutPageProps {
@@ -28,7 +28,7 @@ export function AboutPage({ navigate }: AboutPageProps) {
       </nav>
       <div className="max-w-4xl mx-auto" aria-busy={!loaded}>
         {loaded
-          ? sections.filter((s) => s.active).sort((a, b) => a.sort_order - b.sort_order).map((s) => <div key={s.id}><AboutSectionBlock section={s} email={supportEmail} navigate={navigate} /><AdsterraAdSlot className="my-10" /></div>)
+          ? sections.filter((s) => s.active).sort((a, b) => a.sort_order - b.sort_order).map((s) => <div key={s.id}><AboutSectionBlock section={s} email={supportEmail} navigate={navigate} /><AdSenseAdSlot className="my-10" /></div>)
           : <div className="h-96 rounded-3xl animate-pulse" style={{ background: 'var(--color-paper)' }} />}
       </div>
     </div>

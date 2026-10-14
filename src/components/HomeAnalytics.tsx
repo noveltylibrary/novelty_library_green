@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import {
   Award, BookCheck, BookOpen, Check, CheckCircle2, Copy, Globe2, Instagram, Library,
-  MessageCircle, PenTool, Star, Trophy, Users, ArrowRight, ShieldCheck,
+  MessageCircle, Newspaper, PenTool, Star, Trophy, Users, ArrowRight, ShieldCheck,
 } from 'lucide-react';
 import type { Review } from '@/types/review';
+import { BLOG_URL } from '@/lib/links';
 import { RwStarRating } from '@/components/RwStarRating';
 import {
   contributorLink, formatFloor10, formatLangCount, milestone, useCountUp,
@@ -71,6 +72,24 @@ export function HomeAnalytics({ navigate, published, data, failed }: Props) {
         </div>
         <div className="nl-an-bridge-line" aria-hidden="true"><i /></div>
       </div>
+
+      <button type="button" className="nl-live-entry" onClick={() => navigate('/live-rankings')} aria-label="Open Live Rankings">
+        <span className="nl-live-entry-art" aria-hidden="true">
+          <svg viewBox="0 0 72 62" focusable="false">
+            <path d="M7 17 Q20 13 34 22 L34 53 Q20 45 7 49 Z" fill="#5CE1E6" stroke="#00849a" strokeWidth="1.5" />
+            <path d="M38 22 Q52 13 65 17 L65 49 Q51 45 38 53 Z" fill="#174f62" stroke="#0b3447" strokeWidth="1.5" />
+            <path d="M14 25 L28 29 M14 32 L28 36 M44 29 L58 25 M44 36 L58 32" fill="none" stroke="#eafdff" strokeWidth="1.8" strokeLinecap="round" />
+            <path className="nl-live-entry-star" d="M36 8 L41 19 L53 20 L44 28 L47 40 L36 34 L25 40 L28 28 L19 20 L31 19 Z" fill="#ffe08a" stroke="#fff8d7" strokeWidth="1.5" strokeLinejoin="round" />
+            <path d="M36 2 V7 M13 7 L17 10 M59 7 L55 10" stroke="#0097b2" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </span>
+        <span className="nl-live-entry-copy">
+          <span className="nl-live-entry-kicker"><span className="nl-live-entry-pulse" /> LIVE COMMUNITY LEADERBOARD</span>
+          <strong>Live Rankings <span aria-hidden="true">↗</span></strong>
+          <small>Top published books by NL rating, R/W stars, and genre.</small>
+        </span>
+        <span className="nl-live-entry-arrow" aria-hidden="true"><ArrowRight className="h-5 w-5" /></span>
+      </button>
 
       <p className="nl-an-eyebrow"><span className="nl-an-live" /> NOVELTY LIBRARY ANALYTICS • LIVE</p>
 
@@ -229,6 +248,7 @@ export function HomeAnalytics({ navigate, published, data, failed }: Props) {
       <div className="nl-an-share">
         <a href={waHref} target="_blank" rel="noopener noreferrer" className="is-wa"><MessageCircle className="h-4 w-4" /> <span>Share on WhatsApp</span><ArrowRight className="nl-an-share-arrow h-3.5 w-3.5" /></a>
         <a href="https://instagram.com/novelty.co.in" target="_blank" rel="noopener noreferrer" className="is-ig"><Instagram className="h-4 w-4" /> <span>Follow @novelty.co.in</span><ArrowRight className="nl-an-share-arrow h-3.5 w-3.5" /></a>
+        <a href={BLOG_URL} target="_blank" rel="noopener noreferrer" className="is-blog"><Newspaper className="h-4 w-4" /> <span>Read our Blog</span><ArrowRight className="nl-an-share-arrow h-3.5 w-3.5" /></a>
         <button type="button" onClick={() => void copy()} className={copied ? 'is-done' : ''}>
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} <span>{copied ? 'Link copied' : 'Copy page link'}</span><ArrowRight className="nl-an-share-arrow h-3.5 w-3.5" />
         </button>

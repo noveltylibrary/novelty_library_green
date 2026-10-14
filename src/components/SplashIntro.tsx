@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatedBook } from '@/components/AnimatedBook';
 
 const KEY = 'nl-splash-seen';
+const INTRO_DURATION = 2380;
+const EXIT_AT = 1980;
 
 function alreadySeen() {
   try { return sessionStorage.getItem(KEY) === '1'; } catch { return false; }
@@ -11,33 +13,71 @@ interface SplashIntroProps {
   onComplete?: () => void;
 }
 
-/** Brief branded intro: the book pops up and flips pages, then fades out. Once per browser session. */
+/** Lightweight, session-scoped brand reveal. The application renders underneath it. */
 export function SplashIntro({ onComplete }: SplashIntroProps) {
   const [visible, setVisible] = useState(() => !alreadySeen());
   const [leaving, setLeaving] = useState(false);
+  const completeRef = useRef(onComplete);
+  const finishedRef = useRef(false);
+  completeRef.current = onComplete;
 
   useEffect(() => {
     if (!visible) {
-      // Returning visitors have already seen this session's splash. Treat the
-      // intro as completed immediately so onboarding can use the same trigger.
-      const t = window.setTimeout(() => onComplete?.(), 0);
-      return () => window.clearTimeout(t);
+      if (!finishedRef.current) {
+        finishedRef.current = true;
+        const t = window.setTimeout(() => completeRef.current?.(), 0);
+        return () => window.clearTimeout(t);
+      }
+      return;
     }
 
-    try { sessionStorage.setItem(KEY, '1'); } catch { /* ignore */ }
-    const t1 = window.setTimeout(() => setLeaving(true), 2100);
+    try { sessionStorage.setItem(KEY, '1'); } catch { /* storage can be unavailable */ }
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const exitDelay = reducedMotion ? 180 : EXIT_AT;
+    const finishDelay = reducedMotion ? 420 : INTRO_DURATION;
+    const t1 = window.setTimeout(() => setLeaving(true), exitDelay);
     const t2 = window.setTimeout(() => {
+      finishedRef.current = true;
       setVisible(false);
-      onComplete?.();
-    }, 2700);
+      completeRef.current?.();
+    }, finishDelay);
     return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
-  }, [visible, onComplete]);
+  }, [visible]);
+
+  const skip = () => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    setLeaving(true);
+    window.setTimeout(() => {
+      setVisible(false);
+      completeRef.current?.();
+    }, 180);
+  };
 
   if (!visible) return null;
   return (
-    <div className={`nl-splash${leaving ? ' is-leaving' : ''}`} aria-hidden>
-      <AnimatedBook size={150} />
-      <div className="nl-splash-title">Novelty Library</div>
+    <div className={`nl-splash${leaving ? ' is-leaving' : ''}`} aria-label="Novelty Library introduction" role="status">
+      <div className="nl-splash-scene" aria-hidden="true">
+        <div className="nl-splash-horizon" />
+        <div className="nl-splash-shelf nl-splash-shelf-left" />
+        <div className="nl-splash-shelf nl-splash-shelf-right" />
+        <span className="nl-splash-particle nl-splash-particle-1" />
+        <span className="nl-splash-particle nl-splash-particle-2" />
+        <span className="nl-splash-particle nl-splash-particle-3" />
+        <span className="nl-splash-particle nl-splash-particle-4" />
+      </div>
+      <div className="nl-splash-content">
+        <div className="nl-splash-book-wrap"><AnimatedBook size={clampBookSize()} /></div>
+        <img className="nl-splash-logo" src="/novelty-library-logo-white.png" alt="" />
+        <div className="nl-splash-title">Every book opens a world.</div>
+        <div className="nl-splash-subtitle">Discover yours at Novelty Library.</div>
+      </div>
+      <button className="nl-splash-skip" type="button" onClick={skip} aria-label="Skip introduction">Skip intro <span aria-hidden="true">↗</span></button>
     </div>
   );
+}
+
+function clampBookSize() {
+  if (typeof window === 'undefined') return 142;
+  return Math.min(154, Math.max(112, Math.round(window.innerWidth * 0.28)));
 }

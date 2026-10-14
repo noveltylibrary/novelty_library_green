@@ -29,15 +29,15 @@ export function normalizePosterUrl(raw: string | null | undefined): string | nul
   if (!url) return null;
 
   const driveId = extractDriveId(url);
-  if (driveId) return `https://drive.google.com/thumbnail?id=${driveId}&sz=w1600`;
+  if (driveId) return `https://drive.google.com/thumbnail?id=${driveId}&sz=w800`;
 
   // Blogger/Googleusercontent: remove the square-crop flag ("-c") so nothing
-  // is cut off, and ask for a large size.
+  // is cut off, and ask for a card-sized image (1000px is plenty for the shelf and loads far faster than 1600).
   if (/(blogger\.googleusercontent\.com|bp\.blogspot\.com|googleusercontent\.com)/i.test(url)) {
     return url
-      .replace(/\/s\d{2,4}(-c)?\//, '/s1600/')
-      .replace(/=s\d{2,4}(-c)?$/, '=s1600')
-      .replace(/\/w\d+-h\d+(-c)?\//, '/s1600/');
+      .replace(/\/s\d{2,4}(-c)?\//, '/s1000/')
+      .replace(/=s\d{2,4}(-c)?$/, '=s1000')
+      .replace(/\/w\d+-h\d+(-c)?\//, '/s1000/');
   }
 
   return url;

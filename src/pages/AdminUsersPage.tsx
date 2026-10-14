@@ -3,19 +3,22 @@ import {
   ArrowLeft,
   AlertCircle,
   CheckCircle2,
+  Ban,
   Clock3,
   FileText,
   Mail,
   RefreshCw,
   Search,
   Shield,
+  ShieldCheck,
   UserRound,
   Users,
   XCircle,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { fetchBlacklistedUsers, type BlacklistedUser } from '@/lib/moderation';
+import { adminBlacklistUser, adminUnblacklistUser, fetchBlacklistedUsers, type BlacklistedUser } from '@/lib/moderation';
 import { supabase } from '@/lib/supabase';
+import { getErrorMessage } from '@/lib/format';
 
 interface AdminUsersPageProps {
   navigate: (path: string) => void;
@@ -80,6 +83,11 @@ export function AdminUsersPage({ navigate }: AdminUsersPageProps) {
   const [selected, setSelected] = useState<AdminUser | null>(null);
   const [blacklist, setBlacklist] = useState<BlacklistedUser[]>([]);
   const [blacklistLoading, setBlacklistLoading] = useState(false);
+  const [blTarget, setBlTarget] = useState<AdminUser | null>(null);
+  const [blReason, setBlReason] = useState('');
+  const [blBusy, setBlBusy] = useState(false);
+  const [blError, setBlError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const loadUsers = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
@@ -104,6 +112,37 @@ export function AdminUsersPage({ navigate }: AdminUsersPageProps) {
   }, [authLoading, user, isAdmin, navigate, loadUsers]);
 
   const loadBlacklist = async () => { setBlacklistLoading(true); try { setBlacklist(await fetchBlacklistedUsers()); } catch { setBlacklist([]); } finally { setBlacklistLoading(false); } };
+
+  const blacklistedIds = useMemo(() => new Set(blacklist.map((item) => item.user_id)), [blacklist]);
+  const userLabel = (item: AdminUser) => item.profile_name || item.email || 'this user';
+
+  const openBlacklist = (item: AdminUser) => { setBlTarget(item); setBlReason(''); setBlError(null); };
+
+  const confirmBlacklist = async () => {
+    if (!blTarget) return;
+    if (!blReason.trim()) { setBlError('Please give a short reason — it is kept on record.'); return; }
+    setBlBusy(true); setBlError(null);
+    try {
+      await adminBlacklistUser(blTarget.id, blReason);
+      setNotice(`${userLabel(blTarget)} has been blacklisted.`);
+      setBlTarget(null);
+      await loadBlacklist();
+    } catch (err) {
+      setBlError(getErrorMessage(err, 'Could not blacklist this user. Has sql/admin_blacklist_1_93.sql been run in Supabase?'));
+    } finally { setBlBusy(false); }
+  };
+
+  const removeFromBlacklist = async (userId: string, label: string) => {
+    if (!window.confirm(`Remove ${label} from the blacklist? Their profile will no longer be flagged.`)) return;
+    setError(null);
+    try {
+      await adminUnblacklistUser(userId);
+      setNotice(`${label} has been removed from the blacklist.`);
+      await loadBlacklist();
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not update the blacklist.'));
+    }
+  };
 
   const filteredUsers = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -142,7 +181,7 @@ export function AdminUsersPage({ navigate }: AdminUsersPageProps) {
             <h1 className="font-serif text-3xl font-semibold tracking-tight" style={{ color: 'var(--color-text)' }}>Users & Accounts</h1>
           </div>
           <p className="text-sm mt-1 max-w-2xl" style={{ color: 'var(--color-text-muted)' }}>
-            Read-only view of the accounts and profile information stored in Supabase. Passwords, access tokens and refresh tokens are never shown.
+            Accounts and profile information stored in Supabase, with the option to blacklist or restore any user. Passwords, access tokens and refresh tokens are never shown.
           </p>
         </div>
         <button onClick={() => loadUsers(true)} disabled={refreshing} className="btn-ghost text-sm"><RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> Refresh</button>
@@ -152,6 +191,14 @@ export function AdminUsersPage({ navigate }: AdminUsersPageProps) {
         <div className="mb-6 rounded-2xl p-4 flex gap-3" style={{ background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.22)', color: 'var(--color-text)' }}>
           <AlertCircle className="w-5 h-5 shrink-0" style={{ color: '#ef4444' }} />
           <div><p className="font-semibold text-sm">Could not load users</p><p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{error}</p><p className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>This page reads Supabase Auth users through the protected <code>admin_list_users()</code> RPC. If Supabase says the function is missing from the schema cache, apply the required admin-users SQL migration separately in Supabase, then click Refresh.</p></div>
+        </div>
+      )}
+
+      {notice && (
+        <div role="status" className="mb-6 rounded-2xl p-4 flex gap-3 items-start" style={{ background: 'rgba(53,211,217,.08)', border: '1px solid rgba(53,211,217,.2)' }}>
+          <CheckCircle2 className="w-5 h-5 shrink-0" style={{ color: 'var(--color-teal-dark)' }} />
+          <p className="text-sm font-medium flex-1" style={{ color: 'var(--color-teal-dark)' }}>{notice}</p>
+          <button onClick={() => setNotice(null)} className="text-xs" style={{ color: 'var(--color-teal-dark)' }} aria-label="Dismiss">Dismiss</button>
         </div>
       )}
 
@@ -173,7 +220,7 @@ export function AdminUsersPage({ navigate }: AdminUsersPageProps) {
         })}
       </div>
 
-      <section className="surface-card rounded-2xl p-5 mb-6" style={{border:'1px solid rgba(239,68,68,.18)'}}><div className="flex flex-wrap items-center justify-between gap-3 mb-4"><div><div className="flex items-center gap-2"><Shield className="w-4 h-4" style={{color:'#dc2626'}}/><h2 className="font-serif text-xl font-semibold">Blacklist</h2></div><p className="text-xs mt-1" style={{color:'var(--color-text-muted)'}}>Profiles reaching 30 or more community reports are automatically listed here and admins are notified.</p></div><button onClick={()=>void loadBlacklist()} disabled={blacklistLoading} className="btn-ghost text-xs">{blacklistLoading?'Refreshing…':'Refresh blacklist'}</button></div>{blacklist.length===0?<p className="text-sm" style={{color:'var(--color-text-muted)'}}>No automatically blacklisted profiles.</p>:<div className="space-y-2">{blacklist.map(item=><div key={item.user_id} className="flex flex-wrap items-center gap-3 rounded-2xl p-3" style={{background:'rgba(239,68,68,.045)',border:'1px solid rgba(239,68,68,.12)'}}>{item.avatar_url?<img src={item.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover"/>:<div className="w-10 h-10 rounded-full grid place-items-center font-bold" style={{background:'rgba(239,68,68,.10)',color:'#b91c1c'}}>{(item.name||item.novelty_username||'U').slice(0,1).toUpperCase()}</div>}<div className="min-w-0 flex-1"><p className="font-semibold text-sm truncate">{item.name||'Unnamed user'} {item.novelty_username&&<span className="font-normal" style={{color:'var(--color-cyan-dark)'}}>@{item.novelty_username}</span>}</p><p className="text-xs mt-0.5" style={{color:'var(--color-text-muted)'}}>{item.report_count} reports · {item.blacklisted_at?formatDate(item.blacklisted_at):'Blacklisted automatically'}</p></div><span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full" style={{background:'rgba(239,68,68,.10)',color:'#b91c1c'}}>Blacklisted</span></div>)}</div>}</section>
+      <section className="surface-card rounded-2xl p-5 mb-6" style={{border:'1px solid rgba(239,68,68,.18)'}}><div className="flex flex-wrap items-center justify-between gap-3 mb-4"><div><div className="flex items-center gap-2"><Shield className="w-4 h-4" style={{color:'#dc2626'}}/><h2 className="font-serif text-xl font-semibold">Blacklist</h2></div><p className="text-xs mt-1" style={{color:'var(--color-text-muted)'}}>Profiles reaching 30 or more community reports are listed automatically; admins can also blacklist or restore any user from the table below.</p></div><button onClick={()=>void loadBlacklist()} disabled={blacklistLoading} className="btn-ghost text-xs">{blacklistLoading?'Refreshing…':'Refresh blacklist'}</button></div>{blacklist.length===0?<p className="text-sm" style={{color:'var(--color-text-muted)'}}>No blacklisted profiles.</p>:<div className="space-y-2">{blacklist.map(item=><div key={item.user_id} className="flex flex-wrap items-center gap-3 rounded-2xl p-3" style={{background:'rgba(239,68,68,.045)',border:'1px solid rgba(239,68,68,.12)'}}>{item.avatar_url?<img src={item.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover"/>:<div className="w-10 h-10 rounded-full grid place-items-center font-bold" style={{background:'rgba(239,68,68,.10)',color:'#b91c1c'}}>{(item.name||item.novelty_username||'U').slice(0,1).toUpperCase()}</div>}<div className="min-w-0 flex-1"><p className="font-semibold text-sm truncate">{item.name||'Unnamed user'} {item.novelty_username&&<span className="font-normal" style={{color:'var(--color-cyan-dark)'}}>@{item.novelty_username}</span>}</p><p className="text-xs mt-0.5" style={{color:'var(--color-text-muted)'}}>{item.report_count} reports · {item.blacklisted_at?formatDate(item.blacklisted_at):'Blacklisted'} · {item.blacklisted_by_admin?'by an admin':'automatic'}</p>{item.blacklist_reason&&<p className="text-xs mt-0.5 break-words" style={{color:'var(--color-text-muted)'}}>Reason: {item.blacklist_reason}</p>}</div><span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full" style={{background:'rgba(239,68,68,.10)',color:'#b91c1c'}}>Blacklisted</span><button onClick={()=>void removeFromBlacklist(item.user_id,item.name||item.novelty_username||'this user')} className="btn-ghost text-xs"><ShieldCheck className="w-3.5 h-3.5"/> Remove</button></div>)}</div>}</section>
 
       <div className="surface-card rounded-2xl overflow-hidden">
         <div className="p-4 flex flex-wrap gap-3 items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
@@ -204,14 +251,16 @@ export function AdminUsersPage({ navigate }: AdminUsersPageProps) {
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
                           {item.avatar_url ? <img src={item.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" /> : <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold" style={{ background: 'rgba(8,145,178,.12)', color: 'var(--color-cyan-dark)' }}>{initials(item)}</div>}
-                          <div><button onClick={() => setSelected(item)} className="font-semibold text-sm text-left hover:underline" style={{ color: 'var(--color-text)' }}>{item.profile_name || item.email || 'Unnamed user'}</button><div className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{item.email || 'No email'}</div></div>
+                          <div><button onClick={() => setSelected(item)} className="font-semibold text-sm text-left hover:underline" style={{ color: 'var(--color-text)' }}>{item.profile_name || item.email || 'Unnamed user'}</button>{blacklistedIds.has(item.id) && <span className="ml-2 align-middle text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,.10)', color: '#b91c1c' }}>Blacklisted</span>}<div className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{item.email || 'No email'}</div></div>
                         </div>
                       </td>
                       <td className="px-4 py-4"><div className="flex items-center gap-1.5 text-xs" style={{ color: confirmed ? 'var(--color-cyan-dark)' : 'var(--color-text-muted)' }}>{confirmed ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}{confirmed ? 'Confirmed' : 'Unconfirmed'}</div><div className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>Joined {formatDate(item.created_at)}</div></td>
                       <td className="px-4 py-4"><div className="text-xs font-semibold" style={{ color: 'var(--color-cyan-dark)' }}>{item.novelty_username ? `@${item.novelty_username.replace(/^@/, '')}` : 'No username'}</div><div className="text-xs mt-1" style={{ color: 'var(--color-text)' }}>{item.instagram_id ? `Instagram: @${item.instagram_id.replace(/^@/, '')}` : 'No Instagram'}</div><div className="text-[11px] mt-1 truncate max-w-[180px]" style={{ color: 'var(--color-text-muted)' }}>{item.website || 'No website'}</div></td>
                       <td className="px-4 py-4"><div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--color-text-muted)' }}><Clock3 className="w-3.5 h-3.5" />{formatDate(item.last_sign_in_at)}</div></td>
                       <td className="px-4 py-4"><div className="flex flex-wrap gap-1.5 text-[11px]"><span className="px-2 py-1 rounded-full" style={{ background: 'rgba(8,145,178,.1)', color: 'var(--color-cyan-dark)' }}>{item.review_count} reviews</span><span className="px-2 py-1 rounded-full" style={{ background: item.pending_review_count ? 'rgba(245,158,11,.12)' : 'var(--color-paper)', color: 'var(--color-text-muted)' }}>{item.pending_review_count} pending</span><span className="px-2 py-1 rounded-full" style={{ background: 'var(--color-paper)', color: 'var(--color-text-muted)' }}>{item.draft_count} drafts</span></div></td>
-                      <td className="px-4 py-4 text-right"><button onClick={() => setSelected(item)} className="btn-ghost text-xs">View</button></td>
+                      <td className="px-4 py-4 text-right whitespace-nowrap"><button onClick={() => setSelected(item)} className="btn-ghost text-xs">View</button>{item.id !== user.id && (blacklistedIds.has(item.id)
+                        ? <button onClick={() => void removeFromBlacklist(item.id, userLabel(item))} className="btn-ghost text-xs ml-1" aria-label={`Remove ${userLabel(item)} from blacklist`}><ShieldCheck className="w-3.5 h-3.5" /> Restore</button>
+                        : <button onClick={() => openBlacklist(item)} className="btn-ghost text-xs ml-1" style={{ color: '#b91c1c' }} aria-label={`Blacklist ${userLabel(item)}`}><Ban className="w-3.5 h-3.5" /> Blacklist</button>)}</td>
                     </tr>
                   );
                 })}
@@ -221,12 +270,34 @@ export function AdminUsersPage({ navigate }: AdminUsersPageProps) {
         )}
       </div>
 
+      {blTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,.55)' }} role="dialog" aria-modal="true" aria-labelledby="bl-title" onClick={() => !blBusy && setBlTarget(null)}>
+          <div className="w-full max-w-md rounded-3xl p-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-2"><Ban className="w-5 h-5" style={{ color: '#b91c1c' }} /><h2 id="bl-title" className="font-serif text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Blacklist user</h2></div>
+            <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>{userLabel(blTarget)}{blTarget.email ? ` (${blTarget.email})` : ''} will be flagged as blacklisted on their public profile. You can restore them at any time.</p>
+            <label className="label" htmlFor="bl-reason">Reason</label>
+            <textarea id="bl-reason" value={blReason} onChange={(e) => setBlReason(e.target.value.slice(0, 500))} rows={4} className="input-field w-full resize-y" placeholder="e.g. Repeated abusive language in reviews" autoFocus />
+            <p className="text-[11px] text-right mt-1" style={{ color: 'var(--color-text-muted)' }}>{blReason.length}/500</p>
+            {blError && <p role="alert" className="text-sm mt-2" style={{ color: '#ef4444' }}>{blError}</p>}
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setBlTarget(null)} disabled={blBusy} className="btn-ghost text-sm">Cancel</button>
+              <button onClick={() => void confirmBlacklist()} disabled={blBusy} className="btn-primary text-sm" style={{ background: '#b91c1c' }}>{blBusy ? 'Blacklisting…' : 'Blacklist user'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,.55)' }} onClick={() => setSelected(null)}>
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl p-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4 mb-6">
               <div className="flex items-center gap-3">{selected.avatar_url ? <img src={selected.avatar_url} alt="" className="w-14 h-14 rounded-full object-cover" /> : <div className="w-14 h-14 rounded-full flex items-center justify-center font-semibold" style={{ background: 'rgba(8,145,178,.12)', color: 'var(--color-cyan-dark)' }}>{initials(selected)}</div>}<div><h2 className="font-serif text-2xl font-semibold" style={{ color: 'var(--color-text)' }}>{selected.profile_name || selected.email || 'Unnamed user'}</h2><p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{selected.email || 'No email'} · {selected.id}</p></div></div>
-              <button onClick={() => setSelected(null)} className="btn-ghost text-sm">Close</button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {selected.id !== user.id && (blacklistedIds.has(selected.id)
+                  ? <button onClick={() => void removeFromBlacklist(selected.id, userLabel(selected))} className="btn-ghost text-sm"><ShieldCheck className="w-4 h-4" /> Remove from blacklist</button>
+                  : <button onClick={() => { const target = selected; setSelected(null); openBlacklist(target); }} className="btn-ghost text-sm" style={{ color: '#b91c1c' }}><Ban className="w-4 h-4" /> Blacklist user</button>)}
+                <button onClick={() => setSelected(null)} className="btn-ghost text-sm">Close</button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

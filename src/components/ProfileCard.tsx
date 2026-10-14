@@ -406,7 +406,7 @@ function Cover({ urls, w, h, radius, iconSize }: { urls: (string | null | undefi
   const src = sources[idx];
   return <div style={{ width: w, height: h, borderRadius: radius, overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(145deg,rgba(255,255,255,.22),rgba(255,255,255,.06))', border: `1px solid ${C.line}`, boxShadow: '0 8px 18px rgba(0,30,40,.35)', display: 'grid', placeItems: 'center' }}>
     <BookOpen width={iconSize} height={iconSize} style={{ color: C.mint, gridArea: '1 / 1' }} />
-    {src && <img key={src} src={src} alt="" crossOrigin="anonymous" referrerPolicy="no-referrer" decoding="async" onError={() => setIdx((i) => i + 1)} style={{ gridArea: '1 / 1', width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+    {src && <img key={src} src={src} alt="" referrerPolicy="no-referrer" decoding="async" onError={() => setIdx((i) => i + 1)} style={{ gridArea: '1 / 1', width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
   </div>;
 }
 

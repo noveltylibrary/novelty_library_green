@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth';
 import { updateProfile } from '@/lib/reviews';
 import { deleteCurrentAccount } from '@/lib/account';
 import { supabase } from '@/lib/supabase';
+import { getCaptchaToken } from '@/lib/captcha';
 import { createGrievance, fetchMyGrievances, type GrievanceRecord } from '@/lib/moderation';
 
 interface AccountPageProps { navigate: (path: string) => void; }
@@ -78,7 +79,7 @@ export function AccountPage({ navigate }: AccountPageProps) {
     try {
       // Google-only accounts have no password yet, so there is nothing to verify: they are adding one.
       if (hasPassword) {
-        const { error: reauthError } = await supabase.auth.signInWithPassword({ email: user.email || '', password: currentPassword });
+        const { error: reauthError } = await supabase.auth.signInWithPassword({ email: user.email || '', password: currentPassword, options: { captchaToken: await getCaptchaToken() } });
         if (reauthError) throw new Error('Current password is incorrect.');
       }
       const { error } = await supabase.auth.updateUser({ password: newPassword });
@@ -97,7 +98,7 @@ export function AccountPage({ navigate }: AccountPageProps) {
     setDeleting(true);
     try {
       if (hasPassword) {
-        const { error: reauthError } = await supabase.auth.signInWithPassword({ email: user.email || '', password: deletePassword });
+        const { error: reauthError } = await supabase.auth.signInWithPassword({ email: user.email || '', password: deletePassword, options: { captchaToken: await getCaptchaToken() } });
         if (reauthError) throw new Error('Password verification failed.');
       } else {
         // Google-only: no password to check. Require the account email and a recent Google sign-in.

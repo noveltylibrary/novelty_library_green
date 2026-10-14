@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { normalizePicks } from '@/lib/profileCardPicks';
-import { prepareImageForUpload, extForImageType } from '@/lib/imageUpload';
+import { prepareImageForUpload, compressImageForUpload, extForImageType } from '@/lib/imageUpload';
 import type { Review, ReviewStatus, Profile } from '@/types/review';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
 import { normalizeVerdict, type Verdict } from '@/lib/verdict';
@@ -36,7 +36,7 @@ export async function fetchReviews(): Promise<Review[]> {
   return (data ?? []).map((row) => mapCommunityRowToReview(row as CommunityReviewRow));
 }
 
-function mapMasterListToReview(row: MasterListRow & { id: string; published?: boolean; published_on?: string | null; poster_url?: string | null; poster_link?: string | null }): Review {
+function mapMasterListToReview(row: MasterListRow & { id: string; published?: boolean; published_on?: string | null; poster_url?: string | null; poster_link?: string | null; blog_url?: string | null }): Review {
   const reviewNumber = Number.parseInt(row.review_no, 10);
   const rw = Number.parseFloat(row.reviewers_rating);
   const gr = Number.parseFloat(row.goodreads_rating);
@@ -58,6 +58,7 @@ function mapMasterListToReview(row: MasterListRow & { id: string; published?: bo
     cover_storage_path: null,
     poster_url: row.poster_url || null,
     poster_link: row.poster_link || null,
+    blog_url: safeExternalUrl((row as { blog_url?: string | null }).blog_url) || null,
     published_on: row.published_on || null,
     buy_link: row.amazon_link || null,
     labels: row.traits ? row.traits.split(',').map((x) => x.trim()).filter(Boolean) : [],
@@ -135,6 +136,7 @@ export interface CommunityReviewRow extends MasterListRow {
   published_on: string | null;
   poster_url: string | null;
   poster_link: string | null;
+  blog_url?: string | null;
 }
 
 function mapCommunityRowToReview(row: CommunityReviewRow): Review {
@@ -145,7 +147,8 @@ function mapCommunityRowToReview(row: CommunityReviewRow): Review {
     published_on: row.published_on,
     poster_url: row.poster_url,
     poster_link: row.poster_link,
-  } as MasterListRow & { id: string; published?: boolean; published_on?: string | null; poster_url?: string | null; poster_link?: string | null });
+    blog_url: row.blog_url ?? null,
+  } as MasterListRow & { id: string; published?: boolean; published_on?: string | null; poster_url?: string | null; poster_link?: string | null; blog_url?: string | null });
 }
 
 export interface OpenLibraryResult {
@@ -194,7 +197,7 @@ export async function searchOpenLibrary(query: string): Promise<OpenLibraryResul
 }
 
 export async function uploadCoverImage(rawFile: File, userId: string): Promise<{ path: string; publicUrl: string }> {
-  const file = await prepareImageForUpload(rawFile);
+  const file = await compressImageForUpload(rawFile, 900, 0.82);
   const ext = extForImageType(file.type);
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await supabase.storage.from('covers').upload(fileName, file, { contentType: file.type });
@@ -204,7 +207,7 @@ export async function uploadCoverImage(rawFile: File, userId: string): Promise<{
 }
 
 export async function uploadAvatarImage(rawFile: File, userId: string): Promise<{ path: string; publicUrl: string }> {
-  const file = await prepareImageForUpload(rawFile);
+  const file = await compressImageForUpload(rawFile, 512, 0.85);
   const ext = extForImageType(file.type);
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await supabase.storage.from('avatars').upload(fileName, file, { contentType: file.type, upsert: true });
@@ -214,7 +217,7 @@ export async function uploadAvatarImage(rawFile: File, userId: string): Promise<
 }
 
 export async function uploadProfileHeaderImage(rawFile: File, userId: string, limits?: { maxWidth?: number; maxHeight?: number }): Promise<{ path: string; publicUrl: string }> {
-  const file = await prepareImageForUpload(rawFile, limits?.maxWidth ?? 3000, limits?.maxHeight ?? 3000);
+  const file = await compressImageForUpload(rawFile, Math.min(1600, Math.max(limits?.maxWidth ?? 1600, limits?.maxHeight ?? 1600)), 0.82);
   const ext = extForImageType(file.type);
   const fileName = `${userId}/headers/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await supabase.storage.from('avatars').upload(fileName, file, { contentType: file.type, upsert: true, cacheControl: '31536000' });
@@ -227,7 +230,12 @@ export async function uploadProfileHeaderImage(rawFile: File, userId: string, li
 // the "posters_admin_upload" storage policy, which only allows writes under
 // that exact prefix from a signed-in admin.
 export async function uploadReviewPoster(reviewNo: number, rawFile: File): Promise<string> {
-  const file = await prepareImageForUpload(rawFile);
+  return (await uploadReviewPosterWithStats(reviewNo, rawFile)).url;
+}
+
+// Same upload, but also reports how much the automatic compression saved (shown to the admin).
+export async function uploadReviewPosterWithStats(reviewNo: number, rawFile: File): Promise<{ url: string; originalBytes: number; finalBytes: number }> {
+  const file = await compressImageForUpload(rawFile, 1000, 0.82);
   const ext = extForImageType(file.type);
   const fileName = `posters/${reviewNo}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await supabase.storage.from('covers').upload(fileName, file, {
@@ -236,7 +244,7 @@ export async function uploadReviewPoster(reviewNo: number, rawFile: File): Promi
   });
   if (error) throw new Error(`Poster upload failed: ${error.message}`);
   const { data: urlData } = supabase.storage.from('covers').getPublicUrl(fileName);
-  return urlData.publicUrl;
+  return { url: urlData.publicUrl, originalBytes: rawFile.size, finalBytes: file.size };
 }
 
 const POSTER_MATCH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/poster-match`;
@@ -439,6 +447,32 @@ export interface PublishResult {
 }
 
 /**
+ * Pull the current Accepted Reviews Google Sheet into master_list before an
+ * admin accepts a submitted review. This makes the sheet the first duplicate
+ * check/source-of-truth step for Review No. values.
+ */
+export async function syncAcceptedReviewsFromSheet(): Promise<{
+  totalInSheet?: number;
+  imported?: number;
+  updated?: number;
+  skipped?: number;
+}> {
+  const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sheet-proxy?action=import`;
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error('Your session has expired — please sign in again.');
+
+  const res = await fetch(`${baseUrl}&_=${Date.now()}`, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const result = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(result?.error || `Accepted Reviews sheet sync failed (${res.status})`);
+  return result;
+}
+
+/**
  * Creates the corresponding Master List row for an accepted review.
  * Publication itself is handled separately in `community_reviews`.
  *
@@ -541,7 +575,7 @@ export async function fetchPublishedReviewsForAdmin(): Promise<Review[]> {
 
   const { data: community, error: communityError } = await supabase
     .from('community_reviews')
-    .select('source_master_id,review_no,is_published,published_on,poster_url,poster_link');
+    .select('*'); // '*' so the optional blog_url column is read when sql/blog_url_1_93.sql has been run
   if (communityError) throw communityError;
 
   const byMaster = new Map((community ?? []).map((row: any) => [row.source_master_id, row]));
@@ -554,8 +588,19 @@ export async function fetchPublishedReviewsForAdmin(): Promise<Review[]> {
       published_on: c?.published_on ?? null,
       poster_url: c?.poster_url ?? null,
       poster_link: c?.poster_link ?? null,
+      blog_url: c?.blog_url ?? row.blog_url ?? null,
     });
   });
+}
+
+/** Blog post URLs are discovered from Blogger at runtime. Never write blog_url to Supabase. */
+/** Accepts an http(s) link or blank; returns the cleaned URL, null for blank, and throws on anything else. */
+export function normalizeBlogUrl(value: string | null | undefined): string | null {
+  const raw = (value || '').trim();
+  if (!raw) return null;
+  const safe = safeExternalUrl(raw.startsWith('http') ? raw : `https://${raw}`);
+  if (!safe) throw new Error('Blog link must be a valid web address (https://…).');
+  return safe;
 }
 
 function communitySnapshot(master: any, extra: Record<string, unknown> = {}) {
@@ -604,7 +649,18 @@ async function getMasterById(id: string) {
   return data as any;
 }
 
-export async function savePublishedMetadata(reviewId: string, reviewNo: string | number, fields: { posterUrl?: string | null; posterLink?: string | null; publishedOn?: string | null; noveltyUsername?: string | null }): Promise<void> {
+function isOptionalBlogUrlColumnMissing(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const row = error as { code?: unknown; message?: unknown; details?: unknown; hint?: unknown };
+  const code = typeof row.code === 'string' ? row.code : '';
+  const message = [row.message, row.details, row.hint].filter((v) => typeof v === 'string').join(' ').toLowerCase();
+  return message.includes('blog_url') && (
+    code === 'PGRST204' || code === '42703' ||
+    /could not find.{0,80}column|column.{0,80}does not exist|schema cache/.test(message)
+  );
+}
+
+export async function savePublishedMetadata(reviewId: string, reviewNo: string | number, fields: { posterUrl?: string | null; posterLink?: string | null; blogUrl?: string | null; publishedOn?: string | null; noveltyUsername?: string | null }): Promise<void> {
   let master = await getMasterById(reviewId);
 
   // Username is editable from the Publishing Queue. Save it to the accepted
@@ -621,26 +677,50 @@ export async function savePublishedMetadata(reviewId: string, reviewNo: string |
 
   const { data: existing } = await supabase
     .from('community_reviews')
-    .select('is_published,poster_url,poster_link,published_on,novelty_username')
+    .select('*')
     .eq('source_master_id', reviewId)
     .maybeSingle();
 
   // `undefined` means "leave as is"; only an explicit value changes a field.
+  // Some deployed databases have blog_url and some predate that optional column.
+  // Try to persist it where supported; if not, retry the normal metadata write without
+  // the optional field. The Publishing Queue also stores a browser-side manual override
+  // so an unavailable column never lets Blogger replace a human correction on refresh.
   const row = communitySnapshot(master, {
     poster_url: fields.posterUrl === undefined ? (existing?.poster_url ?? null) : fields.posterUrl,
     poster_link: fields.posterLink === undefined ? (existing?.poster_link ?? null) : fields.posterLink,
     published_on: fields.publishedOn === undefined ? (existing?.published_on ?? null) : fields.publishedOn,
     novelty_username: master.novelty_username ?? existing?.novelty_username ?? null,
     is_published: Boolean(existing?.is_published),
-  });
+  }) as Record<string, unknown>;
+  const requestedBlogUrl = fields.blogUrl === undefined ? undefined : normalizeBlogUrl(fields.blogUrl);
+  if (requestedBlogUrl !== undefined) row.blog_url = requestedBlogUrl;
   void reviewNo;
-  const { error } = await supabase.from('community_reviews').upsert(row, { onConflict: 'source_master_id' });
+  let { error } = await supabase.from('community_reviews').upsert(row, { onConflict: 'source_master_id' });
+  let communityBlogColumnMissing = false;
+  if (error && requestedBlogUrl !== undefined && isOptionalBlogUrlColumnMissing(error)) {
+    communityBlogColumnMissing = true;
+    delete row.blog_url;
+    const retry = await supabase.from('community_reviews').upsert(row, { onConflict: 'source_master_id' });
+    error = retry.error;
+  }
   if (error) throw error;
+
+  // Older installations sometimes have the optional field only on master_list.
+  // Treat that write as optional as well; unsupported schemas keep working normally.
+  if (communityBlogColumnMissing && requestedBlogUrl !== undefined) {
+    const fallback = await supabase.from('master_list')
+      .update({ blog_url: requestedBlogUrl, updated_at: new Date().toISOString() })
+      .eq('id', reviewId);
+    if (fallback.error && !isOptionalBlogUrlColumnMissing(fallback.error)) {
+      console.warn('Could not persist optional blog_url on master_list; the queue will retain its local manual override.', fallback.error);
+    }
+  }
 }
 
 export async function savePosterUrl(reviewId: string, posterUrl: string | null): Promise<void> {
   const master = await getMasterById(reviewId);
-  const { data: existing } = await supabase.from('community_reviews').select('poster_link,published_on,is_published').eq('source_master_id', reviewId).maybeSingle();
+  const { data: existing } = await supabase.from('community_reviews').select('*').eq('source_master_id', reviewId).maybeSingle();
   const row = communitySnapshot(master, { poster_url: posterUrl, poster_link: existing?.poster_link ?? null, published_on: existing?.published_on ?? null, is_published: Boolean(existing?.is_published) });
   const { error } = await supabase.from('community_reviews').upsert(row, { onConflict: 'source_master_id' });
   if (error) throw error;
@@ -648,7 +728,7 @@ export async function savePosterUrl(reviewId: string, posterUrl: string | null):
 
 export async function updateReviewPublication(id: string, isPublished: boolean): Promise<void> {
   const master = await getMasterById(id);
-  const { data: existing } = await supabase.from('community_reviews').select('poster_url,poster_link,published_on').eq('source_master_id', id).maybeSingle();
+  const { data: existing } = await supabase.from('community_reviews').select('*').eq('source_master_id', id).maybeSingle();
   const now = new Date().toISOString();
   const row = communitySnapshot(master, {
     poster_url: existing?.poster_url ?? null,
@@ -665,7 +745,7 @@ export async function publishMasterReviewsBatch(ids: string[]): Promise<void> {
   const { data: masters, error } = await supabase.from('master_list').select('*').in('id', ids);
   if (error) throw error;
   const now = new Date().toISOString();
-  const { data: existing } = await supabase.from('community_reviews').select('source_master_id,poster_url,poster_link,published_on').in('source_master_id', ids);
+  const { data: existing } = await supabase.from('community_reviews').select('*').in('source_master_id', ids);
   const existingMap = new Map((existing ?? []).map((r: any) => [r.source_master_id, r]));
   const rows = (masters ?? []).map((master: any) => {
     const old = existingMap.get(master.id);
@@ -680,7 +760,7 @@ export async function redeployMasterReviews(ids: string[]): Promise<void> {
   if (!ids.length) return;
   const { data: masters, error } = await supabase.from('master_list').select('*').in('id', ids);
   if (error) throw error;
-  const { data: existing } = await supabase.from('community_reviews').select('source_master_id,poster_url,poster_link,published_on,is_published').in('source_master_id', ids);
+  const { data: existing } = await supabase.from('community_reviews').select('*').in('source_master_id', ids);
   const existingMap = new Map((existing ?? []).map((r: any) => [r.source_master_id, r]));
   const now = new Date().toISOString();
   const rows = (masters ?? []).map((master: any) => {

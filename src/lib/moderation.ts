@@ -26,6 +26,7 @@ export interface BlacklistedUser {
   report_count: number;
   blacklisted_at: string | null;
   blacklist_reason: string | null;
+  blacklisted_by_admin?: boolean | null;
 }
 
 export interface GrievanceRecord {
@@ -78,4 +79,16 @@ export async function fetchBlacklistedUsers(): Promise<BlacklistedUser[]> {
   const { data, error } = await supabase.rpc('admin_list_blacklisted_users');
   if (error) throw error;
   return (data ?? []) as BlacklistedUser[];
+}
+
+/** Admin: manually blacklist a user (needs sql/admin_blacklist_1_93.sql). */
+export async function adminBlacklistUser(userId: string, reason: string) {
+  const { error } = await supabase.rpc('admin_blacklist_user', { p_user_id: userId, p_reason: reason.trim().slice(0, 500) || null });
+  if (error) throw error;
+}
+
+/** Admin: lift a blacklist (manual or automatic). */
+export async function adminUnblacklistUser(userId: string) {
+  const { error } = await supabase.rpc('admin_unblacklist_user', { p_user_id: userId });
+  if (error) throw error;
 }
