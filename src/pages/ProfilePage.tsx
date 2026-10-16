@@ -11,6 +11,8 @@ import { useCoreOverrides, coreLabel, corePlaceholder, coreActive, coreFieldsInS
 import { fetchProfileSectionLayout, BUILT_IN_PROFILE_SECTIONS, type ProfileSectionLayoutItem } from '@/lib/profileLayout';
 import { ProfileQuestionAnswer } from '@/components/ProfileQuestionAnswer';
 import { isAdvancedQuestion } from '@/lib/profileCardPicks';
+import { CurrentlyReadingEditor, CurrentlyReadingPanel } from '@/components/CurrentlyReadingPanel';
+import { isCurrentlyReadingQuestion, moveCurrentlyReadingToBasic, readCurrentlyReading } from '@/lib/currentlyReading';
 import { fetchShelfCommunityInfo, averageNlRating, type ShelfCommunityInfo } from '@/lib/profileShelf';
 
 interface ProfilePageProps { navigate: (path: string) => void; }
@@ -69,7 +71,9 @@ export function ProfilePage({ navigate }: ProfilePageProps) {
   const refreshMyStories = async () => { if (!user) return; const stories = await fetchActiveStories(user.id); const mine = stories.filter((story) => story.user_id === user.id); setMyStory(mine[0] || null); setMyStoryCount(mine.length); };
   const setSocial=(i:number,key:keyof SocialLink,val:string)=>setSocialLinks(v=>v.map((x,n)=>n===i?{...x,[key]:val}:x));
   const toggleVisibility=(key:string)=>setVisibility(v=>({...v,[key]:!(v[key]??true)}));
-  const topProfileQuestions = questions.filter(q => q.active !== false);
+  const topProfileQuestions = moveCurrentlyReadingToBasic(questions.filter(q => q.active !== false), questionSections);
+  const currentlyReadingQ = questions.find(q => q.active !== false && isCurrentlyReadingQuestion(q));
+  const currentlyReading = currentlyReadingQ ? readCurrentlyReading(answers[currentlyReadingQ.key]) : null;
   // Once the admin converted the built-in reading fields they are real questions: they follow the question's own
   // active / profile-card settings, and are no longer rendered a second time as fixed card rows.
   const legacyValues: Record<LegacyProfileFieldKey, string> = { reading_since: readingSince, books_read_this_month: booksReadThisMonth, total_books_read: totalBooksRead, favorite_book: favoriteBook, favorite_author: favoriteAuthor, favorite_genre: favoriteGenre };
@@ -78,6 +82,9 @@ export function ProfilePage({ navigate }: ProfilePageProps) {
     if (isLegacyProfileFieldKey(q.key)) {
       const lk: LegacyProfileFieldKey = q.key;
       return <QuestionField key={q.id} question={q} value={legacyValues[lk]} userId={user!.id} visible={visibility[lk] ?? q.public_default} onVisibility={()=>toggleVisibility(lk)} onChange={value=>legacySetters[lk](String(value ?? ''))}/>;
+    }
+    if (isCurrentlyReadingQuestion(q)) {
+      return <div key={q.id} className="min-w-0 sm:col-span-2 lg:col-span-3"><PrivacyField label={q.question} visible={visibility[`question:${q.key}`] ?? q.public_default} onToggle={()=>toggleVisibility(`question:${q.key}`)}><CurrentlyReadingEditor value={answers[q.key]} userId={user!.id} onChange={value=>setAnswers(v=>({...v,[q.key]:value}))}/></PrivacyField></div>;
     }
     return <QuestionField key={q.id} question={q} value={answers[q.key]} userId={user!.id} visible={visibility[`question:${q.key}`] ?? q.public_default} onVisibility={()=>toggleVisibility(`question:${q.key}`)} onChange={value=>setAnswers(v=>({...v,[q.key]:value}))}/>;
   };
@@ -254,7 +261,7 @@ export function ProfilePage({ navigate }: ProfilePageProps) {
     <div className="mb-1 rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5" style={{background:'linear-gradient(90deg,rgba(0,151,178,.09),rgba(92,225,230,.12))',border:'1px solid rgba(0,151,178,.18)',color:'var(--color-text)'}}><div className="flex items-start gap-3"><Sparkles className="w-4 h-4 mt-0.5 shrink-0" style={{color:'var(--color-cyan-dark)'}}/><p className="text-xs sm:text-sm leading-5"><strong>Deployment notice:</strong> Some features available in the current webapp deployment might become locked in future deployments once subscription plans are introduced.</p></div></div><div><span className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold mb-3" style={{background:'rgba(0,151,178,.1)',color:'var(--color-teal-dark)'}}><Sparkles className="w-3.5 h-3.5"/>Readers&apos; personal archive and branding tool</span><p className="text-xs uppercase tracking-[.18em] font-semibold" style={{color:'var(--color-teal-dark)'}}>Your Novelty Library identity</p><h1 className="font-serif text-4xl font-semibold mt-1">Profile Card</h1><p className="text-sm mt-2" style={{color:'var(--color-text-muted)'}}>Build the reader card you want to share — including your reading journey and the reviews you have published with Novelty Library.</p></div>
     <input ref={sbBannerInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadSbBanner} className="hidden"/><input ref={headerInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadHeader} className="hidden"/><input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadAvatar} className="hidden"/>
     <section className="nl-profile-work">
-      <div className="min-w-0"><ProfileCard layout="rows" data={cardData} onFollowersClick={()=>void openConnections('followers')} download initialFormat={publicFormat} publicFormat={publicFormat} onPublicFormatChange={setPublicView} onAvatarUpload={()=>avatarInputRef.current?.click()} onHeaderUpload={()=>headerInputRef.current?.click()} onSuperBlitzBannerUpload={()=>sbBannerInputRef.current?.click()} onViewPublicProfile={()=>profile?.novelty_username && navigate(`/profile/@${encodeURIComponent(profile.novelty_username)}`)} /></div>
+      <div className="min-w-0"><ProfileCard layout="rows" data={cardData} onFollowersClick={()=>void openConnections('followers')} download initialFormat={publicFormat} publicFormat={publicFormat} onPublicFormatChange={setPublicView} onAvatarUpload={()=>avatarInputRef.current?.click()} onHeaderUpload={()=>headerInputRef.current?.click()} onSuperBlitzBannerUpload={()=>sbBannerInputRef.current?.click()} onViewPublicProfile={()=>profile?.novelty_username && navigate(`/profile/@${encodeURIComponent(profile.novelty_username)}`)} />{currentlyReading&&currentlyReadingQ&&<div className="mt-5"><CurrentlyReadingPanel title={currentlyReading.title} cover={currentlyReading.cover} isPrivate={(visibility[`question:${currentlyReadingQ.key}`]??currentlyReadingQ.public_default)===false}/></div>}</div>
       <aside className="nl-profile-story-col min-w-0 space-y-5">
         <section className="surface-card p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4 mb-4"><div><p className="text-xs uppercase tracking-[.18em] font-semibold" style={{color:'var(--color-teal-dark)'}}>Connections privacy</p><h2 className="font-serif text-2xl font-semibold mt-1">Follower lists</h2></div><button type="button" onClick={()=>void saveSection('privacy')} disabled={saving} className="btn-primary !w-auto !px-3.5 text-sm shrink-0"><Save className="w-4 h-4"/>{saving?'Saving…':'Save'}</button></div>

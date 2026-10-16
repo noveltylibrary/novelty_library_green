@@ -123,7 +123,7 @@ function AppContent() {
         {route.name === 'admin-master-list' && <AdminMasterListPage navigate={navigate} />}
         {route.name === 'admin-posters' && <AdminPostersPage navigate={navigate} />}
         {route.name === 'admin-book-reviews' && <AdminBookReviewsPage navigate={navigate} tab={route.tab} />}
-        {route.name === 'admin-admins' && <AdminManageAdminsPage navigate={navigate} />}
+        {route.name === 'admin-admins' && <AdminManageAdminsPage navigate={navigate} tab={route.tab} />}
         {route.name === 'admin-users' && <AdminUsersPage navigate={navigate} />}
         {route.name === 'admin-finances' && <AdminFinancesPage navigate={navigate} />}
         {route.name === 'admin-pages' && <AdminPagesModerationPage navigate={navigate} />}

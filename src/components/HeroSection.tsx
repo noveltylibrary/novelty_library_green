@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { animate, motion, useMotionValue, useReducedMotion, useTransform, type Variants } from 'framer-motion';
 import { StoriesRail } from '@/components/StoriesRail';
 import { HeroCta } from '@/components/HeroCta';
+import { FeaturedPosters } from '@/components/FeaturedPosters';
 import { HomeActionGrid } from '@/components/HomeActionGrid';
 
 interface HeroSectionProps {
@@ -121,6 +122,9 @@ export function HeroSection({ navigate, live }: HeroSectionProps) {
             <HeroCta variant="secondary" onClick={() => navigate('/reviews')}>Reviews</HeroCta>
           </motion.div>
         </motion.div>
+
+        {/* Middle section: admin-managed featured posters (renders nothing until posters are published) */}
+        <div className="mt-10"><FeaturedPosters navigate={navigate} /></div>
 
         <div className="mt-10 text-left"><StoriesRail navigate={navigate} /></div>
 

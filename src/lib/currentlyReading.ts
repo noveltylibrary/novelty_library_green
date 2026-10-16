@@ -1,0 +1,38 @@
+import type { ProfileQuestion, ProfileQuestionSection } from '@/lib/profileQuestions';
+import { answerText } from '@/components/ProfileQuestionAnswer';
+
+/** The "Currently Reading" profile question (admin-created). Matched by key, with the wording as a fallback. */
+export const CURRENTLY_READING_KEY = 'q_mux1az58';
+export const isCurrentlyReadingQuestion = (q: Pick<ProfileQuestion, 'key' | 'question'>): boolean =>
+  q.key === CURRENTLY_READING_KEY || /^\s*currently\s+reading\s*$/i.test(q.question || '');
+
+export type CurrentlyReading = { title: string; cover: string | null };
+
+/**
+ * The answer is still stored under the question's own key (so visitors receive it exactly like before),
+ * as plain text when there is no cover and as `{ value, cover }` when a cover was added.
+ * answerText() already understands the object form, so the card, onboarding and admin views keep showing the title.
+ */
+export function readCurrentlyReading(value: unknown): CurrentlyReading {
+  const title = answerText(value).trim();
+  const cover = value && typeof value === 'object' && 'cover' in value ? String((value as { cover?: unknown }).cover ?? '') : '';
+  return { title, cover: /^https?:\/\//i.test(cover) ? cover : null };
+}
+
+export function packCurrentlyReading(title: string, cover: string | null): unknown {
+  return cover ? { value: title, cover } : title;
+}
+
+/**
+ * UI-only re-tiering: show "Currently Reading" as the LAST question of the tier just before "Advanced Reader"
+ * (Basic Reader) in the profile editor. Nothing is written to the database; the profile card keeps using the
+ * original question list.
+ */
+export function moveCurrentlyReadingToBasic(questions: ProfileQuestion[], sections: ProfileQuestionSection[]): ProfileQuestion[] {
+  const ordered = sections.filter((s) => s.active !== false).sort((a, b) => a.sort_order - b.sort_order);
+  const advancedIdx = ordered.findIndex((s) => s.name === 'Reading Identity');
+  const target = advancedIdx > 0 ? ordered[advancedIdx - 1] : null;
+  if (!target) return questions;
+  const lastOrder = Math.max(-1, ...questions.filter((q) => q.section === target.name && !isCurrentlyReadingQuestion(q)).map((q) => q.sort_order));
+  return questions.map((q) => (isCurrentlyReadingQuestion(q) ? { ...q, section: target.name, sort_order: lastOrder + 0.5 } : q));
+}

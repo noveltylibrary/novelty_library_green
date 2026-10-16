@@ -61,7 +61,7 @@ export function AdminHubPage({ navigate }: AdminHubPageProps) {
     },
     {
       title: 'Admins & Contacts',
-      desc: 'Manage admin access and the Support contact email, and send notifications to one reader or everyone.',
+      desc: 'Control admin access and the Support contact, send notifications, and publish the Home announcement posters.',
       icon: UserCog,
       path: '/admin/admins',
       gradient: 'linear-gradient(135deg, #013a46 0%, #0097b2 100%)',

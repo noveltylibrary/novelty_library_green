@@ -8,6 +8,8 @@ import { ProfileCard, asFormatKey, type ProfileCardData } from '@/components/Pro
 import { answerText, answerImageUrls } from '@/components/ProfileQuestionAnswer';
 import { RwStarRating } from '@/components/RwStarRating';
 import { isAdvancedQuestion } from '@/lib/profileCardPicks';
+import { CurrentlyReadingPanel } from '@/components/CurrentlyReadingPanel';
+import { isCurrentlyReadingQuestion, readCurrentlyReading } from '@/lib/currentlyReading';
 import { fetchShelfCommunityInfo, averageNlRating, type ShelfCommunityInfo } from '@/lib/profileShelf';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
 import { isUserBlacklisted, reportUser, REPORT_REASONS, type ReportReason } from '@/lib/moderation';
@@ -82,10 +84,18 @@ export function PublicProfilePage({ username, navigate }: Props) {
       <ProfileCard data={cardData} download={isOwn} onFollowersClick={()=>void openConnections('followers')} initialFormat={asFormatKey((profile.profile_answers||{}).__public_view)||undefined}/>
     </div>
     {(() => {
+      const crQ = questions.find(q => q.active !== false && isCurrentlyReadingQuestion(q));
+      if (!crQ) return null;
+      const vis = (profile.profile_visibility || {}) as Record<string, boolean>;
+      if ((vis[`question:${crQ.key}`] ?? crQ.public_default) === false) return null;
+      const cr = readCurrentlyReading(((profile.profile_answers || {}) as Record<string, unknown>)[crQ.key]);
+      return <CurrentlyReadingPanel title={sanitizeUserText(cr.title, 200)} cover={safeExternalUrl(cr.cover)} />;
+    })()}
+    {(() => {
       const raw = (profile.profile_answers || {}) as Record<string, unknown>;
       const visibility = (profile.profile_visibility || {}) as Record<string, boolean>;
       const cardKeys = new Set(cardData.questions.map(q => q.key));
-      const belowQuestions = questions.filter(q => q.active !== false && !cardKeys.has(q.key) && !isLegacyProfileFieldKey(q.key) && (visibility[`question:${q.key}`] ?? q.public_default) !== false).map(q => ({ q, value: raw[q.key] })).filter(({q,value}) => value !== undefined && value !== null && (q.type === 'image_upload' ? answerImageUrls(value).length > 0 : answerText(value).trim() !== ''));
+      const belowQuestions = questions.filter(q => q.active !== false && !cardKeys.has(q.key) && !isCurrentlyReadingQuestion(q) && !isLegacyProfileFieldKey(q.key) && (visibility[`question:${q.key}`] ?? q.public_default) !== false).map(q => ({ q, value: raw[q.key] })).filter(({q,value}) => value !== undefined && value !== null && (q.type === 'image_upload' ? answerImageUrls(value).length > 0 : answerText(value).trim() !== ''));
       if (!belowQuestions.length) return null;
       const grouped = [...new Set(belowQuestions.map(({q}) => q.section))].map(section => ({ section, items: belowQuestions.filter(({q}) => q.section === section).sort((a,b) => a.q.sort_order-b.q.sort_order) }));
       return <section className="surface-card p-5 sm:p-7 space-y-5"><div><p className="text-xs uppercase tracking-[.18em] font-semibold" style={{color:'var(--color-teal-dark)'}}>Beyond the card</p><h2 className="font-serif text-2xl font-semibold mt-1">Reader questions</h2><p className="text-sm mt-1" style={{color:'var(--color-text-muted)'}}>More about this reader, without overcrowding their profile card.</p></div>{grouped.map(group => <div key={group.section} className="space-y-3"><h3 className="text-sm font-bold uppercase tracking-wider" style={{color:'var(--color-cyan-dark)'}}>{group.section}</h3><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{group.items.map(({q,value}) => <article key={q.id} className="rounded-2xl p-4 min-w-0" style={{background:'var(--color-paper)',border:'1px solid var(--color-border)'}}><h4 className="text-xs font-bold uppercase tracking-wide mb-2" style={{color:'var(--color-teal-dark)'}}>{sanitizeUserText(q.question,300)}</h4>{q.type === 'image_upload' ? <div className="grid grid-cols-2 gap-2">{answerImageUrls(value).map((url,i) => { const safe=safeExternalUrl(url); return safe ? <img key={i} src={safe} alt="Reader answer" loading="lazy" className="rounded-xl w-full object-cover"/> : null; })}</div> : <p className="text-sm leading-6 whitespace-pre-wrap break-words">{sanitizeUserText(answerText(value),1200)}</p>}</article>)}</div></div>)}</section>;

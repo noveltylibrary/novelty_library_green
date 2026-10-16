@@ -19,7 +19,7 @@ export type Route =
   | { name: 'admin-master-list' }
   | { name: 'admin-posters' }
   | { name: 'admin-book-reviews'; tab: 'submitted' | 'accepted' | 'published' | 'reserved' | 'posters' | 'community' }
-  | { name: 'admin-admins' }
+  | { name: 'admin-admins'; tab?: 'control' | 'notifications' | 'announcements' }
   | { name: 'admin-users' }
   | { name: 'admin-finances' }
   | { name: 'admin-pages' }
@@ -48,7 +48,9 @@ function parseHash(): Route {
     if (parts[1] === 'reviews') return { name: 'admin-reviews' };
     if (parts[1] === 'master-list') return { name: 'admin-master-list' };
     if (parts[1] === 'posters') return { name: 'admin-posters' };
-    if (parts[1] === 'admins' || parts[1] === 'notify') return { name: 'admin-admins' };
+    if (parts[1] === 'admins') return { name: 'admin-admins', tab: 'control' };
+    if (parts[1] === 'notify' || parts[1] === 'notifications') return { name: 'admin-admins', tab: 'notifications' };
+    if (parts[1] === 'announcements') return { name: 'admin-admins', tab: 'announcements' };
     if (parts[1] === 'users') return { name: 'admin-users' };
     if (parts[1] === 'finances') return { name: 'admin-finances' };
     if (parts[1] === 'pages') return { name: 'admin-pages' };
