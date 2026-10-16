@@ -22,4 +22,3 @@ This folder includes editable Markdown source documents and matching Microsoft W
 **Important:** The documentation describes the codebase and requirements captured in the existing source documents. Verify all deployment-critical details and checklist items against the exact release before production deployment.
 
 - `CHANGELOG_1_89.md`, `CHANGELOG_1_90.md`, `CHANGELOG_1_93.md` — later release notes (1.93: admin blacklist, notifications under Admins & Contacts).
-- `CHANGELOG_1_129.md` — 1.129: cinematic animated intro (image only, brand teal/cyan, particle layer). Builds on 1.127.

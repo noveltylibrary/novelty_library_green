@@ -855,7 +855,14 @@ html[data-nl-ads-restricted="true"] iframe[src*="googleadservices.com"] {
 .nl-book-loop .nl-book-ribbon { animation: nl-ribbon 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: top; }
 @keyframes nl-ribbon { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.08); } }
 
-/* Cinematic intro styles live in src/components/SplashIntro.css (v1.129). */
+/* Intro splash */
+.nl-splash {
+  position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  background: radial-gradient(ellipse 60% 50% at 50% 45%, rgba(92, 225, 230, 0.28), transparent 70%), var(--color-bg);
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+.nl-splash.is-leaving { opacity: 0; visibility: hidden; }
+.nl-splash-title { font-family: 'Fraunces', serif; font-size: 1.6rem; font-weight: 600; color: var(--color-text); letter-spacing: 0.01em; animation: fadeUp 0.7s ease 0.5s both; }
 @media (prefers-reduced-motion: reduce) {
   .nl-book-pop, .nl-book-loop .nl-book-flip, .nl-book-loop .nl-spark, .nl-book-loop .nl-book-glow, .nl-book-loop .nl-book-ribbon { animation: none; }
   .nl-book .nl-spark { opacity: 1; }

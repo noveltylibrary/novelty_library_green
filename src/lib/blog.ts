@@ -21,11 +21,68 @@ function endpoint(): string {
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/blog-posts`;
 }
 
+const STORE_KEY = 'nl_blog_archive_v1';
+const FRESH_MS = 10 * 60_000;
+let memory: { at: number; posts: BlogPost[] } | null = null;
+let inflight: Promise<BlogPost[]> | null = null;
+
+function readStore(): { at: number; posts: BlogPost[] } | null {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { at: number; posts: BlogPost[] };
+    return Array.isArray(parsed.posts) && parsed.posts.length ? parsed : null;
+  } catch { return null; }
+}
+
+function writeStore(entry: { at: number; posts: BlogPost[] }) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(entry)); }
+  catch {
+    // Quota: keep a slimmer copy (the matcher and links only need metadata).
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ at: entry.at, posts: entry.posts.map((p) => ({ ...p, content: '' })) })); } catch { /* ignore */ }
+  }
+}
+
+/** Instant, synchronous read of the archive from memory or the last visit (any age). Null if never loaded. */
+export function peekBlogPosts(): BlogPost[] | null {
+  if (!memory) memory = readStore();
+  return memory ? memory.posts : null;
+}
+
+function networkFetch(): Promise<BlogPost[]> {
+  if (inflight) return inflight; // one shared request, however many callers
+  inflight = (async () => {
+    const res = await fetch(endpoint());
+    if (!res.ok) throw new Error('Could not load the Novelty Library blog archive');
+    const data = (await res.json()) as BlogResponse;
+    const posts = data.posts || [];
+    if (posts.length) {
+      memory = { at: Date.now(), posts };
+      writeStore(memory);
+    }
+    return posts;
+  })().finally(() => { inflight = null; });
+  return inflight;
+}
+
+/**
+ * Stale-while-revalidate: a cached archive (even one from a previous visit) is returned at once and
+ * refreshed quietly in the background, so only the very first visit ever waits for Blogger to be crawled.
+ */
 export async function fetchBlogPosts(): Promise<BlogPost[]> {
-  const res = await fetch(endpoint());
-  if (!res.ok) throw new Error('Could not load the Novelty Library blog archive');
-  const data = (await res.json()) as BlogResponse;
-  return data.posts || [];
+  const cached = peekBlogPosts();
+  if (cached && memory) {
+    if (Date.now() - memory.at > FRESH_MS) void networkFetch().catch(() => undefined);
+    return cached;
+  }
+  return networkFetch();
+}
+
+/** Start loading the archive in the background (call once when the app opens). */
+export function warmBlogPosts(): void {
+  const run = () => { void fetchBlogPosts().catch(() => undefined); };
+  if ('requestIdleCallback' in window) (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(run);
+  else setTimeout(run, 1500);
 }
 
 export function upscaleBloggerImage(url: string): string {

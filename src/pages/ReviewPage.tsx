@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, ExternalLink, Instagram, Calendar, Globe, Tag, Star, Newspaper } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { loadReviewCached, peekReview, storeReviewInCache } from '@/lib/reviews';
-import { fetchBlogPosts, blogPostDate, htmlToText } from '@/lib/blog';
+import { fetchBlogPosts, peekBlogPosts, blogPostDate, htmlToText } from '@/lib/blog';
 import { findBlogMetadataFromPosts } from '@/lib/posterMatch';
 import { formatDate } from '@/lib/format';
 import { RatingBadge } from '@/components/RatingBadge';
@@ -102,38 +102,41 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
         // Fetch the Blogger archive once. Use the same Review No./title matcher
         // as Publishing Queue, so the public post can show its blog link even
         // when this deployment has no optional `blog_url` database column.
-        fetchBlogPosts().catch(() => [])
-          .then((posts) => {
-            if (!alive || !posts.length) return;
-            const metadata = findBlogMetadataFromPosts([data], posts);
-            const no = Number(data.review_number ?? data.master_review_no);
-            const matched = Number.isInteger(no) ? metadata[String(no)] : undefined;
-            const blogPost = (matched?.blogUrl && posts.find((post) => post.url === matched.blogUrl))
-              || posts.find((post) => post.title.trim().toLowerCase() === data.title.trim().toLowerCase());
-            if (!matched?.blogUrl && !blogPost) return;
+        const applyBlog = (posts: Awaited<ReturnType<typeof fetchBlogPosts>>) => {
+          if (!alive || !posts.length) return;
+          const metadata = findBlogMetadataFromPosts([data], posts);
+          const no = Number(data.review_number ?? data.master_review_no);
+          const matched = Number.isInteger(no) ? metadata[String(no)] : undefined;
+          const blogPost = (matched?.blogUrl && posts.find((post) => post.url === matched.blogUrl))
+            || posts.find((post) => post.title.trim().toLowerCase() === data.title.trim().toLowerCase());
+          if (!matched?.blogUrl && !blogPost) return;
 
-            const blogDate = blogPost ? blogPostDate(blogPost) : matched?.publishedOn;
-            const blogTime = blogDate ? new Date(blogDate).getTime() : Number.NaN;
-            const appTime = new Date(data.updated_at || data.published_at).getTime();
-            const blogIsNewer = Number.isFinite(blogTime) && Number.isFinite(appTime) && blogTime > appTime;
-            const merged: Review = {
-              ...data,
-              // A URL saved by an admin is authoritative; the Blogger crawl is only a fallback.
-              blog_url: data.blog_url || matched?.blogUrl || blogPost?.url || null,
-              // Recover missing affiliate links for older community rows without
-              // writing any additional fields/columns into Supabase.
-              poster_link: data.poster_link || matched?.posterLink || null,
-              ...(blogIsNewer && blogPost ? {
-                review_text: htmlToText(blogPost.content || blogPost.summary) || data.review_text,
-                cover_image_url: data.cover_image_url || blogPost.thumbnail,
-                published_at: blogDate || data.published_at,
-              } : {}),
-            };
-            if (merged.blog_url !== data.blog_url || merged.poster_link !== data.poster_link || blogIsNewer) {
-              storeReviewInCache(slug, merged);
-              setReview(merged);
-            }
-          });
+          const blogDate = blogPost ? blogPostDate(blogPost) : matched?.publishedOn;
+          const blogTime = blogDate ? new Date(blogDate).getTime() : Number.NaN;
+          const appTime = new Date(data.updated_at || data.published_at).getTime();
+          const blogIsNewer = Number.isFinite(blogTime) && Number.isFinite(appTime) && blogTime > appTime;
+          const merged: Review = {
+            ...data,
+            // A URL saved by an admin is authoritative; the Blogger crawl is only a fallback.
+            blog_url: data.blog_url || matched?.blogUrl || blogPost?.url || null,
+            // Recover missing affiliate links for older community rows without
+            // writing any additional fields/columns into Supabase.
+            poster_link: data.poster_link || matched?.posterLink || null,
+            ...(blogIsNewer && blogPost ? {
+              review_text: htmlToText(blogPost.content || blogPost.summary) || data.review_text,
+              cover_image_url: data.cover_image_url || blogPost.thumbnail,
+              published_at: blogDate || data.published_at,
+            } : {}),
+          };
+          if (merged.blog_url !== data.blog_url || merged.poster_link !== data.poster_link || blogIsNewer) {
+            storeReviewInCache(slug, merged);
+            setReview(merged);
+          }
+        };
+        // Cached archive (memory or last visit) applies instantly; the network refresh follows quietly.
+        const cachedPosts = peekBlogPosts();
+        if (cachedPosts) applyBlog(cachedPosts);
+        fetchBlogPosts().catch(() => []).then((posts) => { if (posts !== cachedPosts) applyBlog(posts); });
       })
       .catch((err) => { if (!alive) return; setError(err.message); setLoading(false); });
     return () => { alive = false; };

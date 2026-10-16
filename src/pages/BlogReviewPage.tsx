@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Calendar, ExternalLink, Globe, Tag, Sparkles } from 'lucide-react';
-import { fetchBlogPosts, blogPostDate, reviewParagraphs, upscaleBloggerImage, type BlogPost } from '@/lib/blog';
+import { fetchBlogPosts, peekBlogPosts, blogPostDate, reviewParagraphs, upscaleBloggerImage, type BlogPost } from '@/lib/blog';
 
 interface BlogReviewPageProps {
   id: string;
@@ -8,11 +8,13 @@ interface BlogReviewPageProps {
 }
 
 export function BlogReviewPage({ id, navigate }: BlogReviewPageProps) {
-  const [post, setPost] = useState<BlogPost | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initial = peekBlogPosts()?.find((item) => item.id === id) || null;
+  const [post, setPost] = useState<BlogPost | null>(initial);
+  const [loading, setLoading] = useState(!initial);
 
   useEffect(() => {
-    setLoading(true);
+    const hit = peekBlogPosts()?.find((item) => item.id === id) || null;
+    if (hit) { setPost(hit); setLoading(false); } else { setLoading(true); }
     fetchBlogPosts()
       .then((posts) => setPost(posts.find((item) => item.id === id) || null))
       .catch(() => setPost(null))

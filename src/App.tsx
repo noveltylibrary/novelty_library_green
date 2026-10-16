@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useState, Component, type ReactNode } from 'react';
 import { useRouter } from '@/lib/router';
+import { warmBlogPosts } from '@/lib/blog';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { ThemeProvider } from '@/lib/theme';
 import { Header } from '@/components/Header';
@@ -51,6 +52,9 @@ function AppContent() {
   const { route, navigate } = useRouter();
   const { user, isAdmin } = useAuth();
   const [splashComplete, setSplashComplete] = useState(false);
+
+  // Load the Blogger archive in the background so "View in Blog" is ready before a review is opened.
+  useEffect(() => { warmBlogPosts(); }, []);
 
   const currentRouteName = route.name;
   const adsRestrictedRoute =
