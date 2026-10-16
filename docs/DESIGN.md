@@ -303,3 +303,21 @@ Ads must not:
 - Pretend to be editorial content.
 - Shift core content unpredictably.
 - Break mobile layouts.
+
+## 22. Cinematic intro (v1.127)
+
+The session-scoped intro (`src/components/SplashIntro.tsx` + `SplashIntro.css` + `src/lib/splashParticles.ts`) plays once per browser session over a living version of the library picture (`public/novelty-library-intro-library.webp`).
+
+Behaviour:
+- ~9.3 s film that starts only once the picture has loaded (1.8 s fallback). Skip button and Escape always work; exit is a fly-through fade.
+- Camera pulls back from the glowing book into the hall, with a slight handheld sway, desktop pointer parallax and (desktop) a rack-focus at the start.
+- The colour theme moves from a cold teal "sleeping" library to warm golden light; a band of warm light sweeps across the room.
+- Window light shafts, chandelier/lantern/candle flicker, tea steam, film grain, vignette and letterbox bars (credits sit in the lower bar).
+- The two magic swirls (`novelty-library-intro-swirl-l/r.webp`) are cut from the picture itself, so they stay aligned; a bright wave flows along them. A canvas layer adds dust motes in the light and golden sparks that ride the swirls.
+- Title sequence: "Every book opens a world." (word by word) → the book ignites → logo, halo, "NOVELTY LIBRARY" letter cascade with a travelling glint, ornament, "Discover your next chapter.".
+
+Rules:
+- Everything inside the stage is positioned in percentages of the picture (1600 x 748) and the stage always covers the screen, so lights stay on their lamps at any size.
+- `prefers-reduced-motion` shows a calm still frame (no particles, no animation) and exits after about 1.4 s.
+- Only transform/opacity are animated on large layers; blur-based effects are desktop-only.
+

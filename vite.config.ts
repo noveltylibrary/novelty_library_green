@@ -50,7 +50,7 @@ return {
         ],
       },
       workbox: {
-        // Allow the cinematic library scene image (2.21 MB) to be precached.
+        // Headroom for larger static assets (the intro picture is now only ~175 KB).
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // Pre-cache the app shell: HTML, CSS, JS, logos/icons and any bundled fonts.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
