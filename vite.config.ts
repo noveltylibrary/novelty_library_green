@@ -50,8 +50,6 @@ return {
         ],
       },
       workbox: {
-        // Headroom for larger static assets (the intro picture is now only ~175 KB).
-        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // Pre-cache the app shell: HTML, CSS, JS, logos/icons and any bundled fonts.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
         navigateFallback: `${base}index.html`,

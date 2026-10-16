@@ -25,8 +25,10 @@ export async function fetchReviews(): Promise<Review[]> {
   // Public Community Reviews are a separate publication store. master_list is
   // only the Accepted Reviews source of truth and is never used as the public
   // publication table.
+  // Reads the privacy-safe view (no email / contact / suggestions; Instagram only when the
+  // reviewer allows it). Never read the community_reviews table directly from public pages.
   const { data, error } = await supabase
-    .from('community_reviews')
+    .from('public_community_reviews')
     .select('*')
     .eq('is_published', true)
     .order('published_on', { ascending: false, nullsFirst: false })
@@ -90,7 +92,7 @@ function mapMasterListToReview(row: MasterListRow & { id: string; published?: bo
 export async function fetchReviewBySlug(slug: string): Promise<Review | null> {
   const reviewNo = decodeURIComponent(slug).split('-').pop() || '';
   const { data, error } = await supabase
-    .from('community_reviews')
+    .from('public_community_reviews')
     .select('*')
     .eq('is_published', true)
     .eq('review_no', reviewNo)

@@ -3,12 +3,12 @@ import { startSplashParticles, type SplashFx } from '@/lib/splashParticles';
 import './SplashIntro.css';
 
 const KEY = 'nl-splash-seen';
-/** Whole film, ms from the moment the picture is ready. */
-const INTRO_DURATION = 9300;
+/** Whole film, ms from the moment the picture is ready. Keep in sync with the --t-* values in SplashIntro.css. */
+const INTRO_DURATION = 8800;
 /** When the fly-through exit starts. */
-const EXIT_AT = 8550;
-/** The book "ignites" (flash + spark burst + logo) at this moment. */
-const IGNITE_AT = 3900;
+const EXIT_AT = 8050;
+/** The book "ignites" (flash + ring + spark burst + logo) at this moment. */
+const IGNITE_AT = 3500;
 /** Never wait longer than this for the picture before starting anyway. */
 const READY_FALLBACK = 1800;
 const SKIP_FADE = 380;
@@ -21,22 +21,22 @@ const css = (vars: Record<string, string | number>) => vars as unknown as CSSPro
 
 /** Light shafts from the window: left / width as % of the plate, rotation, strength, delay. */
 const RAYS = [
-  { l: '80%', w: '3.4%', r: '21deg', o: 0.5, d: '1.2s' },
-  { l: '85%', w: '2.4%', r: '23deg', o: 0.42, d: '1.55s' },
-  { l: '89%', w: '6%', r: '25deg', o: 0.5, d: '1.35s' },
-  { l: '93%', w: '3.2%', r: '27deg', o: 0.38, d: '1.75s' },
-  { l: '97%', w: '7%', r: '29deg', o: 0.44, d: '1.45s' },
+  { l: '80%', w: '3.4%', r: '21deg', o: 0.5, d: '.3s' },
+  { l: '85%', w: '2.4%', r: '23deg', o: 0.42, d: '.55s' },
+  { l: '89%', w: '6%', r: '25deg', o: 0.5, d: '.4s' },
+  { l: '93%', w: '3.2%', r: '27deg', o: 0.38, d: '.7s' },
+  { l: '97%', w: '7%', r: '29deg', o: 0.44, d: '.5s' },
 ];
 
 /** Word-by-word reveal. */
-function Words({ text, start, step, goldFrom }: { text: string; start: number; step: number; goldFrom?: number }) {
+function Words({ text, start, step, accentFrom }: { text: string; start: number; step: number; accentFrom?: number }) {
   const words = text.split(' ');
   return (
     <>
       {words.map((w, i) => (
         <span
           key={`${w}-${i}`}
-          className={`nl-sx-w${goldFrom !== undefined && i >= goldFrom ? ' is-gold' : ''}`}
+          className={`nl-sx-w${accentFrom !== undefined && i >= accentFrom ? ' is-accent' : ''}`}
           style={css({ '--d': `${(start + i * step).toFixed(2)}s` })}
         >
           {w}
@@ -68,6 +68,7 @@ function Chars({ text }: { text: string }) {
 export function SplashIntro({ onComplete }: { onComplete?: () => void }) {
   const [visible, setVisible] = useState(() => !alreadySeen());
   const [ready, setReady] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [skipping, setSkipping] = useState(false);
   const completeRef = useRef(onComplete);
@@ -93,7 +94,7 @@ export function SplashIntro({ onComplete }: { onComplete?: () => void }) {
   useEffect(() => {
     if (!visible || ready) return;
     try { sessionStorage.setItem(KEY, '1'); } catch { /* storage can be unavailable */ }
-    if (plateRef.current?.complete) setReady(true);
+    if (plateRef.current?.complete && plateRef.current.naturalWidth > 0) { setLoaded(true); setReady(true); }
     const t = window.setTimeout(() => setReady(true), READY_FALLBACK);
     return () => window.clearTimeout(t);
   }, [visible, ready]);
@@ -181,21 +182,25 @@ export function SplashIntro({ onComplete }: { onComplete?: () => void }) {
               <div className="nl-sx-stage">
                 <img
                   ref={plateRef}
-                  className="nl-sx-plate"
+                  className={`nl-sx-plate${loaded ? ' is-in' : ''}`}
                   src="/novelty-library-intro-library.webp"
                   alt=""
                   width={1600}
                   height={748}
                   decoding="async"
                   draggable={false}
-                  onLoad={() => setReady(true)}
+                  onLoad={() => { setLoaded(true); setReady(true); }}
                   onError={() => setReady(true)}
                 />
 
-                {/* colour theme: cold, sleeping library → warm, awakened library */}
-                <div className="nl-sx-grade nl-sx-grade-cool" />
-                <div className="nl-sx-grade nl-sx-grade-warm" />
+                {/* moving colour theme: deep teal → bright cyan, drifting between the two */}
+                <div className="nl-sx-grade nl-sx-grade-deep" />
+                <div className="nl-sx-grade nl-sx-grade-cyan" />
                 <div className="nl-sx-sun" />
+
+                {/* drifting mist at two depths */}
+                <div className="nl-sx-fog nl-sx-fog-1" />
+                <div className="nl-sx-fog nl-sx-fog-2" />
 
                 {/* practical lights */}
                 <div className="nl-sx-glow nl-sx-glow-window" />
@@ -225,6 +230,7 @@ export function SplashIntro({ onComplete }: { onComplete?: () => void }) {
 
                 {/* the book wakes up */}
                 <div className="nl-sx-glow nl-sx-glow-book" />
+                <div className="nl-sx-ring" />
                 <div className="nl-sx-ignite" />
                 <span className="nl-sx-streak nl-sx-streak-chandelier" />
                 <span className="nl-sx-streak nl-sx-streak-book" />
@@ -244,13 +250,13 @@ export function SplashIntro({ onComplete }: { onComplete?: () => void }) {
       {/* ───────── Film finish ───────── */}
       <div className="nl-sx-vignette" aria-hidden="true" />
       <div className="nl-sx-grain" aria-hidden="true" />
-      <div className="nl-sx-dark" aria-hidden="true" />
+      <div className="nl-sx-foot" aria-hidden="true" />
       <div className="nl-sx-flash" aria-hidden="true" />
 
       {/* ───────── Title sequence ───────── */}
       <div className="nl-sx-content" aria-hidden="true">
         <div className="nl-sx-beat nl-sx-beat-a">
-          <h2 className="nl-sx-title"><Words text="Every book opens a world." start={1.05} step={0.24} goldFrom={4} /></h2>
+          <h2 className="nl-sx-title"><Words text="Every book opens a world." start={0.7} step={0.22} accentFrom={4} /></h2>
           <span className="nl-sx-rule" />
         </div>
 
@@ -261,17 +267,14 @@ export function SplashIntro({ onComplete }: { onComplete?: () => void }) {
           </div>
           <div className="nl-sx-brand"><Chars text="NOVELTY LIBRARY" /></div>
           <div className="nl-sx-ornament"><span /><i>✦</i><span /></div>
-          <p className="nl-sx-sub"><Words text="Discover your next chapter." start={5.75} step={0.17} /></p>
+          <p className="nl-sx-sub"><Words text="Discover your next chapter." start={5.1} step={0.17} /></p>
         </div>
       </div>
 
-      {/* ───────── Letterbox (with credits in the lower bar) ───────── */}
-      <div className="nl-sx-bar nl-sx-bar-top" aria-hidden="true" />
-      <div className="nl-sx-bar nl-sx-bar-bottom" aria-hidden="true">
-        <div className="nl-sx-credits">
-          <span className="nl-sx-credit nl-sx-credit-l">Stories change everything.</span>
-          <span className="nl-sx-credit nl-sx-credit-r">Read · Explore · Belong</span>
-        </div>
+      {/* ───────── Credits (no bars: they sit directly on the picture) ───────── */}
+      <div className="nl-sx-credits" aria-hidden="true">
+        <span className="nl-sx-credit nl-sx-credit-l">Stories change everything.</span>
+        <span className="nl-sx-credit nl-sx-credit-r">Read · Explore · Belong</span>
       </div>
 
       <button className="nl-sx-skip" type="button" onClick={skip} aria-label="Skip introduction">

@@ -855,10 +855,11 @@ html[data-nl-ads-restricted="true"] iframe[src*="googleadservices.com"] {
 .nl-book-loop .nl-book-ribbon { animation: nl-ribbon 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: top; }
 @keyframes nl-ribbon { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.08); } }
 
-/* Cinematic intro styles live in src/components/SplashIntro.css (v1.127). */
+/* Cinematic intro styles live in src/components/SplashIntro.css (v1.129). */
 @media (prefers-reduced-motion: reduce) {
-  .nl-book-pop, .nl-book-loop .nl-book-flip, .nl-book-loop .nl-spark, .nl-book-loop .nl-book-glow, .nl-book-loop .nl-book-ribbon { animation: none !important; }
-  .nl-book .nl-spark { opacity: 1; } .nl-book .nl-book-flip { opacity: 0; }
+  .nl-book-pop, .nl-book-loop .nl-book-flip, .nl-book-loop .nl-spark, .nl-book-loop .nl-book-glow, .nl-book-loop .nl-book-ribbon { animation: none; }
+  .nl-book .nl-spark { opacity: 1; }
+  .nl-book .nl-book-flip { opacity: 0; }
 }
 
 /* ---------- Like button: Instagram red + pop/burst animation ---------- */
