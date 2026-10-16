@@ -2049,11 +2049,7 @@ header.fixed { max-width: 100vw; z-index: 60; }
   .novelty-guide-toolbar { display: flex; flex-direction: column; align-items: stretch; gap: 10px; min-width: 0; max-width: 100%; overflow: hidden; box-sizing: border-box; }
   .novelty-guide-toolbar .guide-kicker { min-width: 0; max-width: 100%; flex-wrap: wrap; line-height: 1.35; overflow-wrap: anywhere; }
   .novelty-guide-toolbar select, .novelty-guide-toolbar select[aria-label] { display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; white-space: normal; text-overflow: ellipsis; }
-  .home-primary-actions { width: 100%; gap: 8px !important; }
-  .home-primary-actions > button { flex: 1 1 0; min-width: 0; white-space: nowrap; padding-left: clamp(7px, 2.2vw, 12px) !important; padding-right: clamp(7px, 2.2vw, 12px) !important; font-size: clamp(10px, 2.8vw, 12px) !important; gap: 5px !important; }
-  .home-primary-actions > button svg { flex: 0 0 auto; width: 14px; height: 14px; }
 }
-@media (max-width: 360px) { .home-primary-actions { gap: 5px !important; } .home-primary-actions > button { font-size: 9.5px !important; padding-left: 6px !important; padding-right: 6px !important; } .home-primary-actions > button svg { width: 12px; height: 12px; } }
 
 /* About page: Review Guide shortcut matches the existing animated action buttons. */
 .nl-about-guide-btn {
@@ -2310,4 +2306,87 @@ header.fixed { max-width: 100vw; z-index: 60; }
   .nl-live-page-button { min-height: 38px; padding: .5rem .58rem; font-size: .7rem; }
   .nl-live-page-count { font-size: .67rem; }
   .nl-live-ad-rail { display: none !important; }
+}
+
+/* ---------- Home hero CTAs (v1.129): pill + circular dot ---------- */
+.nl-cta {
+  --mx: 50%; --my: 50%;
+  box-sizing: border-box; border: 0; position: relative; isolation: isolate; overflow: hidden; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: space-between; gap: .85rem;
+  height: 3.4rem; padding: .35rem .35rem .35rem 1.6rem; border-radius: 9999px;
+  font-weight: 700; font-size: .95rem; letter-spacing: .01em; white-space: nowrap;
+  transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease, border-color .3s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.nl-cta:hover { transform: scale(1.06); z-index: 2; }
+.nl-cta:active { transform: scale(.98); }
+.nl-cta:focus-visible { outline: 3px solid var(--color-cyan); outline-offset: 4px; }
+.nl-cta__label { position: relative; z-index: 1; }
+
+/* White flash that follows the cursor */
+.nl-cta__flash {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity .3s ease;
+  background: radial-gradient(150px circle at var(--mx) var(--my), rgba(255,255,255,.75), rgba(255,255,255,0) 65%);
+}
+.nl-cta:hover .nl-cta__flash { opacity: 1; }
+
+/* The dot */
+.nl-cta__dot {
+  position: relative; z-index: 1; flex: 0 0 auto; display: grid; place-items: center;
+  width: 2.6rem; height: 2.6rem; border-radius: 9999px;
+  transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .3s ease;
+}
+.nl-cta:hover .nl-cta__dot { transform: scale(1.08); }
+.nl-cta__icon { display: grid; place-items: center; transition: transform .55s cubic-bezier(.22,1,.36,1); animation: nl-cta-drift 4.5s ease-in-out infinite; }
+.nl-cta__icon svg { width: 1.2rem; height: 1.2rem; }
+.nl-cta:hover .nl-cta__icon { transform: rotate(45deg); }
+
+/* Slow idle motion: arrow drifts north-east and back; the pen sways like it is about to write */
+@keyframes nl-cta-drift { 0%,100% { translate: 0 0; } 50% { translate: 2px -2px; } }
+@keyframes nl-cta-write { 0%,100% { rotate: 0deg; translate: 0 0; } 35% { rotate: -8deg; translate: -1px 1px; } 70% { rotate: 6deg; translate: 1px 0; } }
+.nl-cta--primary .nl-cta__icon { animation: nl-cta-write 5s ease-in-out infinite; }
+.nl-cta--primary:hover .nl-cta__icon, .nl-cta--secondary:hover .nl-cta__icon { animation-play-state: paused; }
+
+/* Primary — teal → cyan, cyan dot */
+.nl-cta--primary {
+  color: #032a31;
+  background: linear-gradient(120deg, #1ab0bd 0%, #35d3d9 55%, #5ce1e6 100%);
+  box-shadow: 0 10px 26px rgba(0,151,178,.32), inset 0 0 0 1px rgba(255,255,255,.35);
+}
+.nl-cta--primary:hover { box-shadow: 0 16px 38px rgba(0,151,178,.45), inset 0 0 0 1px rgba(255,255,255,.5); }
+.nl-cta--primary .nl-cta__dot { background: #5ce1e6; color: #013a46; box-shadow: 0 0 0 3px rgba(255,255,255,.9), 0 4px 10px rgba(1,58,70,.25); }
+
+/* Secondary — white pill, teal dot */
+.nl-cta--secondary {
+  color: #04333d; background: #ffffff;
+  box-shadow: 0 6px 20px rgba(4,51,61,.10), inset 0 0 0 1.5px rgba(0,151,178,.35);
+}
+.nl-cta--secondary:hover { box-shadow: 0 14px 32px rgba(0,151,178,.28), inset 0 0 0 1.5px #0097b2; }
+.nl-cta--secondary .nl-cta__flash { background: radial-gradient(150px circle at var(--mx) var(--my), rgba(92,225,230,.38), rgba(255,255,255,0) 65%); }
+.nl-cta--secondary .nl-cta__dot { background: linear-gradient(135deg, #0097b2, #35d3d9); color: #ffffff; box-shadow: 0 4px 10px rgba(0,151,178,.35); }
+
+/* Dark mode */
+.dark .nl-cta--primary { color: #031c22; background: linear-gradient(120deg, #2da99a 0%, #4fd0c4 55%, #7be8e0 100%); box-shadow: 0 10px 28px rgba(53,194,178,.28), inset 0 0 0 1px rgba(255,255,255,.2); }
+.dark .nl-cta--primary .nl-cta__dot { background: #bff6fa; color: #013a46; box-shadow: 0 0 0 3px rgba(5,11,24,.55), 0 4px 10px rgba(0,0,0,.35); }
+.dark .nl-cta--secondary { color: #e7fbf7; background: #0e1b2e; box-shadow: 0 6px 20px rgba(0,0,0,.4), inset 0 0 0 1.5px rgba(99,218,204,.45); }
+.dark .nl-cta--secondary:hover { box-shadow: 0 14px 32px rgba(53,194,178,.25), inset 0 0 0 1.5px #63dacc; }
+.dark .nl-cta--secondary .nl-cta__flash { background: radial-gradient(150px circle at var(--mx) var(--my), rgba(99,218,204,.28), rgba(255,255,255,0) 65%); }
+.dark .nl-cta--secondary .nl-cta__dot { background: #63dacc; color: #04201f; box-shadow: 0 4px 10px rgba(0,0,0,.4); }
+
+/* Layout: never overlap — wrap to two full-width rows on narrow phones */
+.home-primary-actions { width: 100%; }
+@media (max-width: 480px) {
+  .nl-cta { height: 3.1rem; padding-left: 1.25rem; font-size: .9rem; }
+  .nl-cta__dot { width: 2.35rem; height: 2.35rem; }
+}
+@media (max-width: 400px) {
+  .home-primary-actions { flex-direction: column; }
+  .home-primary-actions .nl-cta { width: 100%; max-width: 320px; }
+}
+
+/* Touch devices have no hover: keep the press feedback only */
+@media (hover: none) { .nl-cta:hover { transform: none; } .nl-cta:active { transform: scale(.97); } }
+@media (prefers-reduced-motion: reduce) {
+  .nl-cta, .nl-cta__dot, .nl-cta__icon { transition: none; animation: none !important; }
+  .nl-cta:hover { transform: none; }
 }
