@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
-import { fetchAnnouncements, peekAnnouncements, type AnnouncementsConfig, type Poster } from '@/lib/announcements';
+import { fetchAnnouncements, isRankingsPosterActive, peekAnnouncements, type AnnouncementsConfig, type Poster } from '@/lib/announcements';
+
+const RANKINGS_POSTER_ID = 'builtin-live-rankings';
+const RANKINGS_POSTER: Poster = { id: RANKINGS_POSTER_ID, image: '', title: 'Live Rankings', caption: 'Search every review by genre, language, traits or author.', link: '/live-rankings', badge: 'LIVE' };
 
 interface FeaturedPostersProps {
   navigate?: (path: string) => void;
@@ -19,7 +22,8 @@ export function FeaturedPosters({ navigate, config }: FeaturedPostersProps) {
   }, [config]);
 
   const cfg = config ?? live;
-  const posters = cfg?.posters ?? [];
+  const showRankings = !!cfg && isRankingsPosterActive(cfg.rankingsPoster);
+  const posters: Poster[] = showRankings ? [RANKINGS_POSTER, ...(cfg?.posters ?? [])] : (cfg?.posters ?? []);
   const trackRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -80,9 +84,12 @@ export function FeaturedPosters({ navigate, config }: FeaturedPostersProps) {
         {posters.length > 1 && <button type="button" className="nl-feat-arrow nl-feat-arrow--prev" onClick={() => goTo((active - 1 + posters.length) % posters.length)} aria-label="Previous poster"><ChevronLeft className="w-5 h-5" /></button>}
         <div ref={trackRef} className="nl-feat-track" onScroll={onScroll} tabIndex={0}>
           {posters.map((p, i) => {
+            const builtin = p.id === RANKINGS_POSTER_ID;
             const body = (
               <>
-                <img src={p.image} alt={p.title || 'Featured poster'} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" draggable={false} />
+                {builtin
+                  ? <span className="nl-feat-art" aria-hidden="true"><i /><i /><i /></span>
+                  : <img src={p.image} alt={p.title || 'Featured poster'} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" draggable={false} />}
                 <span className="nl-feat-shine" aria-hidden="true" />
                 {(p.title || p.caption) && (
                   <span className="nl-feat-copy">
@@ -90,6 +97,7 @@ export function FeaturedPosters({ navigate, config }: FeaturedPostersProps) {
                     {p.caption && <small>{p.caption}</small>}
                   </span>
                 )}
+                {p.badge && <span className={`nl-feat-badge is-${p.badge.toLowerCase()}`}>{p.badge}</span>}
                 <span className="nl-feat-tag" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
               </>
             );

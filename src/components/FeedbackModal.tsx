@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Loader2, Star, X } from 'lucide-react';
 import type { FeedbackEntry, FeedbackInput } from '@/lib/engagement';
 
@@ -41,6 +42,14 @@ export function FeedbackModal({ open, reviewTitle, existing, onClose, onSubmit }
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  // Lock the page behind the sheet while it is open.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
   if (!open) return null;
 
   const addTag = (raw: string) => {
@@ -64,7 +73,8 @@ export function FeedbackModal({ open, reviewTitle, existing, onClose, onSubmit }
 
   const shown = hover ?? rating ?? 0;
 
-  return (
+  // Rendered on <body>: inside the page wrapper its stacking context sat under the footer, which drew over the sheet.
+  return createPortal(
     <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true" aria-label="Rate and review" onClick={onClose}>
       <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" />
       <div className="relative w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto animate-fade-up" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }} onClick={(e) => e.stopPropagation()}>
@@ -118,6 +128,7 @@ export function FeedbackModal({ open, reviewTitle, existing, onClose, onSubmit }
           <button type="button" onClick={() => void submit()} disabled={busy} className="btn-primary text-sm">{busy && <Loader2 className="w-4 h-4 animate-spin" />}{existing ? 'Update' : 'Post'}</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

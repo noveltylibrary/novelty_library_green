@@ -123,10 +123,10 @@ export function HeroSection({ navigate, live }: HeroSectionProps) {
           </motion.div>
         </motion.div>
 
-        {/* Middle section: admin-managed featured posters (renders nothing until posters are published) */}
-        <div className="mt-10"><FeaturedPosters navigate={navigate} /></div>
-
         <div className="mt-10 text-left"><StoriesRail navigate={navigate} /></div>
+
+        {/* Announcements sit below the stories bar (renders nothing when no poster is active) */}
+        <div className="mt-8"><FeaturedPosters navigate={navigate} /></div>
 
         <div className="mt-6 text-left"><HomeActionGrid navigate={navigate} /></div>
 

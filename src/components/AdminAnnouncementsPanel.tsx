@@ -3,7 +3,7 @@ import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, FileText, ImagePlus, Lin
 import { FeaturedPosters } from '@/components/FeaturedPosters';
 import {
   DEFAULT_ANNOUNCEMENTS, MAX_POSTERS, RECOMMENDED_POSTERS, POSTER_WIDTH, POSTER_HEIGHT, POSTER_HTML_EXAMPLE,
-  blankPoster, cleanPosterLink, fetchAnnouncements, parsePosterHtml, saveAnnouncements, uploadPosterImage,
+  blankPoster, cleanBadge, cleanPosterLink, POSTER_BADGES, fetchAnnouncements, parsePosterHtml, saveAnnouncements, uploadPosterImage,
   type AnnouncementsConfig, type Poster,
 } from '@/lib/announcements';
 import { getErrorMessage } from '@/lib/format';
@@ -112,6 +112,13 @@ export function AdminAnnouncementsPanel() {
             </select></div>
           <div><label className="label">Section heading</label><input className="input-field" maxLength={60} value={cfg.heading} onChange={(e) => edit({ ...cfg, heading: e.target.value })} /></div>
         </div>
+
+        <div className="mt-5 rounded-xl p-4 grid gap-3 sm:grid-cols-[auto_1fr] items-end" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
+          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={cfg.rankingsPoster.enabled} onChange={(e) => edit({ ...cfg, rankingsPoster: { ...cfg.rankingsPoster, enabled: e.target.checked } })} /> Show the built-in <strong>Live Rankings</strong> poster first</label>
+          <div className="max-w-xs"><label className="label">Keep it until (inclusive)</label>
+            <input type="date" className="input-field" value={cfg.rankingsPoster.until} onChange={(e) => edit({ ...cfg, rankingsPoster: { ...cfg.rankingsPoster, until: e.target.value } })} disabled={!cfg.rankingsPoster.enabled} /></div>
+          <p className="text-xs sm:col-span-2" style={{ color: 'var(--color-text-muted)' }}>This poster opens the Live Rankings page. It does not count toward the {MAX_POSTERS} posters and disappears by itself after the date.</p>
+        </div>
       </section>
 
       <section className="surface-card p-5 sm:p-6">
@@ -135,6 +142,9 @@ export function AdminAnnouncementsPanel() {
                 <input className="input-field" maxLength={90} value={p.title} onChange={(e) => setPoster(p.id, { title: e.target.value })} placeholder="Title — e.g. Reader of the Month" aria-label="Poster title" />
                 <input className="input-field" maxLength={160} value={p.caption} onChange={(e) => setPoster(p.id, { caption: e.target.value })} placeholder="Short caption (optional)" aria-label="Poster caption" />
                 <div className="relative"><Link2 className="field-icon" /><input className="input-field pl-10" value={p.link} onChange={(e) => setPoster(p.id, { link: e.target.value })} placeholder="Link — https://… or /reviews (optional)" aria-label="Poster link" /></div>
+                <select className="input-field" value={p.badge} onChange={(e) => setPoster(p.id, { badge: cleanBadge(e.target.value) })} aria-label="Poster badge">
+                  {POSTER_BADGES.map((b) => <option key={b || 'none'} value={b}>{b ? `Badge: ${b}` : 'No badge'}</option>)}
+                </select>
                 {p.link && !cleanPosterLink(p.link) && <p className="text-xs" style={{ color: '#b91c1c' }}>Link must start with https:// or be an in-app path.</p>}
               </div>
               <div className="flex sm:flex-col items-center gap-1.5">

@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react';
-import { BookOpen, Users, Heart, Sparkles, PenTool, ArrowRight, ChevronDown, Globe2, ShieldCheck, Languages, Sparkle, Library, Compass, Wand2, BarChart3, FileText, Newspaper, Instagram } from 'lucide-react';
+import { BookOpen, Users, Heart, Sparkles, PenTool, ArrowRight, ChevronDown, Globe2, ShieldCheck, Languages, Sparkle, Library, Compass, Wand2, BarChart3, ListChecks, FileText, Newspaper, Instagram } from 'lucide-react';
 import type { AboutSection } from '@/lib/aboutSections';
 import { BLOG_URL, INSTAGRAM_URL } from '@/lib/links';
 
@@ -53,6 +53,7 @@ export function AboutSectionBlock({ section, email, navigate }: { section: About
         <div className="nl-about-actions" role="group" aria-label="Quick links">
           <button type="button" className="nl-action-btn" onClick={() => navigate('/reviews')}><BookOpen aria-hidden="true" /><span>Reviews</span></button>
           <button type="button" className="nl-action-btn" onClick={() => navigate('/analytics')}><BarChart3 aria-hidden="true" /><span>Analytics</span></button>
+          <button type="button" className="nl-action-btn" onClick={() => navigate('/live-rankings')}><ListChecks aria-hidden="true" /><span>Live Rankings</span></button>
         </div>
       </div>;
 
@@ -70,17 +71,17 @@ export function AboutSectionBlock({ section, email, navigate }: { section: About
     case 'grid':
       return <div className="mb-16">
         <Heading title={section.title} subtitle={section.subtitle} />
-        {section.title.toLowerCase().includes('why share your review') && <div className="flex justify-center mb-7 px-2">
-          <button type="button" className="nl-action-btn nl-about-guide-btn" onClick={() => navigate('/review-guidelines')}>
-            <FileText aria-hidden="true" /><span>Read the Review Guide</span><ArrowRight aria-hidden="true" />
-          </button>
-        </div>}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {section.items.map((it, i) => { const Icon = ICONS[it.icon || 'sparkles'] || Sparkles; return <div key={`${it.title}-${i}`} className="surface-card p-5 flex gap-3 nl-about-card">
             <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-teal-dark)' }} />
             <div className="min-w-0"><h4 className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text)' }}>{it.title}</h4><p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{it.desc}</p></div>
           </div>; })}
         </div>
+        {section.title.toLowerCase().includes('why share your review') && <div className="flex justify-center mt-8 px-2">
+          <button type="button" className="nl-action-btn nl-about-guide-btn" onClick={() => navigate('/review-guidelines')}>
+            <FileText aria-hidden="true" /><span>Read the Review Guide</span><ArrowRight aria-hidden="true" />
+          </button>
+        </div>}
       </div>;
 
     case 'steps':
@@ -104,7 +105,7 @@ export function AboutSectionBlock({ section, email, navigate }: { section: About
         <a href={BLOG_URL} target="_blank" rel="noopener noreferrer" className="nl-about-social-btn is-blog"><Newspaper aria-hidden="true" /><span>Blog</span><ArrowRight className="nl-about-social-arrow" aria-hidden="true" /></a>
         <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="nl-about-social-btn is-ig"><Instagram aria-hidden="true" /><span>Follow on Instagram</span><ArrowRight className="nl-about-social-arrow" aria-hidden="true" /></a>
       </div>
-      <div className="text-center p-8 sm:p-10 rounded-3xl gradient-teal text-white mb-8">
+      <div className="text-center p-8 sm:p-10 rounded-3xl nl-about-cta text-white mb-8">
         <PenTool className="w-8 h-8 text-white/70 mx-auto mb-4" />
         <h2 className="font-serif text-3xl font-semibold mb-3">{section.title}</h2>
         {section.body && <p className="text-white/70 leading-relaxed mb-6 max-w-md mx-auto">{section.body}</p>}

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { Download, Instagram, Linkedin, Link2, BookOpen, RotateCcw, ChevronDown, Camera, ImagePlus, ExternalLink } from 'lucide-react';
-import { toPng } from 'html-to-image';
+import { toCanvas, toPng } from 'html-to-image';
 import type { ProfileQuestion } from '@/lib/profileQuestions';
 import { NlLogo } from '@/components/NlLogo';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
@@ -138,6 +138,8 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
   const [boxWidth, setBoxWidth] = useState(0);
   const [inView, setInView] = useState(false);
   const [replay, setReplay] = useState(0);
+  const [videoMode, setVideoMode] = useState(false);
+  const [videoGo, setVideoGo] = useState(false);
   const selected = FORMATS.find((f) => f.key === format) || FORMATS[3];
   const scale = boxWidth > 0 ? Math.min(1, boxWidth / selected.width) : 1;
 
@@ -161,20 +163,23 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
     return () => io.disconnect();
   }, []);
 
+  /** Corner radius of the exported card, matching the rounded preview (24px at preview width). */
+  const exportRadius = (f: { width: number; height: number }) => Math.round(f.width * (f.width > f.height ? 0.043 : 0.063));
+
   const renderCardPng = async (exportFormat: FormatKey) => {
     if (exportFormat !== format) setFormat(exportFormat);
     await nextFrame();
     await new Promise((r) => window.setTimeout(r, 140));
     if ('fonts' in document) await document.fonts.ready;
     const exportSelected = FORMATS.find((f) => f.key === exportFormat) || selected;
+    // No background colour: the rounded corners stay transparent instead of becoming a rectangle.
     const options = {
       cacheBust: true,
       pixelRatio: exportFormat === 'SuperBlitz' ? 2 : 1,
       width: exportSelected.width,
       height: exportSelected.height,
-      backgroundColor: exportFormat === 'SuperBlitz' ? '#ffffff' : C.deep2,
       imagePlaceholder: IMAGE_PLACEHOLDER,
-      style: { transform: 'none' },
+      style: { transform: 'none', borderRadius: `${exportRadius(exportSelected)}px` },
     };
     const dataUrl = await toPng(canvasRef.current!, options);
     return { dataUrl, exportSelected };
@@ -207,15 +212,26 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
       const image = new Image();
       image.src = dataUrl;
       await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('Could not load profile card image')); });
+      const pxW = image.naturalWidth || exportSelected.width;
+      const pxH = image.naturalHeight || exportSelected.height;
       const jpegCanvas = document.createElement('canvas');
-      jpegCanvas.width = exportSelected.width;
-      jpegCanvas.height = exportSelected.height;
-      const ctx = jpegCanvas.getContext('2d');
+      jpegCanvas.width = pxW;
+      jpegCanvas.height = pxH;
+      const ctx = jpegCanvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) throw new Error('Could not prepare PDF image');
+      // Alpha (rounded corners) goes into a PDF soft mask; the JPEG itself is composited on the card colour.
+      ctx.drawImage(image, 0, 0, pxW, pxH);
+      const rgba = ctx.getImageData(0, 0, pxW, pxH).data;
+      const alpha = new Uint8Array(pxW * pxH);
+      for (let i = 0; i < alpha.length; i++) alpha[i] = rgba[i * 4 + 3];
+      ctx.globalCompositeOperation = 'destination-over';
       ctx.fillStyle = format === 'SuperBlitz' ? '#ffffff' : C.deep2;
-      ctx.fillRect(0, 0, jpegCanvas.width, jpegCanvas.height);
-      ctx.drawImage(image, 0, 0, jpegCanvas.width, jpegCanvas.height);
+      ctx.fillRect(0, 0, pxW, pxH);
       const jpegData = await new Promise<Blob>((resolve, reject) => jpegCanvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not encode PDF image')), 'image/jpeg', 0.94));
+      let maskBytes: Uint8Array = alpha; let maskFilter = '';
+      if (typeof CompressionStream !== 'undefined') {
+        try { maskBytes = new Uint8Array(await new Response(new Blob([alpha]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer()); maskFilter = '/Filter /FlateDecode '; } catch { maskBytes = alpha; maskFilter = ''; }
+      }
       const bytes = new Uint8Array(await jpegData.arrayBuffer());
       const pageW = exportSelected.width * 0.75;
       const pageH = exportSelected.height * 0.75;
@@ -230,13 +246,16 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
       object(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
       object(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW.toFixed(2)} ${pageH.toFixed(2)}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`);
       offsets[4] = length;
-      push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${exportSelected.width} /Height ${exportSelected.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`);
+      push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${pxW} /Height ${pxH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /SMask 6 0 R /Length ${bytes.length} >>\nstream\n`);
       push(bytes); push('\nendstream\nendobj\n');
       const stream = `q\n${pageW.toFixed(2)} 0 0 ${pageH.toFixed(2)} 0 0 cm\n/Im0 Do\nQ\n`;
       offsets[5] = length;
       push(`5 0 obj\n<< /Length ${enc.encode(stream).length} >>\nstream\n${stream}endstream\nendobj\n`);
+      offsets[6] = length;
+      push(`6 0 obj\n<< /Type /XObject /Subtype /Image /Width ${pxW} /Height ${pxH} /ColorSpace /DeviceGray /BitsPerComponent 8 ${maskFilter}/Length ${maskBytes.length} >>\nstream\n`);
+      push(maskBytes); push('\nendstream\nendobj\n');
       const xref = length;
-      push(`xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+      push(`xref\n0 7\n0000000000 65535 f \n${offsets.slice(1).map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
       const pdfParts = chunks;
       const blob = new Blob(pdfParts, { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
@@ -252,56 +271,96 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
     } finally { setDownloading(false); }
   };
 
+  /**
+   * Video = the card's real opening animation. The page's CSS animations are paused and stepped to the wall-clock time
+   * of each frame, each frame is rendered with the rounded card shape, and the frames are then played back (cross-faded)
+   * into a MediaRecorder stream.
+   */
   const downloadAnimatedVideo = async () => {
     if (!canvasRef.current || downloading) return;
     setDownloading(true);
+    const EFFECT_MS = 3300; const HOLD_MS = 1000;
     try {
-      const { dataUrl, exportSelected } = await renderCardPng(format);
-      const image = new Image();
-      image.src = dataUrl;
-      await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('Could not load exported card image')); });
-      const videoCanvas = document.createElement('canvas');
-      // Keep a crisp but manageable video size for sharing.
-      const factor = Math.min(1, 1280 / exportSelected.width, 1920 / exportSelected.height);
-      videoCanvas.width = Math.max(2, Math.round(exportSelected.width * factor));
-      videoCanvas.height = Math.max(2, Math.round(exportSelected.height * factor));
-      const ctx = videoCanvas.getContext('2d');
-      if (!ctx || !videoCanvas.captureStream || typeof MediaRecorder === 'undefined') throw new Error('Animated video export is not supported in this browser.');
-      const stream = videoCanvas.captureStream(30);
+      if (typeof MediaRecorder === 'undefined') throw new Error('Animated video export is not supported in this browser.');
       const mimeType = ['video/mp4;codecs=h264', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find((type) => MediaRecorder.isTypeSupported(type));
       if (!mimeType) throw new Error('This browser does not support an exportable MP4 or WebM video format.');
-      const recorder = new MediaRecorder(stream, { mimeType });
+      if ('fonts' in document) await document.fonts.ready;
+      const exportFmt = FORMATS.find((f) => f.key === format) || selected;
+      const ratio = Math.min(1, 720 / exportFmt.width, 1280 / exportFmt.height);
+      const radius = exportRadius(exportFmt);
+
+      // Fresh canvas in "animated" mode, held at the start until the images are ready.
+      setVideoGo(false); setVideoMode(true);
+      await nextFrame(); await new Promise((r) => window.setTimeout(r, 450)); await nextFrame();
+      const root = canvasRef.current as HTMLDivElement | null;
+      if (!root) throw new Error('The profile card is not ready yet.');
+      setVideoGo(true); await nextFrame();
+
+      const t0 = performance.now();
+      const frames: { t: number; canvas: HTMLCanvasElement }[] = [];
+      while (true) {
+        const elapsed = performance.now() - t0;
+        // Step every running CSS animation to this moment, then freeze its look into custom properties.
+        root.classList.remove('nl-pc-frozen');
+        const anims = (root.getAnimations ? root.getAnimations({ subtree: true }) : []) as Animation[];
+        const seen = new Set<Element>();
+        anims.forEach((a) => { try { a.pause(); a.currentTime = Math.min(elapsed, EFFECT_MS); } catch { /* ignore */ } });
+        anims.forEach((a) => {
+          const el = (a.effect as KeyframeEffect | null)?.target as HTMLElement | null;
+          if (!el || seen.has(el) || el instanceof SVGElement) return;
+          seen.add(el);
+          const cs = getComputedStyle(el);
+          el.setAttribute('data-nlf', '');
+          el.style.setProperty('--fo', cs.opacity);
+          el.style.setProperty('--ft', cs.transform === '' ? 'none' : cs.transform);
+          el.style.setProperty('--fb', cs.boxShadow === '' ? 'none' : cs.boxShadow);
+        });
+        root.classList.add('nl-pc-frozen');
+        const canvas = await toCanvas(root, { cacheBust: false, pixelRatio: ratio, width: exportFmt.width, height: exportFmt.height, imagePlaceholder: IMAGE_PLACEHOLDER, style: { transform: 'none', borderRadius: `${radius}px` } });
+        frames.push({ t: Math.min(elapsed, EFFECT_MS), canvas });
+        if (elapsed >= EFFECT_MS) break;
+      }
+      root.classList.remove('nl-pc-frozen');
+      setVideoMode(false); setVideoGo(false);
+
+      const fw = frames[0].canvas.width; const fh = frames[0].canvas.height;
+      const out = document.createElement('canvas'); out.width = fw - (fw % 2); out.height = fh - (fh % 2);
+      const ctx = out.getContext('2d');
+      if (!ctx || !out.captureStream) throw new Error('Animated video export is not supported in this browser.');
+      const stream = out.captureStream(30);
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 6_000_000 });
       const chunks: BlobPart[] = [];
       recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
       const stopped = new Promise<Blob>((resolve) => { recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType })); });
+      const backdrop = format === 'SuperBlitz' ? '#ffffff' : '#ecfbfc';
+      const last = frames[frames.length - 1];
+      const total = last.t + HOLD_MS;
       recorder.start();
       const started = performance.now();
       await new Promise<void>((resolve) => {
-        const frame = (now: number) => {
-          const t = Math.min(1, (now - started) / 2500);
-          const ease = 1 - Math.pow(1 - t, 3);
-          ctx.clearRect(0, 0, videoCanvas.width, videoCanvas.height);
-          ctx.fillStyle = '#013a46'; ctx.fillRect(0, 0, videoCanvas.width, videoCanvas.height);
-          const zoom = 0.94 + ease * 0.06;
-          const dw = videoCanvas.width * zoom, dh = videoCanvas.height * zoom;
-          ctx.save(); ctx.globalAlpha = Math.min(1, t * 5); ctx.shadowColor = 'rgba(92,225,230,.65)'; ctx.shadowBlur = 24 * factor;
-          ctx.drawImage(image, (videoCanvas.width-dw)/2, (videoCanvas.height-dh)/2, dw, dh); ctx.restore();
-          if (t < 1) requestAnimationFrame(frame); else { window.setTimeout(() => recorder.stop(), 150); resolve(); }
+        const tick = (now: number) => {
+          const el = Math.min(now - started, total);
+          let i = 0; while (i < frames.length - 1 && frames[i + 1].t <= el) i++;
+          const cur = frames[i]; const nxt = frames[Math.min(i + 1, frames.length - 1)];
+          ctx.fillStyle = backdrop; ctx.fillRect(0, 0, out.width, out.height);
+          ctx.drawImage(cur.canvas, 0, 0, out.width, out.height);
+          if (nxt !== cur && nxt.t > cur.t) { ctx.globalAlpha = Math.max(0, Math.min(1, (el - cur.t) / (nxt.t - cur.t))); ctx.drawImage(nxt.canvas, 0, 0, out.width, out.height); ctx.globalAlpha = 1; }
+          if (el < total) requestAnimationFrame(tick); else { window.setTimeout(() => recorder.stop(), 200); resolve(); }
         };
-        requestAnimationFrame(frame);
+        requestAnimationFrame(tick);
       });
       const blob = await stopped;
       stream.getTracks().forEach((track) => track.stop());
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
-      a.href = url; a.download = `novelty-library-profile-${data.username || 'reader'}-${format.replace(':', 'x')}-animated.${ext}`; a.click();
+      a.href = url; a.download = `novelty-library-profile-${data.username || 'reader'}-${format.replace(':', 'x')}-animated.${ext}`; document.body.appendChild(a); a.click(); a.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1500);
       setDownloadMenuOpen(false);
     } catch (error) {
       console.error(error);
       window.alert(error instanceof Error ? error.message : 'Animated video export failed.');
-    } finally { setDownloading(false); }
+    } finally { setVideoMode(false); setVideoGo(false); setDownloading(false); }
   };
 
   const exportSelected = FORMATS.find((f) => f.key === format) || selected;
@@ -320,7 +379,7 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
 
     {/* The preview is the exact export canvas, scaled down to fit the page. What you see is what you download. */}
     <div ref={wrapRef} className="relative w-full mx-auto overflow-hidden rounded-[24px] nl-pc-preview" style={{ height: selected.height * scale, maxWidth: selected.width > selected.height ? 560 : 380, boxShadow: '0 26px 60px rgba(0,80,95,.28)', border: '1px solid rgba(8,145,178,.3)' }}>
-      <CardCanvas key={`${format}-${replay}`} canvasRef={canvasRef} data={data} width={selected.width} height={selected.height} superBlitz={format === 'SuperBlitz'} scale={scale} play={inView} still={downloading} onAvatarUpload={onAvatarUpload} onHeaderUpload={onHeaderUpload} onSuperBlitzBannerUpload={onSuperBlitzBannerUpload} onFollowersClick={onFollowersClick} />
+      <CardCanvas key={`${format}-${replay}-${videoMode ? 'v' : 'n'}`} canvasRef={canvasRef} data={data} width={selected.width} height={selected.height} superBlitz={format === 'SuperBlitz'} scale={scale} play={videoMode ? videoGo : inView} still={downloading && !videoMode} onAvatarUpload={onAvatarUpload} onHeaderUpload={onHeaderUpload} onSuperBlitzBannerUpload={onSuperBlitzBannerUpload} onFollowersClick={onFollowersClick} />
     </div>
 
     {layout === 'rows' && (download || onViewPublicProfile) && <div className="nl-pc-dock" style={{ maxWidth: selected.width > selected.height ? 560 : 380 }}>
@@ -366,8 +425,8 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
         <label className="block text-sm font-semibold mt-5 mb-2">Card layout / dimensions</label>
         <div className="grid grid-cols-2 gap-2">{FORMATS.map((f) => <button key={f.key} type="button" onClick={() => setFormat(f.key)} className="rounded-xl border px-3 py-2.5 text-left" style={{ borderColor: format === f.key ? C.teal : 'var(--color-border)', background: format === f.key ? 'rgba(0,151,178,.10)' : 'transparent' }}><span className="block font-bold">{f.key}</span><span className="block text-xs opacity-70">{f.width} × {f.height} px</span></button>)}</div>
         <label className="block text-sm font-semibold mt-5 mb-2">File format</label>
-        <div className="grid grid-cols-3 gap-2">{([{key:'png',title:'PNG',sub:'Still image'},{key:'pdf',title:'PDF',sub:'Print / save PDF'},{key:'video',title:'Video',sub:'2.5 sec animation'}] as const).map((t) => <button key={t.key} type="button" onClick={() => setExportType(t.key)} className="rounded-xl border p-3 text-left" style={{ borderColor: exportType === t.key ? C.teal : 'var(--color-border)', background: exportType === t.key ? 'rgba(0,151,178,.10)' : 'transparent' }}><span className="block font-bold">{t.title}</span><span className="block text-[11px] mt-1 opacity-70">{t.sub}</span></button>)}</div>
-        <p className="text-xs mt-3" style={{ color: 'var(--color-text-muted)' }}>{exportType === 'video' ? 'Exports MP4 when supported by this browser; otherwise exports WebM. The card animates for about 2.5 seconds.' : exportType === 'pdf' ? 'Opens the browser print dialog; choose “Save as PDF” to save a PDF at the selected card proportions.' : `PNG export at ${exportSelected.width} × ${exportSelected.height} pixels.`}</p>
+        <div className="grid grid-cols-3 gap-2">{([{key:'png',title:'PNG',sub:'Still image'},{key:'pdf',title:'PDF',sub:'Print / save PDF'},{key:'video',title:'Video',sub:'Opening animation'}] as const).map((t) => <button key={t.key} type="button" onClick={() => setExportType(t.key)} className="rounded-xl border p-3 text-left" style={{ borderColor: exportType === t.key ? C.teal : 'var(--color-border)', background: exportType === t.key ? 'rgba(0,151,178,.10)' : 'transparent' }}><span className="block font-bold">{t.title}</span><span className="block text-[11px] mt-1 opacity-70">{t.sub}</span></button>)}</div>
+        <p className="text-xs mt-3" style={{ color: 'var(--color-text-muted)' }}>{exportType === 'video' ? 'Exports MP4 when supported by this browser; otherwise exports WebM. The video plays the opening animation of the card (about 3 seconds); it may take a few seconds to prepare.' : exportType === 'pdf' ? 'Downloads a one-page PDF with rounded corners at the selected card proportions.' : `PNG export at ${exportSelected.width} × ${exportSelected.height} pixels.`}</p>
         <div className="flex gap-2 mt-5"><button type="button" className="btn-ghost" onClick={() => setDownloadMenuOpen(false)}>Cancel</button><button type="button" className="btn-primary" disabled={downloading} onClick={runExport}><Download className="w-4 h-4" />{downloading ? 'Preparing…' : `Export ${exportType === 'video' ? 'video' : exportType.toUpperCase()}`}</button></div>
       </div>
     </div>}

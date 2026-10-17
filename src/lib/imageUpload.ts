@@ -126,13 +126,15 @@ export async function uploadProfileQuestionImage(rawFile: File, userId: string, 
   const file = await compressImageForUpload(rawFile, Math.min(1600, Math.max(limits?.maxWidth ?? 1600, limits?.maxHeight ?? 1600)), 0.82);
   const safeQuestionKey = questionKey.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'question';
   const ext = extForImageType(file.type);
-  const path = `${userId}/${safeQuestionKey}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from('profile-question-images').upload(path, file, {
+  // Stored in the existing public `covers` bucket (own-folder uploads allowed): a separate
+  // `profile-question-images` bucket was never created on the project, which made every upload fail.
+  const path = `${userId}/profile-questions/${safeQuestionKey}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from('covers').upload(path, file, {
     contentType: file.type,
     cacheControl: '31536000',
     upsert: false,
   });
   if (error) throw error;
-  const { data: urlData } = supabase.storage.from('profile-question-images').getPublicUrl(path);
+  const { data: urlData } = supabase.storage.from('covers').getPublicUrl(path);
   return { path, publicUrl: urlData.publicUrl };
 }

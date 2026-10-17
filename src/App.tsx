@@ -103,8 +103,9 @@ function AppContent() {
 
   return (
     <div className="nl-app-shell min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
+      <button type="button" className="nl-skip-link" onClick={() => { const m = document.getElementById('main-content'); m?.focus(); m?.scrollIntoView(); }}>Skip to main content</button>
       <Header navigate={navigate} currentRoute={currentRouteName} user={user} isAdmin={isAdmin} />
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1 outline-none">
         {route.name === 'home' && <HomePage navigate={navigate} />}
         {route.name === 'reviews' && <ReviewsPage navigate={navigate} />}
         {route.name === 'analytics' && <AnalyticsPage navigate={navigate} />}

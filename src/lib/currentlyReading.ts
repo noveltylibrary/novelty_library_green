@@ -24,7 +24,7 @@ export function packCurrentlyReading(title: string, cover: string | null): unkno
 }
 
 /**
- * UI-only re-tiering: show "Currently Reading" as the LAST question of the tier just before "Advanced Reader"
+ * UI-only re-tiering: show "Currently Reading" as the FIRST question of the tier just before "Advanced Reader"
  * (Basic Reader) in the profile editor. Nothing is written to the database; the profile card keeps using the
  * original question list.
  */
@@ -33,6 +33,6 @@ export function moveCurrentlyReadingToBasic(questions: ProfileQuestion[], sectio
   const advancedIdx = ordered.findIndex((s) => s.name === 'Reading Identity');
   const target = advancedIdx > 0 ? ordered[advancedIdx - 1] : null;
   if (!target) return questions;
-  const lastOrder = Math.max(-1, ...questions.filter((q) => q.section === target.name && !isCurrentlyReadingQuestion(q)).map((q) => q.sort_order));
-  return questions.map((q) => (isCurrentlyReadingQuestion(q) ? { ...q, section: target.name, sort_order: lastOrder + 0.5 } : q));
+  const firstOrder = Math.min(1, ...questions.filter((q) => q.section === target.name && !isCurrentlyReadingQuestion(q)).map((q) => q.sort_order));
+  return questions.map((q) => (isCurrentlyReadingQuestion(q) ? { ...q, section: target.name, sort_order: firstOrder - 0.5 } : q));
 }

@@ -1,0 +1,242 @@
+import { useDeferredValue, useMemo, useState } from 'react';
+import { BookOpen, ChevronDown, Search, Sparkles, Wand2, X } from 'lucide-react';
+import type { Review } from '@/types/review';
+import {
+  FIELD_LABELS, FIELD_PLACEHOLDERS, MOODS, cleanTraits, norm, popularValues, runSearch, tasteMatch,
+  type Match, type SearchBook, type SearchField,
+} from '@/lib/rankingSearch';
+
+export type FinderBook = { review: Review; nlRating: number | null };
+
+export function toSearchBook(item: FinderBook): SearchBook {
+  const r = item.review;
+  return {
+    id: r.id,
+    title: r.title || '',
+    author: r.author || '',
+    genre: r.genre || '',
+    language: r.language || '',
+    traits: cleanTraits(r.traits),
+    verdict: r.verdict || '',
+    text: (r.review_text || '').slice(0, 4000),
+    nl: item.nlRating,
+    rw: Number.isFinite(r.rw_rating) ? r.rw_rating : 0,
+  };
+}
+
+interface CommonProps {
+  books: FinderBook[];
+  openBook: (review: Review) => void;
+}
+
+function ResultCard({ match, byId, openBook, badge }: { match: Match; byId: Map<string, FinderBook>; openBook: (r: Review) => void; badge?: string }) {
+  const item = byId.get(match.book.id);
+  if (!item) return null;
+  const { review, nlRating } = item;
+  const cover = review.poster_url || review.cover_image_url;
+  return (
+    <li className="nl-find-result">
+      <button type="button" className="nl-find-result-main" onClick={() => openBook(review)} aria-label={`Open review of ${review.title}`}>
+        <span className="nl-find-cover">{cover ? <img src={cover} alt="" loading="lazy" /> : <BookOpen aria-hidden="true" />}</span>
+        <span className="nl-find-copy">
+          <strong>{review.title}</strong>
+          <small>{review.author || 'Author unavailable'}</small>
+          {match.reasons.length > 0 && (
+            <span className="nl-find-why">{match.reasons.map((r) => <i key={r}>{r}</i>)}</span>
+          )}
+        </span>
+      </button>
+      <span className="nl-find-score" aria-label={`NL rating ${nlRating == null ? 'not available' : nlRating.toFixed(1)}`}>
+        {badge && <em className={`nl-find-badge${badge === 'Exact' ? ' is-exact' : ''}`}>{badge}</em>}
+        <b>{nlRating == null ? '—' : nlRating.toFixed(1)}</b>
+        <small>NL</small>
+      </span>
+    </li>
+  );
+}
+
+function ResultGroup({ title, hint, matches, byId, openBook, badgeFor }: { title: string; hint: string; matches: Match[]; byId: Map<string, FinderBook>; openBook: (r: Review) => void; badgeFor?: (m: Match) => string | undefined }) {
+  const [all, setAll] = useState(false);
+  if (!matches.length) return null;
+  const shown = all ? matches : matches.slice(0, 5);
+  return (
+    <div className="nl-find-group">
+      <div className="nl-find-group-head"><h3>{title} <span>{matches.length}</span></h3><p>{hint}</p></div>
+      <ul className="nl-find-list">{shown.map((m) => <ResultCard key={m.book.id} match={m} byId={byId} openBook={openBook} badge={badgeFor?.(m)} />)}</ul>
+      {matches.length > 5 && <button type="button" className="nl-find-more" onClick={() => setAll((v) => !v)}>{all ? 'Show fewer' : `Show all ${matches.length}`}</button>}
+    </div>
+  );
+}
+
+/** Search the library: row 1 = exact-first search on one field, row 2 = free words matched more widely. */
+export function RankingSearch({ books, openBook }: CommonProps) {
+  const [field, setField] = useState<SearchField>('genre');
+  const [strictQ, setStrictQ] = useState('');
+  const [moreQ, setMoreQ] = useState('');
+  const deferredStrict = useDeferredValue(strictQ);
+  const deferredMore = useDeferredValue(moreQ);
+
+  const searchBooks = useMemo(() => books.map(toSearchBook), [books]);
+  const byId = useMemo(() => new Map(books.map((b) => [b.review.id, b])), [books]);
+  const quick = useMemo(() => popularValues(searchBooks, field, 6), [searchBooks, field]);
+  const outcome = useMemo(() => runSearch(searchBooks, field, deferredStrict, deferredMore), [searchBooks, field, deferredStrict, deferredMore]);
+  const active = !!norm(strictQ) || !!norm(moreQ);
+  const nothing = active && outcome.direct.length === 0 && outcome.related.length === 0;
+
+  const clear = () => { setStrictQ(''); setMoreQ(''); };
+
+  return (
+    <section className="nl-find" aria-labelledby="nl-find-title">
+      <header className="nl-find-head">
+        <span className="nl-find-icon"><Search size={18} aria-hidden="true" /></span>
+        <div>
+          <span className="nl-live-kicker">SEARCH THE LIBRARY</span>
+          <h2 id="nl-find-title">Find your next read</h2>
+          <p>Row 1 looks for the exact word first. Row 2 reads your own words and brings back wider, related picks.</p>
+        </div>
+      </header>
+
+      <div className="nl-find-row">
+        <label className="nl-find-field">
+          <span>Search by</span>
+          <span className="nl-find-select">
+            <select value={field} onChange={(e) => setField(e.target.value as SearchField)} aria-label="Search by">
+              {(Object.keys(FIELD_LABELS) as SearchField[]).map((f) => <option key={f} value={f}>{FIELD_LABELS[f]}</option>)}
+            </select>
+            <ChevronDown size={16} aria-hidden="true" />
+          </span>
+        </label>
+        <label className="nl-find-field">
+          <span>{FIELD_LABELS[field]} <em>· exact match first</em></span>
+          <input type="text" value={strictQ} onChange={(e) => setStrictQ(e.target.value)} placeholder={FIELD_PLACEHOLDERS[field]} autoComplete="off" spellCheck={false} />
+        </label>
+      </div>
+
+      <label className="nl-find-field nl-find-wide">
+        <span>More detail <em>· wider keyword match</em></span>
+        <input type="text" value={moreQ} onChange={(e) => setMoreQ(e.target.value)} placeholder="Tell us more about your search — e.g. dark, mind games, detective" autoComplete="off" />
+      </label>
+
+      <div className="nl-find-tools">
+        {quick.length > 0 && (
+          <div className="nl-find-quick" aria-label={`Popular ${FIELD_LABELS[field].toLowerCase()} searches`}>
+            <span>Try:</span>
+            {quick.map((q) => <button key={q} type="button" onClick={() => setStrictQ(q)} className={norm(q) === norm(strictQ) ? 'is-on' : ''}>{q}</button>)}
+          </div>
+        )}
+        {active && <button type="button" className="nl-find-clear" onClick={clear}><X size={14} aria-hidden="true" /> Clear</button>}
+      </div>
+
+      <div className="nl-find-results" aria-live="polite">
+        {!active && <p className="nl-find-hint">Start typing above. Results appear as you type, with the reason each book matched.</p>}
+        {nothing && <p className="nl-find-hint">No books match yet. Try a shorter word, check the spelling, or switch the Search by option.</p>}
+        <ResultGroup
+          title="Direct matches"
+          hint={`Exact ${FIELD_LABELS[field].toLowerCase()} first, then close ones.`}
+          matches={outcome.direct}
+          byId={byId}
+          openBook={openBook}
+          badgeFor={(m) => (m.exact ? 'Exact' : 'Close')}
+        />
+        <ResultGroup
+          title={outcome.mode === 'description' ? 'Matches for your words' : 'Related picks'}
+          hint={outcome.mode === 'description' ? 'Best keyword matches across title, author, genre and traits.' : 'Wider variants: related genres and nearby words.'}
+          matches={outcome.related}
+          byId={byId}
+          openBook={openBook}
+        />
+      </div>
+    </section>
+  );
+}
+
+/** Basic taste match: pick moods (and optionally a book you loved) and get three picks with a reason. */
+export function TasteMatchPanel({ books, openBook, goRoadmap }: CommonProps & { goRoadmap: () => void }) {
+  const [moods, setMoods] = useState<string[]>([]);
+  const [lovedId, setLovedId] = useState('');
+  const [language, setLanguage] = useState('');
+
+  const searchBooks = useMemo(() => books.map(toSearchBook), [books]);
+  const byId = useMemo(() => new Map(books.map((b) => [b.review.id, b])), [books]);
+  const languages = useMemo(() => popularValues(searchBooks, 'language', 12), [searchBooks]);
+  const titles = useMemo(() => [...searchBooks].sort((a, b) => a.title.localeCompare(b.title)), [searchBooks]);
+  const picks = useMemo(() => tasteMatch(searchBooks, { moods, lovedId, language }, 3), [searchBooks, moods, lovedId, language]);
+  const active = moods.length > 0 || !!lovedId;
+
+  const toggle = (id: string) => setMoods((cur) => (cur.includes(id) ? cur.filter((m) => m !== id) : cur.length >= 3 ? [...cur.slice(1), id] : [...cur, id]));
+
+  return (
+    <section className="nl-find nl-taste" aria-labelledby="nl-taste-title">
+      <header className="nl-find-head">
+        <span className="nl-find-icon nl-taste-icon"><Wand2 size={18} aria-hidden="true" /></span>
+        <div>
+          <span className="nl-live-kicker">BASIC TASTE MATCH · BETA</span>
+          <h2 id="nl-taste-title">Tonight, you want something…</h2>
+          <p>Pick up to three moods. Add a book you loved if you like, and we'll suggest three reads with the reason each one fits.</p>
+        </div>
+      </header>
+
+      <div className="nl-taste-moods" role="group" aria-label="Moods">
+        {MOODS.map((m) => (
+          <button key={m.id} type="button" className={moods.includes(m.id) ? 'is-on' : ''} onClick={() => toggle(m.id)} aria-pressed={moods.includes(m.id)} title={m.hint}>{m.label}</button>
+        ))}
+      </div>
+
+      <div className="nl-find-row">
+        <label className="nl-find-field">
+          <span>A book you loved <em>· optional</em></span>
+          <span className="nl-find-select">
+            <select value={lovedId} onChange={(e) => setLovedId(e.target.value)}>
+              <option value="">No preference</option>
+              {titles.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
+            </select>
+            <ChevronDown size={16} aria-hidden="true" />
+          </span>
+        </label>
+        <label className="nl-find-field">
+          <span>Language <em>· optional</em></span>
+          <span className="nl-find-select">
+            <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+              <option value="">Any language</option>
+              {languages.map((l) => <option key={l} value={l}>{l}</option>)}
+            </select>
+            <ChevronDown size={16} aria-hidden="true" />
+          </span>
+        </label>
+      </div>
+
+      <div className="nl-find-results" aria-live="polite">
+        {!active && <p className="nl-find-hint">Choose a mood to see your picks.</p>}
+        {active && picks.length === 0 && <p className="nl-find-hint">Nothing fits that mix yet. Try another mood or remove the language filter.</p>}
+        {picks.length > 0 && (
+          <ul className="nl-find-list">
+            {picks.map((m, i) => (
+              <li key={m.book.id} className="nl-find-result nl-taste-pick">
+                <span className="nl-taste-rank" aria-hidden="true">{i + 1}</span>
+                {(() => {
+                  const item = byId.get(m.book.id);
+                  if (!item) return null;
+                  const cover = item.review.poster_url || item.review.cover_image_url;
+                  return (
+                    <>
+                      <button type="button" className="nl-find-result-main" onClick={() => openBook(item.review)} aria-label={`Open review of ${item.review.title}`}>
+                        <span className="nl-find-cover">{cover ? <img src={cover} alt="" loading="lazy" /> : <BookOpen aria-hidden="true" />}</span>
+                        <span className="nl-find-copy">
+                          <strong>{item.review.title}</strong>
+                          <small>{item.review.author || 'Author unavailable'}</small>
+                          <span className="nl-taste-why"><Sparkles size={13} aria-hidden="true" /> <b>Why it fits you:</b> {m.reasons.join(' · ')}</span>
+                        </span>
+                      </button>
+                      <span className="nl-find-score"><b>{item.nlRating == null ? '—' : item.nlRating.toFixed(1)}</b><small>NL</small></span>
+                    </>
+                  );
+                })()}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <p className="nl-taste-note">This is the basic version, matched on genre, traits and ratings. A full Taste Match engine is on our <button type="button" onClick={goRoadmap}>roadmap</button>.</p>
+    </section>
+  );
+}

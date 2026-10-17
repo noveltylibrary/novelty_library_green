@@ -8,8 +8,8 @@ interface PrivacyPageProps {
 
 export function PrivacyPage({ navigate }: PrivacyPageProps) {
   const editable = useEditableOverride('privacy');
-  if (editable) return <EditablePageOverride page={editable} navigate={navigate} />;
   const supportEmail = useSupportEmail();
+  if (editable) return <EditablePageOverride page={editable} navigate={navigate} />;
   return (
     <div className="pt-24 pb-20 container-prose animate-fade-in">
       <div className="max-w-3xl mx-auto">
@@ -30,7 +30,7 @@ export function PrivacyPage({ navigate }: PrivacyPageProps) {
             Privacy Policy &amp; Data Governance Notice
           </h1>
           <p className="text-sm mb-2" style={{ color: 'var(--color-text-muted)' }}>
-            Last updated: September 2026
+            Last updated: October 2026
           </p>
           <p className="text-sm mb-10" style={{ color: 'var(--color-text-muted)' }}>
             Applicable Law: This Privacy Policy is intended to operate in accordance with applicable laws of India.
@@ -47,7 +47,9 @@ export function PrivacyPage({ navigate }: PrivacyPageProps) {
               <p>
                 When you create an account, log in, or submit a review on Novelty Library, we collect your email
                 address, display name, and Instagram handle via our authentication system. These details are collected
-                solely for account verification, spam prevention, and reviewer attribution.
+                solely for account verification, spam prevention, and reviewer attribution. If you build a reader
+                profile, we also store what you choose to add: profile and header pictures, answers to profile questions,
+                your Currently Reading book (with an optional cover image), and your Up Next and Someday reading lists.
               </p>
             </section>
 
@@ -127,6 +129,20 @@ export function PrivacyPage({ navigate }: PrivacyPageProps) {
               </p>
               <p className="mt-3">
                 We will verify and address all legitimate requests in accordance with applicable Indian law.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-xl font-semibold mb-2">Profiles, Uploaded Images &amp; Visibility</h2>
+              <p>
+                Profile details are shown on your public profile only where you have left them visible; each profile question, picture and reading list has its own visibility switch that you can change at any time. Your email address is never shown publicly. Images you upload (such as profile pictures or a book cover) are stored on our storage service and are publicly viewable by link while they are in use, so please upload only images you have the right to share.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-xl font-semibold mb-2">Cookies, Advertising &amp; Local Storage</h2>
+              <p>
+                Novelty Library may show Google AdSense advertisements on public pages. Ads load only after you accept the cookie notice. Google and its partners may use cookies to serve and measure ads; you can decline, in which case non-personalized or no ads are shown. Ads, affiliate or buy links never change which books are shown or how they rank. We also keep small items in your browser (for example your theme, a cached copy of site content and your cookie choice) so pages load faster; you can clear them in your browser settings.
               </p>
             </section>
 

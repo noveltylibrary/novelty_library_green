@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, UserCog, Trash2, AlertCircle, Shield, ListChecks, Bell, Megaphone } from 'lucide-react';
+import { ArrowLeft, UserCog, Trash2, AlertCircle, Shield, ListChecks, Bell, Megaphone, Route } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { AdminNotifyPanel } from '@/components/AdminNotifyPanel';
 import { AdminAnnouncementsPanel } from '@/components/AdminAnnouncementsPanel';
+import { AdminRoadmapPanel } from '@/components/AdminRoadmapPanel';
 import { fetchSupportEmail, updateSupportEmail } from '@/lib/siteSettings';
 
-type AdminTab = 'control' | 'notifications' | 'announcements';
+type AdminTab = 'control' | 'notifications' | 'announcements' | 'roadmap';
 const TABS: { key: AdminTab; label: string; path: string; Icon: typeof Shield }[] = [
   { key: 'control', label: 'Control', path: '/admin/admins', Icon: ListChecks },
   { key: 'notifications', label: 'Notifications', path: '/admin/notifications', Icon: Bell },
   { key: 'announcements', label: 'Announcements', path: '/admin/announcements', Icon: Megaphone },
+  { key: 'roadmap', label: 'Roadmap', path: '/admin/roadmap', Icon: Route },
 ];
 
 interface AdminManageAdminsPageProps {
@@ -117,12 +119,12 @@ export function AdminManageAdminsPage({ navigate, tab = 'control' }: AdminManage
         </button>
         <div className="flex items-center gap-2">
           <Shield className="w-5 h-5" style={{ color: 'var(--color-teal-dark)' }} />
-          <h1 className="font-serif text-3xl font-semibold tracking-tight" style={{ color: 'var(--color-text)' }}>Admins &amp; Contacts</h1>
+          <h1 className="font-serif text-3xl font-semibold tracking-tight" style={{ color: 'var(--color-text)' }}>Control Panel</h1>
         </div>
         <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
-          Control admin access and contacts, notify your readers, and publish announcements.
+          Control admin access and contacts, notify your readers, publish announcements, and edit the roadmap.
         </p>
-        <div className="mt-5 inline-flex flex-wrap items-center gap-1 rounded-xl p-1" role="tablist" aria-label="Admins and contacts sections" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
+        <div className="mt-5 inline-flex flex-wrap items-center gap-1 rounded-xl p-1" role="tablist" aria-label="Control Panel sections" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
           {TABS.map(({ key, label, path, Icon }) => (
             <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => navigate(path)} className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-colors" style={{ background: tab === key ? 'linear-gradient(135deg,#013a46,#0097b2)' : 'transparent', color: tab === key ? '#fff' : 'var(--color-text)' }}>
               <Icon className="w-4 h-4" /> {label}
@@ -184,6 +186,7 @@ export function AdminManageAdminsPage({ navigate, tab = 'control' }: AdminManage
 
       {tab === 'notifications' && <AdminNotifyPanel />}
       {tab === 'announcements' && <AdminAnnouncementsPanel />}
+      {tab === 'roadmap' && <AdminRoadmapPanel />}
     </div>
   );
 }

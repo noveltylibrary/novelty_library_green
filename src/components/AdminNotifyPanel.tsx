@@ -21,7 +21,7 @@ const MAX_BODY = 1000;
 const contactName = (c: Contact) => c.profile_name || c.novelty_username || c.email || c.profile_email || 'Reader';
 const contactEmail = (c: Contact) => c.email || c.profile_email || '';
 
-/** Admin → user notifications. Rendered inside Admins & Contacts (the caller guarantees the viewer is an admin). */
+/** Admin → user notifications. Rendered inside the Control Panel (the caller guarantees the viewer is an admin). */
 export function AdminNotifyPanel() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);

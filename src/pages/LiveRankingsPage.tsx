@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Activity, BookOpen, ChevronDown, ChevronLeft, ChevronRight, LoaderCircle, Sparkles, TrendingUp, Trophy } from 'lucide-react';
+import { ArrowLeft, Activity, BookOpen, ChevronLeft, ChevronRight, LoaderCircle, Sparkles, TrendingUp, Trophy } from 'lucide-react';
 import { AdSenseAdSlot } from '@/components/AdSenseAdSlot';
 import type { Review } from '@/types/review';
 import { fetchReviews } from '@/lib/reviews';
 import { supabase } from '@/lib/supabase';
 import { computeNlRating, type EngagementStats } from '@/lib/engagement';
 import { RwStarRating } from '@/components/RwStarRating';
+import { RankingSearch, TasteMatchPanel } from '@/components/RankingFinder';
 
 type RankedBook = { review: Review; nlRating: number | null };
 type ReaderRatingRow = { review_id: string; rating: number | null };
@@ -96,8 +97,6 @@ function BookRankingRow({ item, rank, metric, navigate }: {
   );
 }
 
-type GenreOption = { key: string; label: string };
-
 function genreKey(value: string | null | undefined): string {
   const normalized = String(value ?? '')
     .normalize('NFKD')
@@ -135,7 +134,7 @@ function genreLabel(key: string, variants: string[]): string {
 }
 
 function RankingSection({
-  id, kicker, title, description, books, metric, navigate, icon, genres,
+  id, kicker, title, description, books, metric, navigate, icon,
 }: {
   id: string;
   kicker: string;
@@ -145,20 +144,14 @@ function RankingSection({
   metric: 'nl' | 'rw' | 'genre';
   navigate: (path: string) => void;
   icon: 'trending' | 'trophy' | 'sparkles';
-  genres: GenreOption[];
 }) {
   const [page, setPage] = useState(0);
-  const [selectedGenre, setSelectedGenre] = useState('');
   const Icon = icon === 'trending' ? TrendingUp : icon === 'trophy' ? Trophy : Sparkles;
-  const filteredBooks = useMemo(
-    () => selectedGenre ? books.filter(({ review }) => genreKey(review.genre) === selectedGenre) : books,
-    [books, selectedGenre],
-  );
+  const filteredBooks = books;
   const pageCount = Math.max(1, Math.ceil(filteredBooks.length / 5));
   const currentPage = Math.min(page, pageCount - 1);
   const firstIndex = currentPage * 5;
   const visibleBooks = filteredBooks.slice(firstIndex, firstIndex + 5);
-  const selectedGenreLabel = genres.find((genre) => genre.key === selectedGenre)?.label;
 
   return (
     <section className="nl-live-section" aria-labelledby={`${id}-title`}>
@@ -171,23 +164,8 @@ function RankingSection({
         </div>
       </header>
 
-      <div className="nl-live-section-filter">
-        <label className="nl-live-select-label" htmlFor={`${id}-genre-filter`}>Filter by genre</label>
-        <div className="nl-live-select-wrap">
-          <select
-            id={`${id}-genre-filter`}
-            value={selectedGenre}
-            onChange={(event) => { setSelectedGenre(event.target.value); setPage(0); }}
-          >
-            <option value="">All genres</option>
-            {genres.map((genre) => <option key={genre.key} value={genre.key}>{genre.label}</option>)}
-          </select>
-          <ChevronDown size={17} aria-hidden="true" />
-        </div>
-      </div>
-
       {filteredBooks.length === 0 ? (
-        <p className="nl-live-empty">{selectedGenreLabel ? `No published books are listed under ${selectedGenreLabel} yet.` : 'No published books are available for this ranking yet.'}</p>
+        <p className="nl-live-empty">No published books are available for this ranking yet.</p>
       ) : (
         <>
           <ol className="nl-live-list">
@@ -235,21 +213,6 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
     return () => media.removeEventListener('change', update);
   }, []);
 
-  const genres = useMemo(() => {
-    const grouped = new Map<string, string[]>();
-    books.forEach(({ review }) => {
-      const label = String(review.genre ?? '').trim();
-      if (!label) return;
-      const key = genreKey(label);
-      if (!key) return;
-      const variants = grouped.get(key) ?? [];
-      if (!variants.includes(label)) variants.push(label);
-      grouped.set(key, variants);
-    });
-    return Array.from(grouped.entries())
-      .map(([key, variants]) => ({ key, label: genreLabel(key, variants) }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [books]);
   const byNl = useMemo(() => books.filter((book) => book.nlRating != null).sort((a, b) => (b.nlRating ?? -1) - (a.nlRating ?? -1) || b.review.rw_rating - a.review.rw_rating || sortTitle(a, b)), [books]);
   const byRw = useMemo(() => books.filter((book) => Number.isFinite(book.review.rw_rating) && book.review.rw_rating > 0).sort((a, b) => b.review.rw_rating - a.review.rw_rating || (b.nlRating ?? -1) - (a.nlRating ?? -1) || sortTitle(a, b)), [books]);
 
@@ -288,7 +251,7 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
           <div className="nl-live-hero-copy">
             <span className="nl-live-eyebrow"><Activity size={13} aria-hidden="true" /> NOVELTY LIBRARY · LIVE RANKINGS</span>
             <h1>Live Rankings</h1>
-            <p className="nl-live-one-liner">Published books, ranked by NL score, R/W stars, and genre.</p>
+            <p className="nl-live-one-liner">Search the library, get a taste match, and see the top books by NL score and R/W stars.</p>
             <p className="nl-live-hero-note">A reader-powered snapshot of the books the Novelty Library community rates highest.</p>
           </div>
         </header>
@@ -299,13 +262,15 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
 
         {!loading && !error && books.length > 0 && (
           <div className="nl-live-content">
+            <RankingSearch books={books} openBook={(review) => navigate(`/review/${encodeURIComponent(bookSlug(review))}`)} />
+            <TasteMatchPanel books={books} openBook={(review) => navigate(`/review/${encodeURIComponent(bookSlug(review))}`)} goRoadmap={() => navigate('/about#roadmap')} />
             <div className="nl-live-ranking-grid">
-              <RankingSection id="nl-rankings" kicker="COMMUNITY + REVIEWER SCORE" title="Top 5 · NL Rating" description="Highest NL scores first, with each book’s R/W stars included." books={byNl} metric="nl" navigate={navigate} icon="trending" genres={genres} />
-              <RankingSection id="rw-rankings" kicker="REVIEWER SCORE · STAR VIEW" title="Top 5 · R/W Rating" description="Highest R/W ratings first, shown with the familiar star score." books={byRw} metric="rw" navigate={navigate} icon="trophy" genres={genres} />
+              <RankingSection id="nl-rankings" kicker="COMMUNITY + REVIEWER SCORE" title="Top 5 · NL Rating" description="Highest NL scores first, with each book’s R/W stars included." books={byNl} metric="nl" navigate={navigate} icon="trending" />
+              <RankingSection id="rw-rankings" kicker="REVIEWER SCORE · STAR VIEW" title="Top 5 · R/W Rating" description="Highest R/W ratings first, shown with the familiar star score." books={byRw} metric="rw" navigate={navigate} icon="trophy" />
             </div>
           </div>
         )}
-        <p className="nl-live-footnote">Explore published reviews ranked by NL Rating or R/W stars. Choose a genre in either list to narrow the rankings without leaving this page.</p>
+        <p className="nl-live-footnote">Explore published reviews ranked by NL Rating or R/W stars. Use the search above to find books by genre, language, traits or author, or describe what you feel like reading.</p>
       </div>
       {showSideAds && <aside className="nl-live-ad-rail nl-live-ad-rail-left" aria-label="Advertisement"><AdSenseAdSlot className="nl-live-rail-ad-slot" active={showSideAds} /></aside>}
       {showSideAds && <aside className="nl-live-ad-rail nl-live-ad-rail-right" aria-label="Advertisement"><AdSenseAdSlot className="nl-live-rail-ad-slot" active={showSideAds} /></aside>}

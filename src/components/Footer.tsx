@@ -111,6 +111,7 @@ export function Footer({ navigate }: FooterProps) {
           </div>
         </div>
         <p className="nl-footer-note">Reviews are opinions of individual reviewers, not cumulative assessments.</p>
+        <p className="nl-footer-note">Rankings come only from reader and reviewer ratings. Ads and buy links never change which books are shown or how they rank.</p>
       </div>
     </footer>
   );

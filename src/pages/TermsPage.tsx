@@ -8,8 +8,8 @@ interface TermsPageProps {
 
 export function TermsPage({ navigate }: TermsPageProps) {
   const editable = useEditableOverride('terms');
-  if (editable) return <EditablePageOverride page={editable} navigate={navigate} />;
   const supportEmail = useSupportEmail();
+  if (editable) return <EditablePageOverride page={editable} navigate={navigate} />;
   return (
     <div className="pt-24 pb-20 container-prose animate-fade-in">
       <div className="max-w-3xl mx-auto">
@@ -30,7 +30,7 @@ export function TermsPage({ navigate }: TermsPageProps) {
             Terms of Service &amp; Fair Use
           </h1>
           <p className="text-sm mb-2" style={{ color: 'var(--color-text-muted)' }}>
-            Last updated: September 2026
+            Last updated: October 2026
           </p>
           <p className="text-sm mb-10" style={{ color: 'var(--color-text-muted)' }}>
             Applicable Law: These Terms are intended to operate in accordance with applicable laws of India.
@@ -115,6 +115,20 @@ export function TermsPage({ navigate }: TermsPageProps) {
                 sequential library archive. Reviewers seeking to disassociate themselves from a published review may
                 request to have their personal details anonymized (removing their name and Instagram handle) by contacting
                 the same email address, while the review text, rating, and Review Number remain permanent parts of the archive.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-xl font-semibold mb-2">Profiles &amp; Uploaded Content</h2>
+              <p>
+                You are responsible for everything you add to your profile, including pictures, answers, book covers and reading lists. Upload only content you have the right to share, and do not post anything unlawful, hateful, misleading or that infringes someone else’s rights. You control which profile items are visible to others. We may remove content, or suspend an account, that breaks these terms or harms the community.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-xl font-semibold mb-2">Rankings, Advertising &amp; Third-Party Links</h2>
+              <p>
+                Rankings and recommendations on Novelty Library come from reader and reviewer ratings only. Advertisements and any buy or affiliate links do not influence which books are shown or how they rank. Third-party sites we link to have their own terms and privacy practices.
               </p>
             </section>
 

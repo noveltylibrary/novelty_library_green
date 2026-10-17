@@ -61,8 +61,8 @@ export function AdminHubPage({ navigate }: AdminHubPageProps) {
       gradient: 'linear-gradient(135deg, #0097b2 0%, #5ce1e6 100%)',
     },
     {
-      title: 'Admins & Contacts',
-      desc: 'Control admin access and the Support contact, send notifications, and publish the Home announcement posters.',
+      title: 'Control Panel',
+      desc: 'Control admin access and the Support contact, send notifications, publish the Home announcement posters, and edit the About roadmap.',
       icon: UserCog,
       path: '/admin/admins',
       gradient: 'linear-gradient(135deg, #013a46 0%, #0097b2 100%)',

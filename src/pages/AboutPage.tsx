@@ -3,6 +3,7 @@ import { useEditableOverride, EditablePageOverride } from '@/components/Editable
 import { useAboutSections } from '@/lib/aboutSections';
 import { AboutSectionBlock } from '@/components/AboutSectionsView';
 import AdSenseAdSlot from '@/components/AdSenseAdSlot';
+import { RoadmapTable } from '@/components/RoadmapTable';
 import { ArrowLeft, Home, BookOpen, Send, BarChart3 } from 'lucide-react';
 
 interface AboutPageProps {
@@ -30,6 +31,7 @@ export function AboutPage({ navigate }: AboutPageProps) {
         {loaded
           ? sections.filter((s) => s.active).sort((a, b) => a.sort_order - b.sort_order).map((s) => <div key={s.id}><AboutSectionBlock section={s} email={supportEmail} navigate={navigate} /><AdSenseAdSlot className="my-10" /></div>)
           : <div className="h-96 rounded-3xl animate-pulse" style={{ background: 'var(--color-paper)' }} />}
+        {loaded && <RoadmapTable scrollTarget />}
       </div>
     </div>
   );
