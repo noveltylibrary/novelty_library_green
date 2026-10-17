@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, UserCog, Trash2, AlertCircle, Shield, SlidersHorizontal, Bell, Megaphone } from 'lucide-react';
+import { ArrowLeft, UserCog, Trash2, AlertCircle, Shield, ListChecks, Bell, Megaphone } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { AdminNotifyPanel } from '@/components/AdminNotifyPanel';
@@ -8,7 +8,7 @@ import { fetchSupportEmail, updateSupportEmail } from '@/lib/siteSettings';
 
 type AdminTab = 'control' | 'notifications' | 'announcements';
 const TABS: { key: AdminTab; label: string; path: string; Icon: typeof Shield }[] = [
-  { key: 'control', label: 'Control', path: '/admin/admins', Icon: SlidersHorizontal },
+  { key: 'control', label: 'Control', path: '/admin/admins', Icon: ListChecks },
   { key: 'notifications', label: 'Notifications', path: '/admin/notifications', Icon: Bell },
   { key: 'announcements', label: 'Announcements', path: '/admin/announcements', Icon: Megaphone },
 ];

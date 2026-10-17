@@ -1,5 +1,6 @@
 import { Shield, BookMarked, ArrowLeft, LogOut, UserCog, Database, ExternalLink, Users, WalletCards, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { APP_VERSION } from '@/lib/version';
 
 // Derive the Supabase project ref from the project URL so admins can jump
 // straight into the Supabase dashboard (table editor, SQL editor, auth,
@@ -98,7 +99,7 @@ export function AdminHubPage({ navigate }: AdminHubPageProps) {
             <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-teal-dark)' }}>Admin Dashboard</span>
           </div>
           <h1 className="font-serif text-4xl font-semibold tracking-tight" style={{ color: 'var(--color-text)' }}>Welcome back</h1>
-          <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>Signed in as {user.email}</p>
+          <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>Signed in as {user.email} · build v{APP_VERSION}</p>
         </div>
         <div className="flex items-center gap-2">
           <a href={SUPABASE_DASHBOARD_URL} target="_blank" rel="noopener noreferrer" className="btn-ghost text-sm">

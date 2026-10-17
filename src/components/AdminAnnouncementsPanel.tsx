@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Code2, ImagePlus, Link2, Loader2, Megaphone, Save, Trash2 } from 'lucide-react';
+import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, FileText, ImagePlus, Link2, Loader2, Megaphone, Save, Trash2 } from 'lucide-react';
 import { FeaturedPosters } from '@/components/FeaturedPosters';
 import {
   DEFAULT_ANNOUNCEMENTS, MAX_POSTERS, RECOMMENDED_POSTERS, POSTER_WIDTH, POSTER_HEIGHT, POSTER_HTML_EXAMPLE,
@@ -148,13 +148,13 @@ export function AdminAnnouncementsPanel() {
       </section>
 
       <section className="surface-card p-5 sm:p-6">
-        <div className="flex items-center gap-2"><Code2 className="w-5 h-5" style={{ color: 'var(--color-teal-dark)' }} /><h3 className="font-serif text-lg font-semibold">Import from HTML</h3></div>
+        <div className="flex items-center gap-2"><FileText className="w-5 h-5" style={{ color: 'var(--color-teal-dark)' }} /><h3 className="font-serif text-lg font-semibold">Import from HTML</h3></div>
         <p className="text-sm mt-1 max-w-3xl" style={{ color: 'var(--color-text-muted)' }}>
           Paste HTML code and it is converted into posters in the fixed format above. Only the https image, title, caption and link are read — scripts and styles in the pasted code are ignored. Plain <code>&lt;a&gt;&lt;img&gt;&lt;/a&gt;</code> and <code>&lt;img&gt;</code> snippets also work.
         </p>
         <pre className="mt-3 p-3 rounded-xl text-xs overflow-x-auto" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>{POSTER_HTML_EXAMPLE}</pre>
         <textarea className="input-field mt-3 min-h-[140px] font-mono text-xs" value={html} onChange={(e) => setHtml(e.target.value)} placeholder="Paste HTML here…" aria-label="HTML to import" spellCheck={false} />
-        <button type="button" className="btn-primary !w-auto mt-3" onClick={importHtml} disabled={!html.trim()}><Code2 className="w-4 h-4" /> Parse &amp; add posters</button>
+        <button type="button" className="btn-primary !w-auto mt-3" onClick={importHtml} disabled={!html.trim()}><FileText className="w-4 h-4" /> Parse &amp; add posters</button>
       </section>
 
       <section className="surface-card p-5 sm:p-6">

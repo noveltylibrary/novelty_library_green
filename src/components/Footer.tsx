@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { APP_VERSION } from '@/lib/version';
 import { ArrowUpRight, Download, ExternalLink, Instagram, Mail, Share, Smartphone, Sparkles, Zap } from 'lucide-react';
 import { useSupportEmail } from '@/lib/siteSettings';
 import { usePwaInstall } from '@/lib/pwa';
@@ -98,7 +99,7 @@ export function Footer({ navigate }: FooterProps) {
         </div>
 
         <div className="nl-footer-bottom">
-          <p>© {new Date().getFullYear()} Novelty Library. All rights reserved. <span style={{ opacity: .6 }}>· v1.4</span></p>
+          <p>© {new Date().getFullYear()} Novelty Library. All rights reserved. <span style={{ opacity: .6 }}>· v{APP_VERSION}</span></p>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => navigate('/privacy')} className="hover:underline underline-offset-2">Privacy Policy</button>
             <span aria-hidden="true">·</span>
