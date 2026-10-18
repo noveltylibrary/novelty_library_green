@@ -243,56 +243,157 @@ const REASON_FIELD: Record<'genre' | 'traits' | 'title' | 'author' | 'language' 
 
 export interface BroadOptions {
   exclude?: Set<string>;
-  /** Minimum score; related-only searches use a lower bar. */
+  /** Minimum cosine similarity in percent (default 5). */
   minScore?: number;
 }
 
-/** Wide search: any words, any field, typo tolerant, and related genres count too. */
+/** Wide search: TF-IDF + cosine similarity over every review. `score` is the cosine similarity as a percentage (0-100). */
 export function broadSearch(books: SearchBook[], text: string, opts: BroadOptions = {}): Match[] {
-  const qNorm = norm(text);
-  const tokens = qNorm.split(' ').filter((t) => t && !STOP.has(t));
-  if (!tokens.length) return [];
-  const bigrams = tokens.slice(0, -1).map((t, i) => `${t} ${tokens[i + 1]}`);
-  const qConcepts = new Map<string, number>();
-  for (const part of [...bigrams, ...tokens, qNorm]) for (const [id, s] of conceptsOf(part)) qConcepts.set(id, Math.max(qConcepts.get(id) ?? 0, s));
-  const min = opts.minScore ?? 2;
+  if (!norm(text) || !books.length) return [];
+  const idx = getIndex(books);
+  const q = queryVector(idx, text);
+  if (!q.vec.size) return [];
+  const min = opts.minScore ?? 5;
   const out: Match[] = [];
-
-  for (const book of books) {
-    if (opts.exclude?.has(book.id)) continue;
-    const p = prepare(book);
-    let score = 0;
-    const reasons: string[] = [];
-    const addReason = (r: string) => { if (!reasons.includes(r)) reasons.push(r); };
-
-    for (const token of tokens) {
-      let bestWeighted = 0; let bestReason = '';
-      (['genre', 'traits', 'title', 'author', 'language', 'verdict'] as const).forEach((f) => {
-        const { sim, word } = bestSimilarity(token, p[f]);
-        const weighted = sim * FIELD_WEIGHT[f];
-        if (weighted > bestWeighted) {
-          bestWeighted = weighted;
-          const shown = f === 'genre' ? book.genre : f === 'traits' ? book.traits : f === 'language' ? book.language : f === 'author' ? book.author : f === 'title' ? book.title : word;
-          bestReason = `${REASON_FIELD[f]}: ${shown}`;
-        }
-      });
-      if (p.text.has(token) && FIELD_WEIGHT.text > bestWeighted) { bestWeighted = FIELD_WEIGHT.text; bestReason = 'Mentioned in the review'; }
-      if (bestWeighted > 0) { score += bestWeighted; if (bestWeighted >= 1.5) addReason(bestReason); }
-    }
-
-    if (tokens.length >= 2 && hasPhrase(p.textNorm, qNorm)) { score += 3; addReason(`Phrase: ${text.trim().slice(0, 40)}`); }
-
-    for (const [id, strength] of qConcepts) {
-      const own = p.concepts.get(id);
-      if (own) { score += 4 * strength * own; addReason(`${p.genre.length && norm(book.genre) ? 'Genre' : 'Theme'}: ${book.genre || conceptLabel(id)}`); continue; }
-      if (strength < 0.8) continue;
-      const near = [...(NEIGHBOURS.get(id) ?? [])].find((n) => p.concepts.has(n));
-      if (near) { score += 2 * strength; addReason(`Similar vibe: ${conceptLabel(near)}`); }
-    }
-
-    if (score >= min) out.push({ book, score, reasons: reasons.slice(0, 3) });
+  for (const doc of idx.docs) {
+    if (opts.exclude?.has(doc.book.id)) continue;
+    const pct = cosine(q.vec, doc.vec) * 100;
+    if (pct >= min) out.push({ book: doc.book, score: Math.round(pct * 10) / 10, reasons: explainMatch(doc, q, text) });
   }
-  return out.sort((a, b) => b.score - a.score || (b.book.nl ?? -1) - (a.book.nl ?? -1) || b.book.rw - a.book.rw);
+  return out.sort((x, y) => y.score - x.score || (y.book.nl ?? -1) - (x.book.nl ?? -1) || y.book.rw - x.book.rw);
+}
+
+/* ───────────── TF-IDF + cosine similarity engine ─────────────
+ * Every published review becomes a weighted bag of terms (genre, traits, title, author, language, verdict and review text,
+ * plus concept tags for related genres). Terms are weighted by TF-IDF (sublinear tf, smoothed idf, L2-normalised - the same
+ * recipe as scikit-learn's TfidfVectorizer) and a query is ranked by cosine similarity against every review.
+ * Runs entirely in the browser: no server, no database change. */
+
+type Vec = Map<string, number>;
+type FieldKey = 'genre' | 'traits' | 'title' | 'author' | 'language' | 'verdict';
+interface TfDoc { book: SearchBook; vec: Vec; fields: Record<FieldKey, Set<string>>; text: Set<string>; concepts: Map<string, number> }
+interface TfIndex { docs: TfDoc[]; idf: Map<string, number>; vocab: string[] }
+
+const stem = (w: string): string => (w.length > 4 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
+const termsOf = (text: string): string[] => norm(text).split(' ').filter((t) => t && !STOP.has(t)).map(stem);
+const bigramsOf = (terms: string[]): string[] => terms.slice(0, -1).map((t, i) => `${t} ${terms[i + 1]}`);
+const FIELD_TF_WEIGHT: Record<FieldKey, number> = { genre: 3, traits: 3, title: 2, author: 2, language: 2, verdict: 1 };
+
+function bookCounts(book: SearchBook): { counts: Map<string, number>; fields: TfDoc['fields']; text: Set<string>; concepts: Map<string, number> } {
+  const counts = new Map<string, number>();
+  const add = (t: string, w: number) => counts.set(t, (counts.get(t) ?? 0) + w);
+  const fields = { genre: new Set<string>(), traits: new Set<string>(), title: new Set<string>(), author: new Set<string>(), language: new Set<string>(), verdict: new Set<string>() };
+  const raw: Record<FieldKey, string> = { genre: book.genre, traits: book.traits, title: book.title, author: book.author, language: book.language, verdict: VERDICT_WORDS[book.verdict] ?? book.verdict };
+  (Object.keys(raw) as FieldKey[]).forEach((f) => {
+    // Genre / traits are lists ("Thriller, Psychological"): count single words and the neighbouring pairs inside each item.
+    const items = f === 'genre' || f === 'traits' ? String(raw[f] ?? '').split(/[,;/|]+/) : [raw[f]];
+    for (const item of items) {
+      const ts = termsOf(item);
+      ts.forEach((t) => { add(t, FIELD_TF_WEIGHT[f]); fields[f].add(t); });
+      if (f === 'genre' || f === 'traits') bigramsOf(ts).forEach((b) => { add(b, FIELD_TF_WEIGHT[f]); fields[f].add(b); });
+    }
+  });
+  const text = new Set<string>();
+  termsOf(book.text).slice(0, 600).forEach((t) => { add(t, 1); text.add(t); });
+  // Concept tags make "psychological thriller" and "psychological suspense" land close together.
+  const concepts = new Map<string, number>();
+  for (const v of [...fieldValues(book, 'genre'), ...fieldValues(book, 'traits')]) for (const [id, st] of conceptsOf(v)) concepts.set(id, Math.max(concepts.get(id) ?? 0, st));
+  for (const [id, st] of concepts) {
+    add(`§${id}`, 3 * st);
+    for (const n of NEIGHBOURS.get(id) ?? []) if (!concepts.has(n)) add(`§${n}`, 0.8 * st);
+  }
+  return { counts, fields, text, concepts };
+}
+
+function l2(vec: Vec): Vec {
+  let sum = 0; vec.forEach((v) => { sum += v * v; });
+  const n = Math.sqrt(sum) || 1;
+  vec.forEach((v, k) => vec.set(k, v / n));
+  return vec;
+}
+
+function buildIndex(books: SearchBook[]): TfIndex {
+  const prepared = books.map((book) => ({ book, ...bookCounts(book) }));
+  const df = new Map<string, number>();
+  prepared.forEach((p) => p.counts.forEach((_, t) => df.set(t, (df.get(t) ?? 0) + 1)));
+  const n = prepared.length;
+  const idf = new Map<string, number>();
+  df.forEach((d, t) => idf.set(t, Math.log((1 + n) / (1 + d)) + 1));
+  const docs: TfDoc[] = prepared.map((p) => {
+    const vec: Vec = new Map();
+    p.counts.forEach((c, t) => vec.set(t, (1 + Math.log(Math.max(c, 1))) * (idf.get(t) ?? 1)));
+    return { book: p.book, vec: l2(vec), fields: p.fields, text: p.text, concepts: p.concepts };
+  });
+  return { docs, idf, vocab: [...idf.keys()].filter((t) => !t.startsWith('§')) };
+}
+
+const indexCache = new WeakMap<SearchBook[], TfIndex>();
+function getIndex(books: SearchBook[]): TfIndex {
+  let idx = indexCache.get(books);
+  if (!idx || idx.docs.length !== books.length) { idx = buildIndex(books); indexCache.set(books, idx); }
+  return idx;
+}
+
+/** Maps a query word to a word that exists in the library (fixes small typos, accepts prefixes). */
+function resolveTerm(t: string, idx: TfIndex): string | null {
+  if (idx.idf.has(t)) return t;
+  const max = allowedTypos(t);
+  let best: string | null = null; let bestD = Infinity;
+  for (const w of idx.vocab) {
+    if (w.includes(' ')) continue;
+    if (t.length >= 4 && w.length > t.length && w.startsWith(t)) { if (0.5 < bestD) { best = w; bestD = 0.5; } continue; }
+    if (!max) continue;
+    const d = editDistance(t, w, max);
+    if (d <= max && d < bestD) { best = w; bestD = d; }
+  }
+  return best;
+}
+
+interface QueryVec { vec: Vec; terms: string[]; concepts: Map<string, number> }
+
+/** Query text (+ optional extra concept weights) -> L2-normalised TF-IDF vector. */
+function queryVector(idx: TfIndex, text: string, extraConcepts?: Map<string, number>): QueryVec {
+  const raw = termsOf(text).map((t) => resolveTerm(t, idx)).filter((t): t is string => !!t);
+  const counts = new Map<string, number>();
+  const add = (t: string, w: number) => { if (idx.idf.has(t)) counts.set(t, (counts.get(t) ?? 0) + w); };
+  raw.forEach((t) => add(t, 1));
+  bigramsOf(raw).forEach((b) => add(b, 1));
+  const qNorm = norm(text);
+  const parts = [qNorm, ...qNorm.split(' ').filter((t) => t && !STOP.has(t)), ...bigramsOf(qNorm.split(' ').filter((t) => t && !STOP.has(t)))];
+  const concepts = new Map<string, number>(extraConcepts ?? []);
+  for (const part of parts) for (const [id, st] of conceptsOf(part)) concepts.set(id, Math.max(concepts.get(id) ?? 0, st));
+  for (const [id, st] of concepts) {
+    add(`§${id}`, 3 * st);
+    if (st >= 0.8) for (const n of NEIGHBOURS.get(id) ?? []) add(`§${n}`, 0.8 * st);
+  }
+  const vec: Vec = new Map();
+  counts.forEach((c, t) => vec.set(t, (1 + Math.log(c)) * (idx.idf.get(t) ?? 1)));
+  return { vec: l2(vec), terms: [...new Set(raw)], concepts };
+}
+
+function cosine(a: Vec, b: Vec): number {
+  const [small, big] = a.size <= b.size ? [a, b] : [b, a];
+  let dot = 0; small.forEach((v, k) => { const w = big.get(k); if (w) dot += v * w; });
+  return dot;
+}
+
+const FIELD_LABEL_SHORT: Record<FieldKey, string> = { genre: 'Genre', traits: 'Trait', title: 'Title', author: 'Author', language: 'Language', verdict: 'Verdict' };
+
+/** Short "why it matched" chips for a document, taken from the query terms it actually shares. */
+function explainMatch(doc: TfDoc, q: QueryVec, queryText: string): string[] {
+  const reasons: string[] = [];
+  const add = (r: string) => { if (r && !reasons.includes(r)) reasons.push(r); };
+  const shown = (f: FieldKey): string => (f === 'genre' ? doc.book.genre : f === 'traits' ? doc.book.traits : f === 'language' ? doc.book.language : f === 'author' ? doc.book.author : f === 'title' ? doc.book.title : doc.book.verdict.replace(/_/g, ' '));
+  (['genre', 'traits', 'author', 'language', 'title', 'verdict'] as FieldKey[]).forEach((f) => {
+    if (q.terms.some((t) => doc.fields[f].has(t))) add(`${FIELD_LABEL_SHORT[f]}: ${shown(f)}`.slice(0, 48));
+  });
+  for (const [id, st] of q.concepts) {
+    if (doc.concepts.has(id)) add(`Genre: ${doc.book.genre || conceptLabel(id)}`.slice(0, 48));
+    else if (st >= 0.8) { const near = [...(NEIGHBOURS.get(id) ?? [])].find((n) => doc.concepts.has(n)); if (near) add(`Similar vibe: ${conceptLabel(near)}`); }
+  }
+  if (!reasons.length && q.terms.some((t) => doc.text.has(t))) add('Mentioned in the review');
+  if (norm(queryText).split(' ').length >= 2 && !reasons.length) add('Closest wording');
+  return reasons.slice(0, 3);
 }
 
 /* ───────────── combined search used by the page ───────────── */
@@ -314,7 +415,7 @@ export function runSearch(books: SearchBook[], field: SearchField, strictQuery: 
   if (hasStrict && !hasMore) {
     // Variant views of the same idea: related genres / near words, never repeating the direct hits.
     const seed = field === 'genre' || field === 'traits' ? strictQuery : `${strictQuery}`;
-    const related = broadSearch(books, seed, { exclude, minScore: 4 });
+    const related = broadSearch(books, seed, { exclude, minScore: 8 });
     return { mode: 'direct', direct, related };
   }
   if (!hasStrict) return { mode: 'description', direct: [], related: broadSearch(books, moreText) };
@@ -343,6 +444,37 @@ export function popularValues(books: SearchBook[], field: SearchField, limit = 6
   return [...counts.values()].sort((a, b) => b.n - a.n || a.label.localeCompare(b.label)).slice(0, limit).map((v) => v.label);
 }
 
+/* ───────────── "Did you mean" + nearest matches (when a search finds nothing) ───────────── */
+
+/** Library values for the chosen field that look like what was typed (typos, partial words). */
+export function didYouMean(books: SearchBook[], field: SearchField, query: string, limit = 3): string[] {
+  const q = norm(query);
+  if (!q) return [];
+  const qTokens = q.split(' ').filter(Boolean);
+  const scored: { label: string; s: number }[] = [];
+  for (const label of popularValues(books, field, 500)) {
+    const v = norm(label);
+    if (!v || v === q) continue;
+    let best = 0;
+    const maxWhole = Math.max(2, Math.round(Math.max(q.length, v.length) * 0.34));
+    const d = editDistance(q, v, maxWhole);
+    if (d <= maxWhole) best = Math.max(best, 1 - d / (Math.max(q.length, v.length) + 1));
+    const vTokens = v.split(' ');
+    for (const qt of qTokens) for (const vt of vTokens) { const w = wordSimilarity(qt, vt); if (w >= 0.6) best = Math.max(best, w * 0.8); }
+    if (best > 0) scored.push({ label, s: best });
+  }
+  return scored.sort((a, b) => b.s - a.s || a.label.localeCompare(b.label)).slice(0, limit).map((x) => x.label);
+}
+
+/** Closest books to a search that matched nothing; falls back to reader favourites so the box is never a dead end. */
+export function nearestBooks(books: SearchBook[], strictQuery: string, moreText: string, limit = 3): { matches: Match[]; fallback: boolean } {
+  const near = broadSearch(books, `${strictQuery} ${moreText}`.trim(), { minScore: 0.5 }).slice(0, limit);
+  if (near.length) return { matches: near, fallback: false };
+  const fav = [...books].sort((a, b) => (b.nl ?? b.rw) - (a.nl ?? a.rw) || b.rw - a.rw).slice(0, limit)
+    .map((book): Match => ({ book, score: 0, reasons: [book.nl != null ? `Reader favourite · NL ${book.nl.toFixed(1)}` : `Reviewer favourite · R/W ${book.rw.toFixed(1)}`] }));
+  return { matches: fav, fallback: true };
+}
+
 /* ───────────── basic taste match ───────────── */
 
 export interface Mood { id: string; label: string; hint: string; concepts: string[]; words: string[] }
@@ -364,43 +496,71 @@ export function tasteMatch(books: SearchBook[], input: TasteInput, limit = 3): M
   const moods = input.moods.map((id) => MOODS.find((m) => m.id === id)).filter((m): m is Mood => !!m);
   const loved = books.find((b) => b.id === input.lovedId);
   if (!moods.length && !loved) return [];
+  const idx = getIndex(books);
   const lovedP = loved ? prepare(loved) : null;
   const langKey = norm(input.language);
-  const out: Match[] = [];
 
-  for (const book of books) {
+  // Taste profile = the moods you picked (their words + genre concepts) + the book you loved, as one TF-IDF vector.
+  const profile: Vec = new Map();
+  const mix = (v: Vec, w: number) => v.forEach((x, k) => profile.set(k, (profile.get(k) ?? 0) + x * w));
+  for (const mood of moods) {
+    const concepts = new Map<string, number>(mood.concepts.map((c) => [c, 1] as [string, number]));
+    mix(queryVector(idx, mood.words.join(' '), concepts).vec, 1);
+  }
+  if (loved) { const d = idx.docs.find((x) => x.book.id === loved.id); if (d) mix(d.vec, moods.length ? 1.2 : 2); }
+  l2(profile);
+
+  const out: { m: Match; key: number }[] = [];
+  for (const doc of idx.docs) {
+    const book = doc.book;
     if (loved && book.id === loved.id) continue;
     if (langKey && norm(book.language) !== langKey) continue;
+    const pct = cosine(profile, doc.vec) * 100;
+    if (pct < 4) continue;
     const p = prepare(book);
-    let score = 0;
     const reasons: string[] = [];
     const add = (r: string) => { if (!reasons.includes(r)) reasons.push(r); };
-
     for (const mood of moods) {
-      let m = 0;
-      for (const c of mood.concepts) { if (p.concepts.has(c)) m += 3 * (p.concepts.get(c) ?? 1); else if ([...(NEIGHBOURS.get(c) ?? [])].some((n) => p.concepts.has(n))) m += 1; }
-      const pool = [...p.genre, ...p.traits, ...p.title];
-      const hits = mood.words.filter((w) => pool.some((x) => wordSimilarity(w, x) >= 0.7));
-      m += Math.min(hits.length, 3) * 1.5;
-      if (m > 0) { score += m; add(`Fits your ${mood.label.toLowerCase()} mood${book.genre ? ` (${book.genre})` : ''}`); }
+      const hit = mood.concepts.some((c) => p.concepts.has(c) || [...(NEIGHBOURS.get(c) ?? [])].some((n) => p.concepts.has(n)))
+        || mood.words.some((w) => [...p.genre, ...p.traits, ...p.title].some((x) => wordSimilarity(w, x) >= 0.7));
+      if (hit) add(`Fits your ${mood.label.toLowerCase()} mood${book.genre ? ` (${book.genre})` : ''}`);
     }
-
     if (loved && lovedP) {
-      let s = 0;
-      const shared = [...lovedP.concepts.keys()].filter((c) => p.concepts.has(c));
-      if (shared.length) { s += 3; add(`Same kind of read as ${loved.title}`); }
-      else if ([...lovedP.concepts.keys()].some((c) => [...(NEIGHBOURS.get(c) ?? [])].some((n) => p.concepts.has(n)))) { s += 1; add(`Close to ${loved.title}`); }
+      if ([...lovedP.concepts.keys()].some((c) => p.concepts.has(c))) add(`Same kind of read as ${loved.title}`);
+      else if ([...lovedP.concepts.keys()].some((c) => [...(NEIGHBOURS.get(c) ?? [])].some((n) => p.concepts.has(n)))) add(`Close to ${loved.title}`);
       const sharedTraits = lovedP.traits.filter((t) => t.length > 3 && p.traits.includes(t));
-      if (sharedTraits.length) { s += Math.min(sharedTraits.length, 2) * 1.5; add(`Shares: ${[...new Set(sharedTraits)].slice(0, 2).join(', ')}`); }
-      if (norm(book.author) && norm(book.author) === norm(loved.author)) { s += 2; add(`More from ${book.author}`); }
-      score += s;
+      if (sharedTraits.length) add(`Shares: ${[...new Set(sharedTraits)].slice(0, 2).join(', ')}`);
+      if (norm(book.author) && norm(book.author) === norm(loved.author)) add(`More from ${book.author}`);
     }
-
-    if (score <= 0) continue;
-    // Quality nudge: well-rated books win ties, but a poor match is never rescued by a rating.
-    if (book.nl != null) { score += (book.nl / 10) * 1.5; if (book.nl >= 8) add(`Reader favourite · NL ${book.nl.toFixed(1)}`); }
-    if (book.verdict === 'perfection') score += 1;
-    out.push({ book, score, reasons: reasons.slice(0, 3) });
+    if (book.nl != null && book.nl >= 8) add(`Reader favourite · NL ${book.nl.toFixed(1)}`);
+    if (!reasons.length) add('Closest to your taste profile');
+    // Ranked by similarity; ratings only break near-ties, so a poor match is never rescued by a rating.
+    const key = pct + (book.nl != null ? (book.nl / 10) * 2 : 0) + (book.verdict === 'perfection' ? 1 : 0);
+    out.push({ m: { book, score: Math.round(pct * 10) / 10, reasons: reasons.slice(0, 3) }, key });
   }
-  return out.sort((a, b) => b.score - a.score || (b.book.nl ?? -1) - (a.book.nl ?? -1)).slice(0, limit);
+  return out.sort((a, b) => b.key - a.key).slice(0, limit).map((x) => x.m);
+}
+
+/* ───────────── "More like this" ───────────── */
+
+/** Reviews closest to one review, by cosine similarity of their TF-IDF vectors (never returns the review itself). */
+export function similarBooks(books: SearchBook[], id: string, limit = 3, minPct = 12): Match[] {
+  const idx = getIndex(books);
+  const target = idx.docs.find((d) => d.book.id === id);
+  if (!target) return [];
+  const out: Match[] = [];
+  for (const doc of idx.docs) {
+    if (doc.book.id === id) continue;
+    const pct = cosine(target.vec, doc.vec) * 100;
+    if (pct < minPct) continue;
+    const reasons: string[] = [];
+    const add = (r: string) => { if (r && !reasons.includes(r)) reasons.push(r.slice(0, 48)); };
+    if (norm(doc.book.genre) && [...doc.fields.genre].some((t) => target.fields.genre.has(t) && !t.includes(' '))) add(`Genre: ${doc.book.genre}`);
+    if ([...doc.fields.traits].some((t) => target.fields.traits.has(t) && !t.includes(' ') && t.length > 3)) add(`Shared trait: ${[...doc.fields.traits].filter((t) => target.fields.traits.has(t) && !t.includes(' ') && t.length > 3)[0]}`);
+    if (norm(doc.book.author) && norm(doc.book.author) === norm(target.book.author)) add(`Same author: ${doc.book.author}`);
+    if (norm(doc.book.language) && norm(doc.book.language) === norm(target.book.language) && reasons.length < 2) add(`${doc.book.language}`);
+    if (!reasons.length) for (const [cid] of target.concepts) { const near = doc.concepts.has(cid) ? cid : [...(NEIGHBOURS.get(cid) ?? [])].find((n) => doc.concepts.has(n)); if (near) { add(`Similar vibe: ${conceptLabel(near)}`); break; } }
+    out.push({ book: doc.book, score: Math.round(pct * 10) / 10, reasons: reasons.slice(0, 3) });
+  }
+  return out.sort((a, b) => b.score - a.score || (b.book.nl ?? -1) - (a.book.nl ?? -1) || b.book.rw - a.book.rw).slice(0, limit);
 }

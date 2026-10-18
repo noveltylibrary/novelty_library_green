@@ -13,6 +13,7 @@ import { EngagementBar } from '@/components/EngagementBar';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { FeedbackList } from '@/components/FeedbackList';
 import { ReviewComments } from '@/components/ReviewComments';
+import { SimilarReviews } from '@/components/SimilarReviews';
 import { useAuth } from '@/lib/auth';
 import { computeNlRating, deleteFeedback, fetchFeedback, saveFeedback, useEngagement, type FeedbackEntry, type FeedbackInput } from '@/lib/engagement';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
@@ -342,6 +343,8 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
               </div>
               <FeedbackList entries={feedback} currentUserId={user?.id} user={user} profile={profile} navigate={navigate} onEdit={openModal} onDelete={() => void removeFeedback()} />
             </section>
+
+            <SimilarReviews current={review} navigate={navigate} />
 
             <ReviewComments reviewId={review.id} navigate={navigate} />
 

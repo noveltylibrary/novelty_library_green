@@ -3,6 +3,26 @@
 All version notes in one place, newest first. (Per-version files were merged here in v1.136.)
 
 
+# v1.147
+- Live Rankings search: "Did you mean ..." suggestions (clickable) when the typed word is not an exact genre/language/trait/author, and when nothing matches a "Closest we have" list (or top-rated picks as a last resort) instead of an empty box. No SQL.
+
+# v1.146
+- Review pages: new "More like this" block (3 most similar published reviews by TF-IDF cosine similarity, with % similar and why), shown above the comments. No SQL / Supabase change.
+
+# v1.145
+- Live Rankings search and Taste Match now use TF-IDF + cosine similarity over the published reviews (genre, traits, title, author, language, verdict, review text, plus related-genre concept tags; typo-tolerant), the same recipe as scikit-learn's TfidfVectorizer + cosine_similarity, but running in the browser. Wider/related results and taste picks show a "NN% match" (cosine similarity). Row 1 still lists exact genre/language/trait/author matches first.
+- No server, SQL or Supabase change.
+
+# v1.144
+- Live Rankings page order: NL and R/W ranking tables, then the search (Search by + the "Tell us more" line), then the taste match.
+
+# v1.143
+- (superseded by 1.144) order tables, taste match, search.
+
+# v1.142
+- Profile card no longer shows "Currently Reading" (or Up Next / Someday) as a strip; the card content is otherwise unchanged.
+- Your own profile page no longer shows the Currently Reading panel or the Up Next / Someday tables under the card; you fill them in at their questions (Currently Reading first in Basic Reader, shelves in Advanced Reader). They show on the public "view profile" page only.
+
 # v1.141
 - About: "Read the Review Guide" button moved below the "Why share your review" points.
 - About: closing "Got a book that hit different?" card uses a fixed cyan/teal gradient in light and dark mode (it looked green in dark mode).

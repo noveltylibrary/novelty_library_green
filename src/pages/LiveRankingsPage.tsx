@@ -262,12 +262,12 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
 
         {!loading && !error && books.length > 0 && (
           <div className="nl-live-content">
-            <RankingSearch books={books} openBook={(review) => navigate(`/review/${encodeURIComponent(bookSlug(review))}`)} />
-            <TasteMatchPanel books={books} openBook={(review) => navigate(`/review/${encodeURIComponent(bookSlug(review))}`)} goRoadmap={() => navigate('/about#roadmap')} />
             <div className="nl-live-ranking-grid">
               <RankingSection id="nl-rankings" kicker="COMMUNITY + REVIEWER SCORE" title="Top 5 · NL Rating" description="Highest NL scores first, with each book’s R/W stars included." books={byNl} metric="nl" navigate={navigate} icon="trending" />
               <RankingSection id="rw-rankings" kicker="REVIEWER SCORE · STAR VIEW" title="Top 5 · R/W Rating" description="Highest R/W ratings first, shown with the familiar star score." books={byRw} metric="rw" navigate={navigate} icon="trophy" />
             </div>
+            <RankingSearch books={books} openBook={(review) => navigate(`/review/${encodeURIComponent(bookSlug(review))}`)} />
+            <TasteMatchPanel books={books} openBook={(review) => navigate(`/review/${encodeURIComponent(bookSlug(review))}`)} goRoadmap={() => navigate('/about#roadmap')} />
           </div>
         )}
         <p className="nl-live-footnote">Explore published reviews ranked by NL Rating or R/W stars. Use the search above to find books by genre, language, traits or author, or describe what you feel like reading.</p>

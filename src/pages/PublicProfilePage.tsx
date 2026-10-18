@@ -46,7 +46,7 @@ export function PublicProfilePage({ username, navigate }: Props) {
     const rawAnswers=(profile.profile_answers||{}) as Record<string,unknown>;
     const advancedSectionOrder = questions.find(q => q.section === 'Reading Identity')?.section_order;
     const firstTwoAdvancedKeys = new Set(questions.filter(q => q.section === 'Reading Identity').sort((a,b)=>a.sort_order-b.sort_order).slice(0,2).map(q=>q.key));
-    const visibleQuestions=questions.filter(q=>q.active!==false&&shown(`question:${q.key}`,q.public_default!==false)&&(
+    const visibleQuestions=questions.filter(q=>q.active!==false&&!isCurrentlyReadingQuestion(q)&&!isShelfQuestion(q)&&shown(`question:${q.key}`,q.public_default!==false)&&(
       q.section === 'Reading Identity' ? firstTwoAdvancedKeys.has(q.key) : (advancedSectionOrder == null ? !isAdvancedQuestion(q) : (q.section_order ?? -1) < advancedSectionOrder)
     ));
     const answers=Object.fromEntries(visibleQuestions.map(q=>{ const raw=(profile.profile_answers||{})[q.key]; if(q.type==='image_upload') return [sanitizeUserText(q.key,120), answerImageUrls(raw).map(url=>safeExternalUrl(url)).filter((url): url is string=>!!url)]; if(q.type==='select_multiple' && Array.isArray(raw)) return [sanitizeUserText(q.key,120), raw.map(v=>sanitizeUserText(answerText(v),180)).filter(Boolean)]; return [sanitizeUserText(q.key,120),sanitizeUserText(answerText(raw),1200)]; }));

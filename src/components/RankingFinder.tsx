@@ -2,7 +2,7 @@ import { useDeferredValue, useMemo, useState } from 'react';
 import { BookOpen, ChevronDown, Search, Sparkles, Wand2, X } from 'lucide-react';
 import type { Review } from '@/types/review';
 import {
-  FIELD_LABELS, FIELD_PLACEHOLDERS, MOODS, cleanTraits, norm, popularValues, runSearch, tasteMatch,
+  FIELD_LABELS, FIELD_PLACEHOLDERS, MOODS, cleanTraits, norm, popularValues, didYouMean, nearestBooks, runSearch, tasteMatch,
   type Match, type SearchBook, type SearchField,
 } from '@/lib/rankingSearch';
 
@@ -41,8 +41,8 @@ function ResultCard({ match, byId, openBook, badge }: { match: Match; byId: Map<
         <span className="nl-find-copy">
           <strong>{review.title}</strong>
           <small>{review.author || 'Author unavailable'}</small>
-          {match.reasons.length > 0 && (
-            <span className="nl-find-why">{match.reasons.map((r) => <i key={r}>{r}</i>)}</span>
+          {(match.reasons.length > 0 || !badge) && (
+            <span className="nl-find-why">{!badge && <i className="nl-find-pct">{Math.round(match.score)}% match</i>}{match.reasons.map((r) => <i key={r}>{r}</i>)}</span>
           )}
         </span>
       </button>
@@ -82,6 +82,8 @@ export function RankingSearch({ books, openBook }: CommonProps) {
   const outcome = useMemo(() => runSearch(searchBooks, field, deferredStrict, deferredMore), [searchBooks, field, deferredStrict, deferredMore]);
   const active = !!norm(strictQ) || !!norm(moreQ);
   const nothing = active && outcome.direct.length === 0 && outcome.related.length === 0;
+  const suggestions = useMemo(() => (norm(deferredStrict) && !outcome.direct.some((m) => m.exact) ? didYouMean(searchBooks, field, deferredStrict) : []), [outcome, searchBooks, field, deferredStrict]);
+  const nearest = useMemo(() => (nothing ? nearestBooks(searchBooks, deferredStrict, deferredMore) : null), [nothing, searchBooks, deferredStrict, deferredMore]);
 
   const clear = () => { setStrictQ(''); setMoreQ(''); };
 
@@ -129,7 +131,22 @@ export function RankingSearch({ books, openBook }: CommonProps) {
 
       <div className="nl-find-results" aria-live="polite">
         {!active && <p className="nl-find-hint">Start typing above. Results appear as you type, with the reason each book matched.</p>}
-        {nothing && <p className="nl-find-hint">No books match yet. Try a shorter word, check the spelling, or switch the Search by option.</p>}
+        {nothing && <p className="nl-find-hint">No exact match for that yet.</p>}
+        {suggestions.length > 0 && (
+          <p className="nl-find-hint nl-find-dym">Did you mean{' '}
+            {suggestions.map((sug, i) => <span key={sug}>{i > 0 && ', '}<button type="button" onClick={() => setStrictQ(sug)}>{sug}</button></span>)}?
+          </p>
+        )}
+        {nothing && nearest && (
+          <ResultGroup
+            title={nearest.fallback ? 'Readers love these' : 'Closest we have'}
+            hint={nearest.fallback ? 'Nothing is close to your words, so here are top-rated picks.' : 'The nearest books to what you typed.'}
+            matches={nearest.matches}
+            byId={byId}
+            openBook={openBook}
+            badgeFor={nearest.fallback ? () => 'Top rated' : undefined}
+          />
+        )}
         <ResultGroup
           title="Direct matches"
           hint={`Exact ${FIELD_LABELS[field].toLowerCase()} first, then close ones.`}
@@ -224,7 +241,7 @@ export function TasteMatchPanel({ books, openBook, goRoadmap }: CommonProps & { 
                         <span className="nl-find-copy">
                           <strong>{item.review.title}</strong>
                           <small>{item.review.author || 'Author unavailable'}</small>
-                          <span className="nl-taste-why"><Sparkles size={13} aria-hidden="true" /> <b>Why it fits you:</b> {m.reasons.join(' · ')}</span>
+                          <span className="nl-taste-why"><Sparkles size={13} aria-hidden="true" /> <b className="nl-find-pct">{Math.round(m.score)}% match</b> · <b>Why it fits you:</b> {m.reasons.join(' · ')}</span>
                         </span>
                       </button>
                       <span className="nl-find-score"><b>{item.nlRating == null ? '—' : item.nlRating.toFixed(1)}</b><small>NL</small></span>
