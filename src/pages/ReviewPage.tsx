@@ -15,6 +15,7 @@ import { FeedbackList } from '@/components/FeedbackList';
 import { ReviewComments } from '@/components/ReviewComments';
 import { SimilarReviews } from '@/components/SimilarReviews';
 import { ReviewShareButton } from '@/components/ReviewShareCard';
+import { genrePath } from '@/pages/GenrePage';
 import { SaveForLater } from '@/components/SaveForLater';
 import { ReadNext } from '@/components/ReadNext';
 import { authorPath, readingMinutes } from '@/lib/readerTools';
@@ -251,7 +252,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
           <div className="md:col-span-3 nl-fast-up" style={{ animationDelay: '40ms' }}>
             {review.verdict && <div className="mb-3"><VerdictBanner verdict={review.verdict} /></div>}
             <div className="flex flex-wrap gap-2 mb-4">
-              <span className="nl-chip px-4 py-1.5 text-[13px] font-semibold">{sanitizeUserText(review.genre, 80)}</span>
+              {review.genre && <button type="button" className="nl-chip px-4 py-1.5 text-[13px] font-semibold nl-genre-link" onClick={() => navigate(genrePath(review.genre))} title={`More ${review.genre} reviews`}>{sanitizeUserText(review.genre, 80)}</button>}
               {review.traits?.split(',').map((trait) => (
                 <span key={sanitizeUserText(trait.trim(), 60)} className="px-3 py-1 rounded-full text-xs font-medium" style={{ background: 'rgba(0, 151, 178, 0.06)', color: 'var(--color-text-muted)' }}>
                   {sanitizeUserText(trait.trim(), 60)}

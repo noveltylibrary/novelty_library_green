@@ -16,6 +16,11 @@ export function AboutPage({ navigate }: AboutPageProps) {
   const legacy = useEditableOverride('about');
   const { sections, source, loaded } = useAboutSections();
 
+  // "How we rate" and the roadmap sit right after the "How It Works" section (or at the end if that section was removed).
+  const ordered = sections.filter((x) => x.active).sort((x, y) => x.sort_order - y.sort_order);
+  const howIdx = ordered.findIndex((x) => x.layout === 'steps' || x.slug === 'how-it-works' || /how it works/i.test(x.title));
+  const afterId = ordered.length ? ordered[howIdx >= 0 ? howIdx : ordered.length - 1].id : '';
+
   // Plain-text copy saved with the old editor still shows, until sections are saved in the new editor.
   if (loaded && source === 'default' && legacy) return <EditablePageOverride page={legacy} navigate={navigate} />;
 
@@ -30,10 +35,21 @@ export function AboutPage({ navigate }: AboutPageProps) {
       </nav>
       <div className="max-w-4xl mx-auto" aria-busy={!loaded}>
         {loaded
-          ? sections.filter((s) => s.active).sort((a, b) => a.sort_order - b.sort_order).map((s) => <div key={s.id}><AboutSectionBlock section={s} email={supportEmail} navigate={navigate} /><AdSenseAdSlot className="my-10" /></div>)
+          ? ordered.map((s) => (
+            <div key={s.id}>
+              <AboutSectionBlock section={s} email={supportEmail} navigate={navigate} />
+              <AdSenseAdSlot className="my-10" />
+              {s.id === afterId && (
+                <>
+                  <HowWeRate navigate={navigate} />
+                  <AdSenseAdSlot className="my-12" />
+                  <div className="nl-about-roadmap-gap"><RoadmapTable scrollTarget /></div>
+                  <AdSenseAdSlot className="my-10" />
+                </>
+              )}
+            </div>
+          ))
           : <div className="h-96 rounded-3xl animate-pulse" style={{ background: 'var(--color-paper)' }} />}
-        {loaded && <HowWeRate navigate={navigate} />}
-        {loaded && <RoadmapTable scrollTarget />}
       </div>
     </div>
   );

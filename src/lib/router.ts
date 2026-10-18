@@ -74,6 +74,7 @@ function parseHash(): Route {
   if (parts[0] === 'live-rankings' || parts[0] === 'love-rankings' || parts[0] === 'rankings') return { name: 'live-rankings' };
   if (parts[0] === 'author' && parts[1]) return { name: 'author', author: decodeURIComponent(parts.slice(1).join('/')) };
   if (parts[0] === 'saved') return { name: 'saved' };
+  if (parts[0] === 'genres') return { name: 'genre', genre: '' };
   if (parts[0] === 'genre' && parts[1]) return { name: 'genre', genre: decodeURIComponent(parts[1]) };
   return { name: 'home' };
 }

@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react';
-import { BookOpen, Users, Heart, Sparkles, PenTool, ArrowRight, ChevronDown, Globe2, ShieldCheck, Languages, Sparkle, Library, Compass, Wand2, BarChart3, ListChecks, FileText, Newspaper, Instagram } from 'lucide-react';
+import { BookOpen, Users, Heart, Sparkles, PenTool, ArrowRight, ChevronDown, Globe2, ShieldCheck, Languages, Sparkle, Library, Compass, Wand2, BarChart3, Trophy, FileText, Newspaper, Instagram } from 'lucide-react';
 import type { AboutSection } from '@/lib/aboutSections';
 import { BLOG_URL, INSTAGRAM_URL } from '@/lib/links';
 
@@ -53,7 +53,7 @@ export function AboutSectionBlock({ section, email, navigate }: { section: About
         <div className="nl-about-actions" role="group" aria-label="Quick links">
           <button type="button" className="nl-action-btn" onClick={() => navigate('/reviews')}><BookOpen aria-hidden="true" /><span>Reviews</span></button>
           <button type="button" className="nl-action-btn" onClick={() => navigate('/analytics')}><BarChart3 aria-hidden="true" /><span>Analytics</span></button>
-          <button type="button" className="nl-action-btn" onClick={() => navigate('/live-rankings')}><ListChecks aria-hidden="true" /><span>Live Rankings</span></button>
+          <button type="button" className="nl-action-btn" onClick={() => navigate('/live-rankings')}><Trophy aria-hidden="true" /><span>Live Rankings</span></button>
         </div>
       </div>;
 

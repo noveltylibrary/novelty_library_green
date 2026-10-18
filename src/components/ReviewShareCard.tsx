@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Check, Copy, Download, Link2, Loader2, Share2, X } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { NlLogo } from '@/components/NlLogo';
-import { normalizePosterUrl } from '@/lib/posterUrl';
+import { extractDriveId, normalizePosterUrl } from '@/lib/posterUrl';
 import { safeExternalUrl, sanitizeUserText } from '@/lib/sanitize';
 import { normalizeVerdict, verdictLabel } from '@/lib/verdict';
 
@@ -27,7 +27,7 @@ function excerpt(text: string, max = 260): string {
  * Returns the cover as an inline data URL (so the export can never lose it), or null when the image host does not
  * allow reading it (no CORS). The card then draws its own cover instead of an empty box.
  */
-async function inlineCover(src: string): Promise<string | null> {
+async function inlineCover(src: string, extraSources: string[] = []): Promise<string | null> {
   const attempt = (url: string) => new Promise<string | null>((resolve) => {
     const img = new Image();
     const t = window.setTimeout(() => resolve(null), 7000);
@@ -45,7 +45,14 @@ async function inlineCover(src: string): Promise<string | null> {
     img.onerror = () => { window.clearTimeout(t); resolve(null); };
     img.src = url;
   });
-  return (await attempt(src)) ?? (await attempt(`${src}${src.includes('?') ? '&' : '?'}nlshare=1`));
+  // Blog-connected covers (Google Drive / Blogger) often refuse to be read by a page, so a few address forms are tried.
+  // Covers stored in Supabase always allow it.
+  const candidates = [src, ...extraSources];
+  for (const url of candidates) {
+    const got = await attempt(url);
+    if (got) return got;
+  }
+  return null;
 }
 
 /** Own-drawn cover for books whose image can't be exported: initials on a deep-teal jacket. */
@@ -65,36 +72,46 @@ function CardFace({ review, nl, cover }: { review: Review; nl: number | null; co
   const v = normalizeVerdict(review.verdict);
   const rw = Number.isFinite(review.rw_rating) ? review.rw_rating.toFixed(1) : '—';
   const title = sanitizeUserText(review.title, 120);
-  const titleSize = title.length > 46 ? 62 : title.length > 28 ? 74 : 88;
-  const pill = { padding: '10px 26px', borderRadius: 999, fontSize: 28, fontWeight: 800, letterSpacing: '.04em', background: C.glass, border: `2px solid ${C.line}`, color: '#fff' } as const;
+  const titleSize = title.length > 46 ? 64 : title.length > 28 ? 76 : 90;
+  const pill = { padding: '10px 26px', borderRadius: 999, fontSize: 28, fontWeight: 800, letterSpacing: '.03em', background: C.glass, border: `2px solid ${C.line}`, color: '#fff', whiteSpace: 'nowrap' } as const;
+  // One column, one set of edges: every block is exactly the card's inner width and the gaps between blocks are equal.
   return (
-    <div style={{ width: W, height: H, position: 'relative', overflow: 'hidden', borderRadius: RADIUS, color: '#fff', fontFamily: "Inter, system-ui, sans-serif", background: `radial-gradient(120% 70% at 85% 0%, rgba(92,225,230,.45) 0%, rgba(92,225,230,0) 60%), radial-gradient(90% 60% at 0% 100%, rgba(0,151,178,.5) 0%, rgba(0,151,178,0) 60%), linear-gradient(160deg, ${C.deep} 0%, ${C.deep2} 45%, ${C.teal} 130%)`, display: 'flex', flexDirection: 'column', padding: '72px 76px 64px', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-        <NlLogo width={64} height={64} />
-        <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: '.22em', textTransform: 'uppercase', color: C.mint }}>Novelty Library</div>
-        {v && <div style={{ marginLeft: 'auto', ...pill, background: 'rgba(255,255,255,.95)', color: C.deep2, border: 'none' }}>{verdictLabel(v)}</div>}
+    <div style={{ width: W, height: H, position: 'relative', overflow: 'hidden', borderRadius: RADIUS, color: '#fff', fontFamily: 'Inter, system-ui, sans-serif', background: `radial-gradient(120% 70% at 85% 0%, rgba(92,225,230,.45) 0%, rgba(92,225,230,0) 60%), radial-gradient(90% 60% at 0% 100%, rgba(0,151,178,.5) 0%, rgba(0,151,178,0) 60%), linear-gradient(160deg, ${C.deep} 0%, ${C.deep2} 45%, ${C.teal} 130%)`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '76px 84px', boxSizing: 'border-box' }}>
+      {/* 1 · brand + verdict, always on one line */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'nowrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+          <NlLogo width={72} height={72} style={{ flex: 'none' }} />
+          <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 44, fontWeight: 700, lineHeight: 1, letterSpacing: '.01em' }}>Novelty Library</span>
+        </div>
+        {v && <span style={{ ...pill, background: 'rgba(255,255,255,.96)', color: C.deep2, border: 'none', flex: 'none' }}>{verdictLabel(v)}</span>}
       </div>
 
-      <div style={{ display: 'flex', gap: 48, marginTop: 56, alignItems: 'flex-start' }}>
-        <div style={{ width: 360, height: 360, flexShrink: 0, borderRadius: 34, overflow: 'hidden', background: 'linear-gradient(145deg,rgba(255,255,255,.22),rgba(255,255,255,.06))', border: `2px solid ${C.line}`, boxShadow: '0 28px 50px rgba(0,20,28,.5)', display: 'grid', placeItems: 'center' }}>
+      {/* 2 · cover + scores */}
+      <div style={{ display: 'flex', gap: 52, alignItems: 'center' }}>
+        <div style={{ width: 340, height: 340, flex: 'none', borderRadius: 34, overflow: 'hidden', background: 'linear-gradient(145deg,rgba(255,255,255,.22),rgba(255,255,255,.06))', border: `2px solid ${C.line}`, boxShadow: '0 28px 50px rgba(0,20,28,.5)', display: 'grid', placeItems: 'center' }}>
           {cover ? <img src={cover} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <DrawnCover title={title} />}
         </div>
-        <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '.18em', textTransform: 'uppercase', color: C.cyan }}>Review</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}><span style={{ fontSize: 120, fontWeight: 900, lineHeight: 1 }}>{rw}</span><span style={{ fontSize: 36, color: C.faint, fontWeight: 700 }}>/10 R/W</span></div>
-          {nl !== null && <div style={{ ...pill, alignSelf: 'flex-start' }}>★ {nl.toFixed(1)} NL</div>}
+        <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: C.cyan }}>Reviewer score</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, whiteSpace: 'nowrap' }}><span style={{ fontSize: 132, fontWeight: 900, lineHeight: 1 }}>{rw}</span><span style={{ fontSize: 38, color: C.faint, fontWeight: 700 }}>/ 10</span></div>
+          {nl !== null && <span style={{ ...pill, alignSelf: 'flex-start' }}>★ {nl.toFixed(1)} · readers</span>}
         </div>
       </div>
 
-      <div style={{ marginTop: 52, fontFamily: "'Playfair Display', Georgia, serif", fontSize: titleSize, fontWeight: 700, lineHeight: 1.08, overflowWrap: 'anywhere' }}>{title}</div>
-      <div style={{ marginTop: 16, fontSize: 38, color: C.soft }}>by {sanitizeUserText(review.author, 80)}</div>
+      {/* 3 · title + author */}
+      <div>
+        <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: titleSize, fontWeight: 700, lineHeight: 1.08, overflowWrap: 'anywhere' }}>{title}</div>
+        <div style={{ marginTop: 18, fontSize: 38, color: C.soft }}>by {sanitizeUserText(review.author, 80)}</div>
+      </div>
 
-      <div style={{ marginTop: 40, padding: '34px 38px', borderRadius: 34, background: C.glass, border: `2px solid ${C.line}`, fontSize: 33, lineHeight: 1.5, color: 'rgba(255,255,255,.92)', fontStyle: 'italic' }}>“{sanitizeUserText(excerpt(review.review_text), 300)}”</div>
+      {/* 4 · excerpt */}
+      <div style={{ padding: '34px 40px', borderRadius: 34, background: C.glass, border: `2px solid ${C.line}`, fontSize: 32, lineHeight: 1.5, color: 'rgba(255,255,255,.93)', fontStyle: 'italic', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>“{sanitizeUserText(excerpt(review.review_text, 230), 260)}”</div>
 
-      <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-        {review.genre && <span style={pill}>{sanitizeUserText(review.genre, 40)}</span>}
-        {review.language && <span style={pill}>{sanitizeUserText(review.language, 30)}</span>}
-        <span style={{ marginLeft: 'auto', fontSize: 28, fontWeight: 700, color: C.mint }}>{typeof window !== 'undefined' ? window.location.host : ''}</span>
+      {/* 5 · tags + site */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'nowrap' }}>
+        {review.genre && <span style={pill}>{sanitizeUserText(review.genre, 28)}</span>}
+        {review.language && <span style={pill}>{sanitizeUserText(review.language, 20)}</span>}
+        <span style={{ marginLeft: 'auto', fontSize: 28, fontWeight: 700, color: C.mint, whiteSpace: 'nowrap' }}>{typeof window !== 'undefined' ? window.location.host : ''}</span>
       </div>
     </div>
   );
@@ -116,7 +133,10 @@ export function ReviewShareButton({ review, nl }: { review: Review; nl: number |
     setOpen(true); setBusy(true); setError(null); setPng(null);
     try {
       const src = safeExternalUrl(normalizePosterUrl(review.poster_url || review.cover_image_url));
-      setCover(src ? await inlineCover(src) : null);
+      const raw = review.poster_url || review.cover_image_url || '';
+      const driveId = extractDriveId(raw);
+      const extra = [driveId ? `https://lh3.googleusercontent.com/d/${driveId}=w900` : '', raw.trim()].filter((u) => u && u !== src && /^https:/i.test(u));
+      setCover(src ? await inlineCover(src, extra) : null);
       await nextFrame();
       await new Promise((r) => window.setTimeout(r, 160));
       if ('fonts' in document) await document.fonts.ready;

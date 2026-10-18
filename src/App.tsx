@@ -33,6 +33,7 @@ import { NotificationsPage } from '@/pages/NotificationsPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { LiveRankingsPage } from '@/pages/LiveRankingsPage';
 import { AuthorPage } from '@/pages/AuthorPage';
+import { GenrePage } from '@/pages/GenrePage';
 import { SavedPage } from '@/pages/SavedPage';
 import { AdminFinancesPage } from '@/pages/AdminFinancesPage';
 import { AdminPagesModerationPage } from '@/pages/AdminPagesModerationPage';
@@ -135,7 +136,7 @@ function AppContent() {
         {route.name === 'notifications' && <NotificationsPage navigate={navigate} />}
         {route.name === 'author' && <AuthorPage name={route.author} navigate={navigate} />}
         {route.name === 'saved' && <SavedPage navigate={navigate} />}
-        {route.name === 'genre' && <ReviewsPage navigate={navigate} />}
+        {route.name === 'genre' && <GenrePage genre={route.genre} navigate={navigate} />}
       </main>
       <Footer navigate={navigate} />
       <InstallPrompt />

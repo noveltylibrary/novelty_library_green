@@ -3,6 +3,18 @@
 All version notes in one place, newest first. (Per-version files were merged here in v1.136.)
 
 
+# v1.157
+- Share card layout rebuilt: one column with equal gaps and identical left/right edges; logo and "Novelty Library" always on one line (name in the site's serif); excerpt capped at 4 lines; scores read "Reviewer score 9.0 / 10" and "readers" for the NL score. Popup tightened (narrower, smaller heading and buttons).
+- Share card covers: more address forms tried for Google Drive / Blogger images. Covers stored in Supabase are embedded normally.
+
+# v1.156
+- About: "How we rate" and "What's live, what's next" now sit right after the "How It Works" section, with space between them and an ad slot between and after each.
+- About: the Live Rankings button uses the same trophy icon as the Home Rankings tile.
+- Admin hub card renamed "Open Control Settings" (its page heading is now "Control Settings").
+
+# v1.155
+- Genre pages (`#/genre/Thriller`, and `#/genres` for the full list): an automatic intro written from real numbers (review count, authors, languages, average R/W, verdict counts, top rated), every review in that genre sorted by rating, and chips for other genres. The genre chip on a review page now opens its genre page. Compound genres such as "Self-Help/ Non-Fiction" appear under each part. No SQL.
+
 # v1.154
 - Removed the technical wording (TF-IDF, cosine similarity) from everything readers see: the Taste Match note and the Taste Match poster caption. The method stays in the code only.
 
