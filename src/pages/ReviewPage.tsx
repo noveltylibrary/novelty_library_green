@@ -1,6 +1,6 @@
 import { VerdictBanner } from '@/components/VerdictBanner';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, ExternalLink, Instagram, Calendar, Globe, Tag, Star, Newspaper } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Instagram, Calendar, Globe, Tag, Star, Newspaper, Clock } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { loadReviewCached, peekReview, storeReviewInCache } from '@/lib/reviews';
 import { fetchBlogPosts, peekBlogPosts, blogPostDate, htmlToText } from '@/lib/blog';
@@ -15,9 +15,9 @@ import { FeedbackList } from '@/components/FeedbackList';
 import { ReviewComments } from '@/components/ReviewComments';
 import { SimilarReviews } from '@/components/SimilarReviews';
 import { ReviewShareButton } from '@/components/ReviewShareCard';
-import { QuickVerdict } from '@/components/QuickVerdict';
+import { SaveForLater } from '@/components/SaveForLater';
 import { ReadNext } from '@/components/ReadNext';
-import { authorPath } from '@/lib/readerTools';
+import { authorPath, readingMinutes } from '@/lib/readerTools';
 import { useAuth } from '@/lib/auth';
 import { computeNlRating, deleteFeedback, fetchFeedback, saveFeedback, useEngagement, type FeedbackEntry, type FeedbackInput } from '@/lib/engagement';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
@@ -231,6 +231,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
             )}
 
             <ReviewShareButton review={review} nl={computeNlRating(review.rw_rating, engagement.statsFor(review.id))} />
+            <SaveForLater reviewId={review.id} navigate={navigate} />
 
             {safeExternalUrl(review.blog_url) && (
               <a
@@ -294,6 +295,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
               <span className="flex items-center gap-1.5">
                 <Globe className="w-4 h-4" /> {sanitizeUserText(review.language, 80)}
               </span>
+              <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {readingMinutes(review.review_text)} min read</span>
               {review.translated_from && (
                 <span className="flex items-center gap-1.5">
                   Translated from {sanitizeUserText(review.translated_from, 80)}
@@ -317,8 +319,6 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
                 </span>
               )}
             </div>
-
-            <QuickVerdict review={review} nl={computeNlRating(review.rw_rating, engagement.statsFor(review.id))} navigate={navigate} />
 
             {/* Review text */}
             <div className="prose-content">

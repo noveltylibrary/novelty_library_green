@@ -294,7 +294,7 @@ export function TasteMatchPanel({ books, openBook }: CommonProps & { goRoadmap?:
           </ul>
         )}
       </div>
-      <p className="nl-taste-note">Taste Match turns your choices into a TF-IDF profile and ranks every published review by cosine similarity, using genre, traits, verdict, ratings and review text. Reviews published before verdicts were added are left out while a verdict is chosen.</p>
+      <p className="nl-taste-note">Picks are matched on genre, traits, verdict, ratings and what each review says. Reviews published before verdicts were added are left out while a verdict is chosen.</p>
     </section>
   );
 }

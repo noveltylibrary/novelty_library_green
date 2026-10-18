@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Download, Loader2, Share2, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Check, Copy, Download, Link2, Loader2, Share2, X } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { NlLogo } from '@/components/NlLogo';
 import { normalizePosterUrl } from '@/lib/posterUrl';
@@ -22,15 +23,42 @@ function excerpt(text: string, max = 260): string {
   return `${cut.slice(0, Math.max(0, cut.lastIndexOf(' '))).replace(/[,.;:\s]+$/, '')}…`;
 }
 
-function loadImage(src: string): Promise<boolean> {
-  return new Promise((resolve) => {
+/**
+ * Returns the cover as an inline data URL (so the export can never lose it), or null when the image host does not
+ * allow reading it (no CORS). The card then draws its own cover instead of an empty box.
+ */
+async function inlineCover(src: string): Promise<string | null> {
+  const attempt = (url: string) => new Promise<string | null>((resolve) => {
     const img = new Image();
-    const t = window.setTimeout(() => resolve(false), 6000);
-    img.onload = () => { window.clearTimeout(t); resolve(true); };
-    img.onerror = () => { window.clearTimeout(t); resolve(false); };
+    const t = window.setTimeout(() => resolve(null), 7000);
+    img.crossOrigin = 'anonymous';
     img.referrerPolicy = 'no-referrer';
-    img.src = src;
+    img.onload = () => {
+      window.clearTimeout(t);
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext('2d')!.drawImage(img, 0, 0);
+        resolve(c.toDataURL('image/jpeg', 0.92));
+      } catch { resolve(null); }
+    };
+    img.onerror = () => { window.clearTimeout(t); resolve(null); };
+    img.src = url;
   });
+  return (await attempt(src)) ?? (await attempt(`${src}${src.includes('?') ? '&' : '?'}nlshare=1`));
+}
+
+/** Own-drawn cover for books whose image can't be exported: initials on a deep-teal jacket. */
+function DrawnCover({ title }: { title: string }) {
+  const initials = title.replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || 'NL';
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, background: `linear-gradient(155deg, ${C.teal} 0%, ${C.deep2} 100%)`, position: 'relative' }}>
+      <div style={{ position: 'absolute', left: 26, top: 0, bottom: 0, width: 6, background: 'rgba(255,255,255,.28)' }} />
+      <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 128, fontWeight: 700, lineHeight: 1, letterSpacing: '.02em' }}>{initials}</div>
+      <div style={{ width: 90, height: 4, borderRadius: 2, background: C.cyan }} />
+      <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '.22em', textTransform: 'uppercase', color: C.mint }}>Novelty</div>
+    </div>
+  );
 }
 
 function CardFace({ review, nl, cover }: { review: Review; nl: number | null; cover: string | null }) {
@@ -48,8 +76,8 @@ function CardFace({ review, nl, cover }: { review: Review; nl: number | null; co
       </div>
 
       <div style={{ display: 'flex', gap: 48, marginTop: 56, alignItems: 'flex-start' }}>
-        <div style={{ width: 360, height: 360, flexShrink: 0, borderRadius: 34, overflow: 'hidden', background: 'linear-gradient(145deg,rgba(255,255,255,.22),rgba(255,255,255,.06))', border: `2px solid ${C.line}`, boxShadow: '0 28px 50px rgba(0,20,28,.5)', display: 'grid', placeItems: 'center', fontSize: 120 }}>
-          {cover ? <img src={cover} alt="" referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <span aria-hidden="true">📖</span>}
+        <div style={{ width: 360, height: 360, flexShrink: 0, borderRadius: 34, overflow: 'hidden', background: 'linear-gradient(145deg,rgba(255,255,255,.22),rgba(255,255,255,.06))', border: `2px solid ${C.line}`, boxShadow: '0 28px 50px rgba(0,20,28,.5)', display: 'grid', placeItems: 'center' }}>
+          {cover ? <img src={cover} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <DrawnCover title={title} />}
         </div>
         <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '.18em', textTransform: 'uppercase', color: C.cyan }}>Review</div>
@@ -88,8 +116,7 @@ export function ReviewShareButton({ review, nl }: { review: Review; nl: number |
     setOpen(true); setBusy(true); setError(null); setPng(null);
     try {
       const src = safeExternalUrl(normalizePosterUrl(review.poster_url || review.cover_image_url));
-      const ok = src ? await loadImage(src) : false;
-      setCover(ok ? src : null);
+      setCover(src ? await inlineCover(src) : null);
       await nextFrame();
       await new Promise((r) => window.setTimeout(r, 160));
       if ('fonts' in document) await document.fonts.ready;
@@ -130,31 +157,51 @@ export function ReviewShareButton({ review, nl }: { review: Review; nl: number |
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
+  const [copied, setCopied] = useState(false);
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText(window.location.href); setCopied(true); window.setTimeout(() => setCopied(false), 2000); } catch { /* clipboard blocked */ }
+  };
+
+  // Lock the page behind the popup so it can't scroll through it.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
+  const popup = open ? (
+    <div role="dialog" aria-modal="true" aria-labelledby="nl-share-title" className="nl-share-overlay" onClick={() => setOpen(false)}>
+      <div className="nl-share-sheet" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="nl-share-close" onClick={() => setOpen(false)} aria-label="Close"><X className="w-4 h-4" /></button>
+        <div className="nl-share-stage">
+          <div className="nl-share-preview">
+            {png ? <img src={png} alt={`Share card for ${review.title}`} /> : error ? <p className="text-sm p-6 text-center" style={{ color: '#b91c1c' }} role="alert">{error}</p> : <div className="nl-share-wait"><Loader2 className="w-6 h-6 animate-spin" aria-hidden="true" /><span>Creating your card…</span></div>}
+          </div>
+        </div>
+        <div className="nl-share-side">
+          <span className="nl-live-kicker">SHARE</span>
+          <h2 id="nl-share-title" className="nl-share-title">{sanitizeUserText(review.title, 90)}</h2>
+          <p className="nl-share-sub">A rounded 1080×1350 card, made for Instagram posts, stories and chats.</p>
+          <div className="nl-share-actions">
+            <button type="button" className="nl-share-primary" onClick={download} disabled={!png}><Download className="w-4 h-4" /> Download PNG</button>
+            {canShareFile && <button type="button" className="nl-share-secondary" onClick={() => void share()} disabled={!png}><Share2 className="w-4 h-4" /> Share…</button>}
+            <button type="button" className="nl-share-secondary" onClick={() => void copyLink()}>{copied ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />} {copied ? 'Link copied' : 'Copy review link'}</button>
+            {error && <button type="button" className="nl-share-secondary" onClick={() => void build()} disabled={busy}><Copy className="w-4 h-4" /> Try again</button>}
+          </div>
+        </div>
+      </div>
+      {/* Off-screen export canvas: fixed pixel size, exactly what is downloaded. */}
+      <div aria-hidden="true" style={{ position: 'fixed', left: -20000, top: 0, width: W, height: H, pointerEvents: 'none' }}>
+        <div ref={faceRef} style={{ width: W, height: H }}><CardFace review={review} nl={nl} cover={cover} /></div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <>
       <button type="button" className="nl-share-btn w-full mt-3" onClick={() => void build()}><Share2 className="w-4 h-4" aria-hidden="true" /> Share as card</button>
-      {open && (
-        <div role="dialog" aria-modal="true" aria-labelledby="nl-share-title" className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,20,28,.66)', backdropFilter: 'blur(7px)' }} onClick={() => setOpen(false)}>
-          <div className="nl-share-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <h2 id="nl-share-title" className="font-serif text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Share this review</h2>
-              <button type="button" className="nl-shelf-x" onClick={() => setOpen(false)} aria-label="Close"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="nl-share-preview">
-              {png ? <img src={png} alt={`Share card for ${review.title}`} /> : error ? <p className="text-sm p-6 text-center" style={{ color: '#b91c1c' }} role="alert">{error}</p> : <div className="nl-share-wait"><Loader2 className="w-6 h-6 animate-spin" aria-hidden="true" /><span>Creating your card…</span></div>}
-            </div>
-            <div className="flex flex-wrap gap-2 mt-4">
-              <button type="button" className="btn-primary !w-auto" onClick={download} disabled={!png}><Download className="w-4 h-4" /> Download PNG</button>
-              {canShareFile && <button type="button" className="btn-ghost !w-auto" onClick={() => void share()} disabled={!png}><Share2 className="w-4 h-4" /> Share…</button>}
-              {error && <button type="button" className="btn-ghost !w-auto" onClick={() => void build()} disabled={busy}>Try again</button>}
-            </div>
-          </div>
-          {/* Off-screen export canvas: fixed pixel size, exactly what is downloaded. */}
-          <div aria-hidden="true" style={{ position: 'fixed', left: -20000, top: 0, width: W, height: H, pointerEvents: 'none' }}>
-            <div ref={faceRef} style={{ width: W, height: H }}><CardFace review={review} nl={nl} cover={cover} /></div>
-          </div>
-        </div>
-      )}
+      {popup && createPortal(popup, document.body)}
     </>
   );
 }

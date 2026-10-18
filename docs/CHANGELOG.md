@@ -3,6 +3,16 @@
 All version notes in one place, newest first. (Per-version files were merged here in v1.136.)
 
 
+# v1.154
+- Removed the technical wording (TF-IDF, cosine similarity) from everything readers see: the Taste Match note and the Taste Match poster caption. The method stays in the code only.
+
+# v1.153
+- Removed the Quick Verdict card from review pages (it repeated information already shown above it). "Save for later" is now a button under "Share as card" in the left column, with a "My list (n)" link once something is saved. Reading time moved into the review's meta line ("1 min read").
+
+# v1.152
+- Share as card popup redesigned: opens above everything (it was shifted inside the page on phones), bottom sheet on phones, two-column on PC with the card on a soft stage, Download PNG / Share / Copy review link, page scroll locked behind it.
+- Share card: cover images are now embedded so they can't disappear in the export; books whose image can't be read get a drawn cover (initials on a teal jacket) instead of an empty box.
+
 # v1.151
 - Review page: "Share as card" button (under Buy Now / View in Blog). Builds a rounded 4:5 PNG (1080×1350, transparent corners) with cover, verdict, R/W, NL, title, author, a short excerpt, genre and language, using the same export method and palette as the profile card. Preview, Download PNG and (on phones) Share.
 - Up Next and Someday shelves are now limited to 5 books (was 8). Existing longer lists show their first 5.

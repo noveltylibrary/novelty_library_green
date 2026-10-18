@@ -56,7 +56,7 @@ export const BUILTIN_KEYS: BuiltinKey[] = ['rankings', 'taste'];
 export const BUILTIN_LABEL: Record<BuiltinKey, string> = { rankings: 'Live Rankings', taste: 'Taste Match' };
 export const DEFAULT_BUILTINS: Record<BuiltinKey, BuiltinPoster> = {
   rankings: { enabled: true, title: 'Live Rankings', caption: 'Ranked by readers. Search by genre, language, traits or author.', link: '/live-rankings', badge: 'LIVE', from: '', until: '' },
-  taste: { enabled: true, title: 'Taste Match', caption: 'Tell us your mood and we will match you to a review. Powered by TF-IDF and cosine similarity.', link: '/live-rankings#taste', badge: 'NEWS', from: '', until: '' },
+  taste: { enabled: true, title: 'Taste Match', caption: 'Tell us your mood and we will match you to your next read.', link: '/live-rankings#taste', badge: 'NEWS', from: '', until: '' },
 };
 export const isBuiltinActive = (b: BuiltinPoster, now = new Date()): boolean => b.enabled && isWithinDates(b.from, b.until, now);
 
