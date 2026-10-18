@@ -32,6 +32,8 @@ import { AccountPage } from '@/pages/AccountPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { LiveRankingsPage } from '@/pages/LiveRankingsPage';
+import { AuthorPage } from '@/pages/AuthorPage';
+import { SavedPage } from '@/pages/SavedPage';
 import { AdminFinancesPage } from '@/pages/AdminFinancesPage';
 import { AdminPagesModerationPage } from '@/pages/AdminPagesModerationPage';
 import { AdminReservedBookReviewsPage } from '@/pages/AdminReservedBookReviewsPage';
@@ -131,6 +133,8 @@ function AppContent() {
         {route.name === 'profile' && (route.username ? <PublicProfilePage username={route.username} navigate={navigate} /> : <ProfilePage navigate={navigate} />)}
         {route.name === 'account' && <AccountPage navigate={navigate} />}
         {route.name === 'notifications' && <NotificationsPage navigate={navigate} />}
+        {route.name === 'author' && <AuthorPage name={route.author} navigate={navigate} />}
+        {route.name === 'saved' && <SavedPage navigate={navigate} />}
         {route.name === 'genre' && <ReviewsPage navigate={navigate} />}
       </main>
       <Footer navigate={navigate} />

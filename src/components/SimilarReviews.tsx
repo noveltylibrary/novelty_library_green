@@ -1,18 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { BookOpen, Sparkles } from 'lucide-react';
 import type { Review } from '@/types/review';
-import { fetchReviews } from '@/lib/reviews';
+import { usePublished, reviewSlug as slugOf } from '@/lib/readerTools';
 import { cleanTraits, similarBooks, type SearchBook } from '@/lib/rankingSearch';
-
-let listPromise: Promise<Review[]> | null = null;
-let listAt = 0;
-/** One shared fetch of the published reviews (re-used across review pages for a few minutes). */
-function loadPublished(): Promise<Review[]> {
-  if (!listPromise || Date.now() - listAt > 5 * 60_000) { listAt = Date.now(); listPromise = fetchReviews().catch((e) => { listPromise = null; throw e; }); }
-  return listPromise;
-}
-
-const slugOf = (r: Review): string => r.slug || `${r.title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-')}-${r.master_review_no ?? r.review_number ?? ''}`;
 
 const toBook = (r: Review): SearchBook => ({
   id: r.id, title: r.title || '', author: r.author || '', genre: r.genre || '', language: r.language || '', traits: cleanTraits(r.traits),
@@ -21,12 +11,7 @@ const toBook = (r: Review): SearchBook => ({
 
 /** "More like this": the 3 published reviews most similar to the one being read (TF-IDF + cosine similarity). */
 export function SimilarReviews({ current, navigate }: { current: Review; navigate: (path: string) => void }) {
-  const [all, setAll] = useState<Review[]>([]);
-  useEffect(() => {
-    let alive = true;
-    loadPublished().then((r) => { if (alive) setAll(r); }).catch(() => undefined);
-    return () => { alive = false; };
-  }, []);
+  const all = usePublished();
 
   const picks = useMemo(() => {
     if (all.length < 2) return [];

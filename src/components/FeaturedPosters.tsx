@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
-import { fetchAnnouncements, isRankingsPosterActive, peekAnnouncements, type AnnouncementsConfig, type Poster } from '@/lib/announcements';
+import { ChevronLeft, ChevronRight, Search, Sparkles, Trophy, Wand2 } from 'lucide-react';
+import { BUILTIN_KEYS, fetchAnnouncements, isBuiltinActive, isPosterLive, peekAnnouncements, type AnnouncementsConfig, type BuiltinKey, type Poster } from '@/lib/announcements';
 
-const RANKINGS_POSTER_ID = 'builtin-live-rankings';
-const RANKINGS_POSTER: Poster = { id: RANKINGS_POSTER_ID, image: '', title: 'Live Rankings', caption: 'Search every review by genre, language, traits or author.', link: '/live-rankings', badge: 'LIVE' };
+const BUILTIN_PREFIX = 'builtin-';
+const builtinKeyOf = (p: Poster): BuiltinKey | null => (p.id.startsWith(BUILTIN_PREFIX) ? (p.id.slice(BUILTIN_PREFIX.length) as BuiltinKey) : null);
 
 interface FeaturedPostersProps {
   navigate?: (path: string) => void;
@@ -22,8 +22,11 @@ export function FeaturedPosters({ navigate, config }: FeaturedPostersProps) {
   }, [config]);
 
   const cfg = config ?? live;
-  const showRankings = !!cfg && isRankingsPosterActive(cfg.rankingsPoster);
-  const posters: Poster[] = showRankings ? [RANKINGS_POSTER, ...(cfg?.posters ?? [])] : (cfg?.posters ?? []);
+  const now = new Date();
+  const builtins: Poster[] = cfg
+    ? BUILTIN_KEYS.filter((k) => isBuiltinActive(cfg.builtins[k], now)).map((k) => { const b = cfg.builtins[k]; return { id: `${BUILTIN_PREFIX}${k}`, image: '', title: b.title, caption: b.caption, link: b.link, badge: b.badge, from: b.from, until: b.until }; })
+    : [];
+  const posters: Poster[] = [...builtins, ...(cfg?.posters ?? []).filter((p) => isPosterLive(p, now))];
   const trackRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -84,11 +87,34 @@ export function FeaturedPosters({ navigate, config }: FeaturedPostersProps) {
         {posters.length > 1 && <button type="button" className="nl-feat-arrow nl-feat-arrow--prev" onClick={() => goTo((active - 1 + posters.length) % posters.length)} aria-label="Previous poster"><ChevronLeft className="w-5 h-5" /></button>}
         <div ref={trackRef} className="nl-feat-track" onScroll={onScroll} tabIndex={0}>
           {posters.map((p, i) => {
-            const builtin = p.id === RANKINGS_POSTER_ID;
+            const builtin = builtinKeyOf(p);
             const body = (
               <>
                 {builtin
-                  ? <span className="nl-feat-art" aria-hidden="true"><i /><i /><i /></span>
+                  ? (builtin === 'taste' ? (
+                    <span className="nl-feat-art is-taste" aria-hidden="true">
+                      <span className="nl-lr-glow" />
+                      <span className="nl-lr-panel">
+                        <span className="nl-tm-moods"><i>Mind-bending</i><i className="is-on">Edge-of-seat</i><i>Emotional</i><i className="is-on">Dark &amp; intense</i></span>
+                        <span className="nl-tm-verdicts"><i>Perfection</i><i className="is-on">Go for it</i><i>Timepass</i></span>
+                        <span className="nl-tm-pick"><em>1</em><u /><span><b>Your best match</b><s style={{ width: '88%' }} /></span><strong>94%</strong></span>
+                        <span className="nl-tm-pick"><em>2</em><u /><span><b>Also a great fit</b><s style={{ width: '71%' }} /></span><strong>81%</strong></span>
+                      </span>
+                      <span className="nl-lr-orbit"><Wand2 /></span>
+                    </span>
+                  ) : ((
+                    <span className="nl-feat-art" aria-hidden="true">
+                      <span className="nl-lr-glow" />
+                      <span className="nl-lr-panel">
+                        <span className="nl-lr-search"><Search /><b>psychological thrillers, twisty…</b></span>
+                        <span className="nl-lr-chips"><i>Genre</i><i>Language</i><i>Traits</i><i>Author</i></span>
+                        <span className="nl-lr-row"><em>1</em><u /><s style={{ width: '92%' }} /><b>9.4</b></span>
+                        <span className="nl-lr-row"><em>2</em><u /><s style={{ width: '78%' }} /><b>9.1</b></span>
+                        <span className="nl-lr-row"><em>3</em><u /><s style={{ width: '64%' }} /><b>8.8</b></span>
+                      </span>
+                      <span className="nl-lr-orbit"><Trophy /></span>
+                    </span>
+                  )))
                   : <img src={p.image} alt={p.title || 'Featured poster'} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" draggable={false} />}
                 <span className="nl-feat-shine" aria-hidden="true" />
                 {(p.title || p.caption) && (

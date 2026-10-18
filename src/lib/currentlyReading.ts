@@ -1,4 +1,5 @@
 import type { ProfileQuestion, ProfileQuestionSection } from '@/lib/profileQuestions';
+import { humanizeTitle } from '@/lib/shelves';
 import { answerText } from '@/components/ProfileQuestionAnswer';
 
 /** The "Currently Reading" profile question (admin-created). Matched by key, with the wording as a fallback. */
@@ -13,8 +14,9 @@ export type CurrentlyReading = { title: string; cover: string | null };
  * as plain text when there is no cover and as `{ value, cover }` when a cover was added.
  * answerText() already understands the object form, so the card, onboarding and admin views keep showing the title.
  */
-export function readCurrentlyReading(value: unknown): CurrentlyReading {
-  const title = answerText(value).trim();
+export function readCurrentlyReading(value: unknown, forEditing = false): CurrentlyReading {
+  // The editor needs the text exactly as typed (a trimmed value swallows every space the person types).
+  const title = forEditing ? answerText(value) : humanizeTitle(answerText(value).trim());
   const cover = value && typeof value === 'object' && 'cover' in value ? String((value as { cover?: unknown }).cover ?? '') : '';
   return { title, cover: /^https?:\/\//i.test(cover) ? cover : null };
 }

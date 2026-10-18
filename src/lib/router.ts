@@ -26,7 +26,9 @@ export type Route =
   | { name: 'profile'; username?: string }
   | { name: 'account' }
   | { name: 'notifications' }
-  | { name: 'genre'; genre: string };
+  | { name: 'genre'; genre: string }
+  | { name: 'author'; author: string }
+  | { name: 'saved' };
 
 function parseHash(): Route {
   const hash = window.location.hash.replace(/^#\/?/, '');
@@ -70,6 +72,8 @@ function parseHash(): Route {
   if (parts[0] === 'reviews') return { name: 'reviews' };
   if (parts[0] === 'analytics') return { name: 'analytics' };
   if (parts[0] === 'live-rankings' || parts[0] === 'love-rankings' || parts[0] === 'rankings') return { name: 'live-rankings' };
+  if (parts[0] === 'author' && parts[1]) return { name: 'author', author: decodeURIComponent(parts.slice(1).join('/')) };
+  if (parts[0] === 'saved') return { name: 'saved' };
   if (parts[0] === 'genre' && parts[1]) return { name: 'genre', genre: decodeURIComponent(parts[1]) };
   return { name: 'home' };
 }

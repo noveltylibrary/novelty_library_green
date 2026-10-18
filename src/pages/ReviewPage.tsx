@@ -14,6 +14,10 @@ import { FeedbackModal } from '@/components/FeedbackModal';
 import { FeedbackList } from '@/components/FeedbackList';
 import { ReviewComments } from '@/components/ReviewComments';
 import { SimilarReviews } from '@/components/SimilarReviews';
+import { ReviewShareButton } from '@/components/ReviewShareCard';
+import { QuickVerdict } from '@/components/QuickVerdict';
+import { ReadNext } from '@/components/ReadNext';
+import { authorPath } from '@/lib/readerTools';
 import { useAuth } from '@/lib/auth';
 import { computeNlRating, deleteFeedback, fetchFeedback, saveFeedback, useEngagement, type FeedbackEntry, type FeedbackInput } from '@/lib/engagement';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
@@ -226,6 +230,8 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
               </a>
             )}
 
+            <ReviewShareButton review={review} nl={computeNlRating(review.rw_rating, engagement.statsFor(review.id))} />
+
             {safeExternalUrl(review.blog_url) && (
               <a
                 href={safeExternalUrl(review.blog_url) || '#'}
@@ -255,7 +261,8 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
             <h1 className="font-serif text-4xl md:text-5xl font-semibold leading-tight tracking-tight mb-3 text-balance" style={{ color: 'var(--color-text)' }}>
               {sanitizeUserText(review.title, 200)}
             </h1>
-            <p className="text-lg mb-6" style={{ color: 'var(--color-text-muted)' }}>by {sanitizeUserText(review.author, 120)}</p>
+            <p className="text-lg mb-6" style={{ color: 'var(--color-text-muted)' }}>by{' '}
+              {review.author ? <button type="button" className="nl-author-link" onClick={() => navigate(authorPath(review.author))} title={`More reviews of ${review.author}`}>{sanitizeUserText(review.author, 120)}</button> : 'an unknown author'}</p>
 
             {/* Ratings */}
             <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -311,6 +318,8 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
               )}
             </div>
 
+            <QuickVerdict review={review} nl={computeNlRating(review.rw_rating, engagement.statsFor(review.id))} navigate={navigate} />
+
             {/* Review text */}
             <div className="prose-content">
               {review.review_text.split('\n\n').map((para, i) => (
@@ -345,6 +354,8 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
             </section>
 
             <SimilarReviews current={review} navigate={navigate} />
+
+            <ReadNext current={review} navigate={navigate} />
 
             <ReviewComments reviewId={review.id} navigate={navigate} />
 

@@ -21,7 +21,7 @@ export function CurrentlyReadingPanel({ title, cover, isPrivate = false }: { tit
 
 /** Editor: book name + optional cover, saved inside the "Currently Reading" answer. */
 export function CurrentlyReadingEditor({ value, userId, onChange }: { value: unknown; userId: string; onChange: (v: unknown) => void }) {
-  const { title, cover } = readCurrentlyReading(value);
+  const { title, cover } = readCurrentlyReading(value, true);
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -20,7 +20,7 @@ export function ShelfTable({ kind, value, isPrivate = false }: { kind: ShelfKind
   );
 }
 
-/** Editor: add up to 8 books as table rows. */
+/** Editor: add up to 5 books as table rows. */
 export function ShelfEditor({ kind, value, onChange }: { kind: ShelfKind; value: unknown; onChange: (v: unknown) => void }) {
   const meta = SHELF_META[kind];
   const items = readShelf(value, true);

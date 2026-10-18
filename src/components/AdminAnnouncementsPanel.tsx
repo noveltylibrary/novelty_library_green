@@ -3,8 +3,8 @@ import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, FileText, ImagePlus, Lin
 import { FeaturedPosters } from '@/components/FeaturedPosters';
 import {
   DEFAULT_ANNOUNCEMENTS, MAX_POSTERS, RECOMMENDED_POSTERS, POSTER_WIDTH, POSTER_HEIGHT, POSTER_HTML_EXAMPLE,
-  blankPoster, cleanBadge, cleanPosterLink, POSTER_BADGES, fetchAnnouncements, parsePosterHtml, saveAnnouncements, uploadPosterImage,
-  type AnnouncementsConfig, type Poster,
+  BUILTIN_KEYS, BUILTIN_LABEL, DEFAULT_BUILTINS, blankPoster, cleanBadge, weekRange, cleanPosterLink, POSTER_BADGES, fetchAnnouncements, parsePosterHtml, saveAnnouncements, uploadPosterImage,
+  type AnnouncementsConfig, type BuiltinKey, type BuiltinPoster, type Poster,
 } from '@/lib/announcements';
 import { getErrorMessage } from '@/lib/format';
 
@@ -34,6 +34,7 @@ export function AdminAnnouncementsPanel() {
     const posters = [...cfg.posters]; [posters[i], posters[j]] = [posters[j], posters[i]];
     edit({ ...cfg, posters });
   };
+  const setBuiltin = (key: BuiltinKey, patch: Partial<BuiltinPoster>) => edit({ ...cfg, builtins: { ...cfg.builtins, [key]: { ...cfg.builtins[key], ...patch } } });
   const remaining = MAX_POSTERS - cfg.posters.length;
 
   const addFiles = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -74,6 +75,10 @@ export function AdminAnnouncementsPanel() {
   };
 
   const save = async () => {
+    const badBuiltin = BUILTIN_KEYS.find((k) => cfg.builtins[k].link && !cleanPosterLink(cfg.builtins[k].link));
+    if (badBuiltin) { setMsg({ kind: 'err', text: `The link on the ${BUILTIN_LABEL[badBuiltin]} poster must start with https:// (or be an in-app path like /reviews).` }); return; }
+    const badDates = [...cfg.posters, ...BUILTIN_KEYS.map((k) => cfg.builtins[k])].find((p) => p.from && p.until && p.until < p.from);
+    if (badDates) { setMsg({ kind: 'err', text: 'A poster ends before it starts. Check the From and Until dates.' }); return; }
     const badLink = cfg.posters.find((p) => p.link && !cleanPosterLink(p.link));
     if (badLink) { setMsg({ kind: 'err', text: `The link on "${badLink.title || 'a poster'}" must start with https:// (or be an in-app path like /reviews).` }); return; }
     setSaving(true); setMsg(null);
@@ -113,11 +118,26 @@ export function AdminAnnouncementsPanel() {
           <div><label className="label">Section heading</label><input className="input-field" maxLength={60} value={cfg.heading} onChange={(e) => edit({ ...cfg, heading: e.target.value })} /></div>
         </div>
 
-        <div className="mt-5 rounded-xl p-4 grid gap-3 sm:grid-cols-[auto_1fr] items-end" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
-          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={cfg.rankingsPoster.enabled} onChange={(e) => edit({ ...cfg, rankingsPoster: { ...cfg.rankingsPoster, enabled: e.target.checked } })} /> Show the built-in <strong>Live Rankings</strong> poster first</label>
-          <div className="max-w-xs"><label className="label">Keep it until (inclusive)</label>
-            <input type="date" className="input-field" value={cfg.rankingsPoster.until} onChange={(e) => edit({ ...cfg, rankingsPoster: { ...cfg.rankingsPoster, until: e.target.value } })} disabled={!cfg.rankingsPoster.enabled} /></div>
-          <p className="text-xs sm:col-span-2" style={{ color: 'var(--color-text-muted)' }}>This poster opens the Live Rankings page. It does not count toward the {MAX_POSTERS} posters and disappears by itself after the date.</p>
+        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+          {BUILTIN_KEYS.map((key) => {
+            const b = cfg.builtins[key];
+            const d = DEFAULT_BUILTINS[key];
+            return (
+              <div key={key} className="rounded-xl p-4 space-y-2.5" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
+                <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={b.enabled} onChange={(e) => setBuiltin(key, { enabled: e.target.checked })} /> Show the built-in <strong>{BUILTIN_LABEL[key]}</strong> poster</label>
+                <input className="input-field" maxLength={90} value={b.title} onChange={(e) => setBuiltin(key, { title: e.target.value })} placeholder="Title" aria-label={`${BUILTIN_LABEL[key]} poster title`} disabled={!b.enabled} />
+                <input className="input-field" maxLength={160} value={b.caption} onChange={(e) => setBuiltin(key, { caption: e.target.value })} placeholder="Short caption" aria-label={`${BUILTIN_LABEL[key]} poster caption`} disabled={!b.enabled} />
+                <div className="relative"><Link2 className="field-icon" /><input className="input-field pl-10" value={b.link} onChange={(e) => setBuiltin(key, { link: e.target.value })} placeholder="Link — https://… or /live-rankings" aria-label={`${BUILTIN_LABEL[key]} poster link`} disabled={!b.enabled} /></div>
+                <select className="input-field" value={b.badge} onChange={(e) => setBuiltin(key, { badge: cleanBadge(e.target.value) })} aria-label={`${BUILTIN_LABEL[key]} poster badge`} disabled={!b.enabled}>
+                  {POSTER_BADGES.map((x) => <option key={x || 'none'} value={x}>{x ? `Badge: ${x}` : 'No badge'}</option>)}
+                </select>
+                <DateRange from={b.from} until={b.until} disabled={!b.enabled} onChange={(patch) => setBuiltin(key, patch)} />
+                {b.link && !cleanPosterLink(b.link) && <p className="text-xs" style={{ color: '#b91c1c' }}>Link must start with https:// or be an in-app path.</p>}
+                <button type="button" className="text-xs font-semibold underline" style={{ color: 'var(--color-teal-dark)' }} onClick={() => setBuiltin(key, { ...d, enabled: b.enabled })}>Reset wording and link to default</button>
+              </div>
+            );
+          })}
+          <p className="text-xs lg:col-span-2" style={{ color: 'var(--color-text-muted)' }}>These two posters come first in the strip and do not count toward the {MAX_POSTERS} posters. Leave both dates empty to keep a poster on all the time.</p>
         </div>
       </section>
 
@@ -145,6 +165,7 @@ export function AdminAnnouncementsPanel() {
                 <select className="input-field" value={p.badge} onChange={(e) => setPoster(p.id, { badge: cleanBadge(e.target.value) })} aria-label="Poster badge">
                   {POSTER_BADGES.map((b) => <option key={b || 'none'} value={b}>{b ? `Badge: ${b}` : 'No badge'}</option>)}
                 </select>
+                <DateRange from={p.from} until={p.until} onChange={(patch) => setPoster(p.id, patch)} />
                 {p.link && !cleanPosterLink(p.link) && <p className="text-xs" style={{ color: '#b91c1c' }}>Link must start with https:// or be an in-app path.</p>}
               </div>
               <div className="flex sm:flex-col items-center gap-1.5">
@@ -169,9 +190,23 @@ export function AdminAnnouncementsPanel() {
 
       <section className="surface-card p-5 sm:p-6">
         <h3 className="font-serif text-lg font-semibold mb-1">Live preview</h3>
-        <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>Exactly how readers will see it, on desktop and on phones.</p>
-        {cfg.posters.length ? <FeaturedPosters config={cfg} /> : <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Add a poster to see the preview.</p>}
+        <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>Exactly how readers will see it today, on desktop and on phones. Posters outside their dates are hidden here too.</p>
+        <FeaturedPosters config={cfg} />
       </section>
+    </div>
+  );
+}
+
+/** From / Until pickers. New posters start as a one-week run; clear both dates for "always on". */
+function DateRange({ from, until, onChange, disabled = false }: { from: string; until: string; onChange: (patch: { from: string; until: string }) => void; disabled?: boolean }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] items-end">
+      <div><label className="label">Show from</label><input type="date" className="input-field" value={from} max={until || undefined} onChange={(e) => onChange({ from: e.target.value, until })} disabled={disabled} /></div>
+      <div><label className="label">Show until (inclusive)</label><input type="date" className="input-field" value={until} min={from || undefined} onChange={(e) => onChange({ from, until: e.target.value })} disabled={disabled} /></div>
+      <div className="flex gap-2 text-xs font-semibold" style={{ color: 'var(--color-teal-dark)' }}>
+        <button type="button" className="underline" disabled={disabled} onClick={() => onChange(weekRange())}>This week</button>
+        <button type="button" className="underline" disabled={disabled} onClick={() => onChange({ from: '', until: '' })}>Always</button>
+      </div>
     </div>
   );
 }

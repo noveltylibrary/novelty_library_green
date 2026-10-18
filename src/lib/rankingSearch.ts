@@ -1,5 +1,5 @@
 /**
- * Live Rankings search + basic taste match. Everything runs in the browser over the already-loaded published
+ * Live Rankings search + taste match. Everything runs in the browser over the already-loaded published
  * reviews (no database access, no schema), so it is safe for the AdSense crawler and cheap to run.
  *
  * Two kinds of matching:
@@ -477,7 +477,7 @@ export function nearestBooks(books: SearchBook[], strictQuery: string, moreText:
   return { matches: fav, fallback: true };
 }
 
-/* ───────────── basic taste match ───────────── */
+/* ───────────── taste match ───────────── */
 
 export interface Mood { id: string; label: string; hint: string; concepts: string[]; words: string[] }
 export const MOODS: Mood[] = [

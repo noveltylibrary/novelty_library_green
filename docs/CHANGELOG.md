@@ -3,6 +3,25 @@
 All version notes in one place, newest first. (Per-version files were merged here in v1.136.)
 
 
+# v1.151
+- Review page: "Share as card" button (under Buy Now / View in Blog). Builds a rounded 4:5 PNG (1080×1350, transparent corners) with cover, verdict, R/W, NL, title, author, a short excerpt, genre and language, using the same export method and palette as the profile card. Preview, Download PNG and (on phones) Share.
+- Up Next and Someday shelves are now limited to 5 books (was 8). Existing longer lists show their first 5.
+
+# v1.150
+- Home shortcuts are now Reviews, Rankings, Submit, Analytics, About, Blog.
+- Announcements: new built-in Taste Match poster next to Live Rankings. Both built-in posters are editable in the admin panel (title, caption, link, badge, show from / until, reset to default). The Taste Match poster opens Live Rankings scrolled to the taste match.
+- Every uploaded or imported poster now has optional "show from" and "show until" dates. New posters default to a one-week run (This week / Always buttons); existing posters stay always-on. HTML import also reads data-from / data-until.
+- Saved settings from earlier versions (Live Rankings poster on/off and end date) carry over. Stored in the same editable_pages row, no SQL.
+
+# v1.149
+- Fix: spaces could not be typed in Currently Reading, Up Next and Someday (the editor trimmed each keystroke). Names saved without spaces are repaired on display where possible ("CrimeandPunishment" shows as "Crime and Punishment"); re-saving them with spaces is still best.
+- Review page: Quick Verdict box (verdict, R/W, NL, genre, language, read time) with Save for later; author name now links to an Author page (`#/author/Name`); Read next (older / newer in the same genre, plus all reviews of the author).
+- New pages: Author page and My list (`#/saved`, saved reviews are kept in this browser only).
+- About: "How we rate" table (verdicts, R/W, NL) above the roadmap.
+- Live Rankings: "Surprise me" in the Taste Match; the word "beta"/"basic" removed from that page; redesigned Live Rankings poster on Home.
+- Home: new Rankings shortcut between Analytics and Blog.
+- UI only. No SQL.
+
 # v1.148
 - Live Rankings taste match: new Verdict filter (Perfection / Go for it / Timepass, each with its count; pick one or several). Combines with moods, a loved book and language. Choosing a verdict alone lists the best-rated reviews with that verdict. Verdict shows as a reason chip on each pick. Reviews published before verdicts existed are left out while a verdict is chosen. UI only, no SQL.
 

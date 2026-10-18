@@ -1,5 +1,5 @@
-import { useDeferredValue, useMemo, useState } from 'react';
-import { BookOpen, ChevronDown, Search, Sparkles, Wand2, X } from 'lucide-react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { BookOpen, ChevronDown, Dices, Search, Sparkles, Wand2, X } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { VERDICTS, normalizeVerdict, type Verdict } from '@/lib/verdict';
 import {
@@ -168,12 +168,19 @@ export function RankingSearch({ books, openBook }: CommonProps) {
   );
 }
 
-/** Basic taste match: pick moods (and optionally a book you loved) and get three picks with a reason. */
-export function TasteMatchPanel({ books, openBook, goRoadmap }: CommonProps & { goRoadmap: () => void }) {
+/** Taste match: pick moods (and optionally a book you loved) and get three picks with a reason. */
+export function TasteMatchPanel({ books, openBook }: CommonProps & { goRoadmap?: () => void }) {
   const [moods, setMoods] = useState<string[]>([]);
   const [lovedId, setLovedId] = useState('');
   const [language, setLanguage] = useState('');
   const [verdicts, setVerdicts] = useState<Verdict[]>([]);
+
+  // The Home "Taste Match" poster links to #/live-rankings#taste.
+  useEffect(() => {
+    if (!window.location.hash.endsWith('#taste')) return;
+    const id = window.setTimeout(() => document.getElementById('nl-taste')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
+    return () => window.clearTimeout(id);
+  }, []);
 
   const searchBooks = useMemo(() => books.map(toSearchBook), [books]);
   const byId = useMemo(() => new Map(books.map((b) => [b.review.id, b])), [books]);
@@ -186,16 +193,27 @@ export function TasteMatchPanel({ books, openBook, goRoadmap }: CommonProps & { 
     searchBooks.forEach((b) => { const v = normalizeVerdict(b.verdict); if (v) c[v] += 1; });
     return c;
   }, [searchBooks]);
+  /** Random pick: from the current matches when something is chosen, else from the strongest verdicts. */
+  const surprise = () => {
+    let pool = active ? tasteMatch(searchBooks, { moods, lovedId, language, verdicts }, 12).map((m) => m.book) : [];
+    if (!pool.length) {
+      pool = searchBooks.filter((b) => { const v = normalizeVerdict(b.verdict); return (v === 'perfection' || v === 'go_for_it') && (!language || b.language === language); });
+    }
+    if (!pool.length) pool = searchBooks;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    const item = pick ? byId.get(pick.id) : null;
+    if (item) openBook(item.review);
+  };
   const toggleVerdict = (v: Verdict) => setVerdicts((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]));
 
   const toggle = (id: string) => setMoods((cur) => (cur.includes(id) ? cur.filter((m) => m !== id) : cur.length >= 3 ? [...cur.slice(1), id] : [...cur, id]));
 
   return (
-    <section className="nl-find nl-taste" aria-labelledby="nl-taste-title">
+    <section id="nl-taste" className="nl-find nl-taste" aria-labelledby="nl-taste-title">
       <header className="nl-find-head">
         <span className="nl-find-icon nl-taste-icon"><Wand2 size={18} aria-hidden="true" /></span>
         <div>
-          <span className="nl-live-kicker">BASIC TASTE MATCH · BETA</span>
+          <span className="nl-live-kicker">TASTE MATCH</span>
           <h2 id="nl-taste-title">Tonight, you want something…</h2>
           <p>Pick up to three moods. Add a book you loved if you like, and we'll suggest three reads with the reason each one fits.</p>
         </div>
@@ -240,6 +258,11 @@ export function TasteMatchPanel({ books, openBook, goRoadmap }: CommonProps & { 
         </label>
       </div>
 
+      <div className="nl-taste-surprise">
+        <button type="button" onClick={surprise} disabled={!books.length}><Dices size={16} aria-hidden="true" /> Surprise me</button>
+        <span>{active ? 'Picks one great read that fits your choices.' : 'Picks a Perfection or Go for it review at random.'}</span>
+      </div>
+
       <div className="nl-find-results" aria-live="polite">
         {!active && <p className="nl-find-hint">Choose a mood or a verdict to see your picks.</p>}
         {active && picks.length === 0 && <p className="nl-find-hint">Nothing fits that mix yet. Try another mood, or remove the language or verdict filter.</p>}
@@ -271,7 +294,7 @@ export function TasteMatchPanel({ books, openBook, goRoadmap }: CommonProps & { 
           </ul>
         )}
       </div>
-      <p className="nl-taste-note">This is the basic version, matched on genre, traits, verdict and ratings. Reviews published before verdicts were added are left out while a verdict is chosen. A full Taste Match engine is on our <button type="button" onClick={goRoadmap}>roadmap</button>.</p>
+      <p className="nl-taste-note">Taste Match turns your choices into a TF-IDF profile and ranks every published review by cosine similarity, using genre, traits, verdict, ratings and review text. Reviews published before verdicts were added are left out while a verdict is chosen.</p>
     </section>
   );
 }
