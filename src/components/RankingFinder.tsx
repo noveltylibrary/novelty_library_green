@@ -1,6 +1,7 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { BookOpen, ChevronDown, Search, Sparkles, Wand2, X } from 'lucide-react';
 import type { Review } from '@/types/review';
+import { VERDICTS, normalizeVerdict, type Verdict } from '@/lib/verdict';
 import {
   FIELD_LABELS, FIELD_PLACEHOLDERS, MOODS, cleanTraits, norm, popularValues, didYouMean, nearestBooks, runSearch, tasteMatch,
   type Match, type SearchBook, type SearchField,
@@ -172,13 +173,20 @@ export function TasteMatchPanel({ books, openBook, goRoadmap }: CommonProps & { 
   const [moods, setMoods] = useState<string[]>([]);
   const [lovedId, setLovedId] = useState('');
   const [language, setLanguage] = useState('');
+  const [verdicts, setVerdicts] = useState<Verdict[]>([]);
 
   const searchBooks = useMemo(() => books.map(toSearchBook), [books]);
   const byId = useMemo(() => new Map(books.map((b) => [b.review.id, b])), [books]);
   const languages = useMemo(() => popularValues(searchBooks, 'language', 12), [searchBooks]);
   const titles = useMemo(() => [...searchBooks].sort((a, b) => a.title.localeCompare(b.title)), [searchBooks]);
-  const picks = useMemo(() => tasteMatch(searchBooks, { moods, lovedId, language }, 3), [searchBooks, moods, lovedId, language]);
-  const active = moods.length > 0 || !!lovedId;
+  const picks = useMemo(() => tasteMatch(searchBooks, { moods, lovedId, language, verdicts }, 3), [searchBooks, moods, lovedId, language, verdicts]);
+  const active = moods.length > 0 || !!lovedId || verdicts.length > 0;
+  const verdictCounts = useMemo(() => {
+    const c: Record<Verdict, number> = { perfection: 0, go_for_it: 0, timepass: 0 };
+    searchBooks.forEach((b) => { const v = normalizeVerdict(b.verdict); if (v) c[v] += 1; });
+    return c;
+  }, [searchBooks]);
+  const toggleVerdict = (v: Verdict) => setVerdicts((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]));
 
   const toggle = (id: string) => setMoods((cur) => (cur.includes(id) ? cur.filter((m) => m !== id) : cur.length >= 3 ? [...cur.slice(1), id] : [...cur, id]));
 
@@ -197,6 +205,16 @@ export function TasteMatchPanel({ books, openBook, goRoadmap }: CommonProps & { 
         {MOODS.map((m) => (
           <button key={m.id} type="button" className={moods.includes(m.id) ? 'is-on' : ''} onClick={() => toggle(m.id)} aria-pressed={moods.includes(m.id)} title={m.hint}>{m.label}</button>
         ))}
+      </div>
+
+      <div className="nl-taste-verdicts" role="group" aria-label="Reviewer verdict">
+        <span className="nl-taste-verdicts-label">Verdict <em>· optional</em></span>
+        {VERDICTS.map((v) => (
+          <button key={v.value} type="button" className={verdicts.includes(v.value) ? 'is-on' : ''} onClick={() => toggleVerdict(v.value)} aria-pressed={verdicts.includes(v.value)} title={v.blurb} disabled={verdictCounts[v.value] === 0}>
+            {v.label} <small>{verdictCounts[v.value]}</small>
+          </button>
+        ))}
+        {verdicts.length > 0 && <button type="button" className="nl-find-clear" onClick={() => setVerdicts([])}>Any verdict</button>}
       </div>
 
       <div className="nl-find-row">
@@ -223,8 +241,8 @@ export function TasteMatchPanel({ books, openBook, goRoadmap }: CommonProps & { 
       </div>
 
       <div className="nl-find-results" aria-live="polite">
-        {!active && <p className="nl-find-hint">Choose a mood to see your picks.</p>}
-        {active && picks.length === 0 && <p className="nl-find-hint">Nothing fits that mix yet. Try another mood or remove the language filter.</p>}
+        {!active && <p className="nl-find-hint">Choose a mood or a verdict to see your picks.</p>}
+        {active && picks.length === 0 && <p className="nl-find-hint">Nothing fits that mix yet. Try another mood, or remove the language or verdict filter.</p>}
         {picks.length > 0 && (
           <ul className="nl-find-list">
             {picks.map((m, i) => (
@@ -241,7 +259,7 @@ export function TasteMatchPanel({ books, openBook, goRoadmap }: CommonProps & { 
                         <span className="nl-find-copy">
                           <strong>{item.review.title}</strong>
                           <small>{item.review.author || 'Author unavailable'}</small>
-                          <span className="nl-taste-why"><Sparkles size={13} aria-hidden="true" /> <b className="nl-find-pct">{Math.round(m.score)}% match</b> · <b>Why it fits you:</b> {m.reasons.join(' · ')}</span>
+                          <span className="nl-taste-why"><Sparkles size={13} aria-hidden="true" /> {m.score > 0 && <><b className="nl-find-pct">{Math.round(m.score)}% match</b> · </>}<b>{m.score > 0 ? 'Why it fits you:' : 'Why it is here:'}</b> {m.reasons.join(' · ')}</span>
                         </span>
                       </button>
                       <span className="nl-find-score"><b>{item.nlRating == null ? '—' : item.nlRating.toFixed(1)}</b><small>NL</small></span>
@@ -253,7 +271,7 @@ export function TasteMatchPanel({ books, openBook, goRoadmap }: CommonProps & { 
           </ul>
         )}
       </div>
-      <p className="nl-taste-note">This is the basic version, matched on genre, traits and ratings. A full Taste Match engine is on our <button type="button" onClick={goRoadmap}>roadmap</button>.</p>
+      <p className="nl-taste-note">This is the basic version, matched on genre, traits, verdict and ratings. Reviews published before verdicts were added are left out while a verdict is chosen. A full Taste Match engine is on our <button type="button" onClick={goRoadmap}>roadmap</button>.</p>
     </section>
   );
 }

@@ -3,6 +3,9 @@
 All version notes in one place, newest first. (Per-version files were merged here in v1.136.)
 
 
+# v1.148
+- Live Rankings taste match: new Verdict filter (Perfection / Go for it / Timepass, each with its count; pick one or several). Combines with moods, a loved book and language. Choosing a verdict alone lists the best-rated reviews with that verdict. Verdict shows as a reason chip on each pick. Reviews published before verdicts existed are left out while a verdict is chosen. UI only, no SQL.
+
 # v1.147
 - Live Rankings search: "Did you mean ..." suggestions (clickable) when the typed word is not an exact genre/language/trait/author, and when nothing matches a "Closest we have" list (or top-rated picks as a last resort) instead of an empty box. No SQL.
 

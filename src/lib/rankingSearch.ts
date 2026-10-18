@@ -10,6 +10,8 @@
  * All comparisons ignore capitals, accents, punctuation and extra spaces.
  */
 
+import { normalizeVerdict, verdictLabel } from '@/lib/verdict';
+
 export type SearchField = 'genre' | 'language' | 'traits' | 'author';
 
 export interface SearchBook {
@@ -490,12 +492,25 @@ export const MOODS: Mood[] = [
   { id: 'grow', label: 'Inspiring', hint: 'growth, comebacks', concepts: ['selfhelp', 'business', 'memoir'], words: ['hope', 'healing', 'redemption', 'comeback', 'inspiration', 'growth', 'motivation', 'business'] },
 ];
 
-export interface TasteInput { moods: string[]; lovedId: string; language: string }
+/** `verdicts`: reviewer verdicts to keep ('perfection' | 'go_for_it' | 'timepass'); empty/undefined = any. Reviews without a verdict are left out while a verdict is chosen. */
+export interface TasteInput { moods: string[]; lovedId: string; language: string; verdicts?: string[] }
 
 export function tasteMatch(books: SearchBook[], input: TasteInput, limit = 3): Match[] {
   const moods = input.moods.map((id) => MOODS.find((m) => m.id === id)).filter((m): m is Mood => !!m);
   const loved = books.find((b) => b.id === input.lovedId);
-  if (!moods.length && !loved) return [];
+  const verdictSet = new Set((input.verdicts ?? []).map((v) => normalizeVerdict(v)).filter((v): v is NonNullable<ReturnType<typeof normalizeVerdict>> => !!v));
+  const verdictOk = (b: SearchBook) => !verdictSet.size || verdictSet.has(normalizeVerdict(b.verdict) as never);
+  const verdictReason = (b: SearchBook) => { const v = normalizeVerdict(b.verdict); return v ? `Verdict: ${verdictLabel(v)}` : ''; };
+  if (!moods.length && !loved) {
+    // Verdict only: no taste to compare, so list the best-rated reviews that carry the chosen verdict.
+    if (!verdictSet.size) return [];
+    const langOnly = norm(input.language);
+    return books
+      .filter((b) => verdictOk(b) && (!langOnly || norm(b.language) === langOnly))
+      .sort((a, b) => (b.nl ?? b.rw) - (a.nl ?? a.rw) || b.rw - a.rw)
+      .slice(0, limit)
+      .map((book): Match => ({ book, score: 0, reasons: [verdictReason(book), book.nl != null ? `Reader rating · NL ${book.nl.toFixed(1)}` : `Reviewer rating · R/W ${book.rw.toFixed(1)}`].filter(Boolean) }));
+  }
   const idx = getIndex(books);
   const lovedP = loved ? prepare(loved) : null;
   const langKey = norm(input.language);
@@ -515,6 +530,7 @@ export function tasteMatch(books: SearchBook[], input: TasteInput, limit = 3): M
     const book = doc.book;
     if (loved && book.id === loved.id) continue;
     if (langKey && norm(book.language) !== langKey) continue;
+    if (!verdictOk(book)) continue;
     const pct = cosine(profile, doc.vec) * 100;
     if (pct < 4) continue;
     const p = prepare(book);
@@ -532,6 +548,7 @@ export function tasteMatch(books: SearchBook[], input: TasteInput, limit = 3): M
       if (sharedTraits.length) add(`Shares: ${[...new Set(sharedTraits)].slice(0, 2).join(', ')}`);
       if (norm(book.author) && norm(book.author) === norm(loved.author)) add(`More from ${book.author}`);
     }
+    if (verdictSet.size) add(verdictReason(book));
     if (book.nl != null && book.nl >= 8) add(`Reader favourite · NL ${book.nl.toFixed(1)}`);
     if (!reasons.length) add('Closest to your taste profile');
     // Ranked by similarity; ratings only break near-ties, so a poor match is never rescued by a rating.
