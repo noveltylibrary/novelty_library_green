@@ -2167,7 +2167,7 @@ header.fixed { max-width: 100vw; z-index: 60; }
 .nl-live-rank.is-top-2 { color: #31485a; background: linear-gradient(135deg,#edf4f8,#afc4d1); }
 .nl-live-rank.is-top-3 { color: #633a1e; background: linear-gradient(135deg,#f6d1ad,#c9834d); }
 .nl-live-book { display: flex; align-items: center; gap: .65rem; min-width: 0; width: 100%; text-align: left; color: var(--color-text); }
-.nl-live-cover { display: grid; place-items: center; overflow: hidden; width: 42px; height: 58px; flex: 0 0 auto; border-radius: 7px; color: var(--color-teal-dark); background: rgba(0,151,178,.09); box-shadow: 0 3px 8px rgba(0,30,40,.12); }
+.nl-live-cover { display: grid; place-items: center; overflow: hidden; width: 58px; height: 58px; aspect-ratio: 1 / 1; flex: 0 0 auto; border-radius: 7px; color: var(--color-teal-dark); background: rgba(0,151,178,.09); box-shadow: 0 3px 8px rgba(0,30,40,.12); }
 .nl-live-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .nl-live-book-copy { display: grid; gap: .2rem; min-width: 0; }
 .nl-live-book-copy strong { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--color-text); font-size: .82rem; font-weight: 750; line-height: 1.3; overflow-wrap: anywhere; }
@@ -2231,7 +2231,7 @@ header.fixed { max-width: 100vw; z-index: 60; }
   .nl-live-row { grid-template-columns: 26px minmax(0,1fr) 74px; gap: .4rem; padding: .45rem; min-height: 72px; border-radius: 13px; }
   .nl-live-rank { width: 24px; height: 24px; border-radius: 8px; font-size: .72rem; }
   .nl-live-book { gap: .45rem; }
-  .nl-live-cover { width: 35px; height: 50px; border-radius: 5px; }
+  .nl-live-cover { width: 50px; height: 50px; border-radius: 5px; }
   .nl-live-book-copy strong { font-size: .74rem; }
   .nl-live-book-copy small { font-size: .62rem; }
   .nl-live-genre-chip { font-size: .52rem; }
@@ -2248,7 +2248,7 @@ header.fixed { max-width: 100vw; z-index: 60; }
   .nl-live-entry-copy small { font-size: .66rem; }
   .nl-live-row { grid-template-columns: 22px minmax(0,1fr) 64px; }
   .nl-live-rank { width: 21px; height: 23px; font-size: .67rem; }
-  .nl-live-cover { width: 30px; height: 44px; }
+  .nl-live-cover { width: 44px; height: 44px; }
   .nl-live-rating .calculated-stars { transform: scale(.72); }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2486,7 +2486,7 @@ header.fixed { max-width: 100vw; z-index: 60; }
 .nl-find-result { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .6rem; padding: .55rem .65rem; border: 1px solid var(--color-border); border-radius: 16px; background: color-mix(in srgb, var(--color-surface) 90%, var(--color-cyan) 10%); transition: border-color .2s ease, transform .2s ease; }
 .nl-find-result:hover { transform: translateY(-1px); border-color: rgba(0,151,178,.3); }
 .nl-find-result-main { display: flex; align-items: center; gap: .7rem; min-width: 0; text-align: left; color: var(--color-text); cursor: pointer; }
-.nl-find-cover { display: grid; place-items: center; overflow: hidden; width: 44px; height: 60px; flex: 0 0 auto; border-radius: 7px; color: var(--color-teal-dark); background: rgba(0,151,178,.09); box-shadow: 0 3px 8px rgba(0,30,40,.12); }
+.nl-find-cover { display: grid; place-items: center; overflow: hidden; width: 60px; height: 60px; aspect-ratio: 1 / 1; flex: 0 0 auto; border-radius: 7px; color: var(--color-teal-dark); background: rgba(0,151,178,.09); box-shadow: 0 3px 8px rgba(0,30,40,.12); }
 .nl-find-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .nl-find-copy { display: grid; gap: .22rem; min-width: 0; }
 .nl-find-copy strong { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: .86rem; font-weight: 750; line-height: 1.3; overflow-wrap: anywhere; }
@@ -2515,7 +2515,7 @@ header.fixed { max-width: 100vw; z-index: 60; }
 @media (max-width: 560px) {
   .nl-find-row { grid-template-columns: minmax(0, 1fr); }
   .nl-find-result { padding: .5rem; }
-  .nl-find-cover { width: 40px; height: 54px; }
+  .nl-find-cover { width: 54px; height: 54px; }
 }
 @media (prefers-reduced-motion: reduce) { .nl-find-result, .nl-find-quick button, .nl-taste-moods button { transition: none; } .nl-find-result:hover { transform: none; } }
 
@@ -2929,4 +2929,62 @@ header.fixed { max-width: 100vw; z-index: 60; }
 .nl-hlp-tick { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--nl-blue); color: #fff; }
 .nl-hlp-tick svg { width: .8rem; height: .8rem; }
 .nl-hlp-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px 14px; border-top: 1px solid var(--color-border); font-size: .8rem; color: var(--color-text-muted); }
+/* The archive/highlight Save action is not a Follow action, so it stays teal/cyan. */
+.nl-hlp-foot .nl-follow-btn { background:linear-gradient(135deg,var(--color-teal-dark),var(--color-cyan)); color:#fff; border-color:rgba(255,255,255,.35); box-shadow:0 6px 18px rgba(0,151,178,.20); }
+.nl-hlp-foot .nl-follow-btn:hover { box-shadow:0 9px 22px rgba(0,151,178,.28); }
 .nl-hlp-foot .nl-follow-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ===== Profile social hierarchy: teal/cyan UI, blue only for Follow actions ===== */
+.nl-profile-work { grid-template-columns: minmax(0, 1.45fr) minmax(360px, .75fr); }
+.nl-profile-main { min-width: 0; }
+.nl-profile-highlights { grid-column: 1; min-width: 0; }
+
+.nl-conn-bar {
+  background: linear-gradient(135deg, rgba(0,151,178,.13), rgba(92,225,230,.16));
+  border: 1px solid rgba(0,151,178,.25);
+  box-shadow: 0 10px 26px rgba(0,151,178,.12);
+}
+.nl-conn-cell { color: var(--color-teal-dark); }
+.nl-conn-cell + .nl-conn-cell { border-left-color: rgba(0,151,178,.20); }
+.nl-conn-cell:hover:not(:disabled) { background: rgba(92,225,230,.12); }
+.nl-conn-ic { background: rgba(0,151,178,.10); color: var(--color-cyan-dark); }
+.nl-conn-num { color: var(--color-cyan-dark); }
+.nl-conn-word { color: var(--color-teal-dark); }
+.nl-conn-word em { color: var(--color-text-muted); }
+
+.nl-hl { width: 100%; box-sizing: border-box; }
+.nl-hl-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 10px; }
+.nl-hl-head h2 { margin:2px 0 0; font-family:var(--font-serif, Georgia, serif); font-size:1.15rem; font-weight:700; color:var(--color-teal-dark); }
+.nl-hl-eyebrow { display:inline-flex; align-items:center; gap:5px; font-size:9px; letter-spacing:.18em; font-weight:800; color:var(--color-cyan-dark); }
+.nl-hl-eyebrow svg { width:12px; height:12px; }
+.nl-hl-scroll-hint { flex:none; font-size:10px; font-weight:700; color:var(--color-teal-dark); opacity:.72; }
+.nl-hl-row { scrollbar-width: thin; scrollbar-color: rgba(0,151,178,.42) transparent; scroll-snap-type: x proximity; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.nl-hl-row::-webkit-scrollbar { display:block; height:5px; }
+.nl-hl-row::-webkit-scrollbar-track { background:transparent; }
+.nl-hl-row::-webkit-scrollbar-thumb { background:rgba(0,151,178,.38); border-radius:999px; }
+.nl-hl-item { scroll-snap-align:start; }
+.nl-hl-ring { background:linear-gradient(135deg, var(--color-teal-dark), var(--color-cyan)); }
+.nl-hl-cover { color:var(--color-cyan-dark); }
+.nl-hl-new .nl-hl-ring { background:rgba(0,151,178,.08); border:2px dashed rgba(0,151,178,.48); }
+.nl-hl-title { color:var(--color-teal-dark); }
+.nl-hl-note svg { color:var(--color-cyan-dark); }
+
+/* The public profile Follow CTA is deliberately the same width as the profile card. */
+.profile-follow-stack { width:100%; display:grid; gap:10px; }
+.profile-follow-stack .nl-follow-btn { width:100%; }
+.profile-follow-stack .profile-report-action { width:100%; color:var(--color-teal-dark); background:rgba(0,151,178,.07); border:1px solid rgba(0,151,178,.22); box-shadow:none; }
+.profile-follow-stack .profile-report-action:hover { background:rgba(92,225,230,.13); color:var(--color-cyan-dark); }
+
+/* Instagram-style profile tabs stay Novelty Library teal/cyan — never blue. */
+.nl-ptab { color:var(--color-teal-dark); }
+.nl-ptab:hover { background:rgba(92,225,230,.10); color:var(--color-cyan-dark); }
+.nl-ptab-ic { color:var(--color-teal-dark); background:rgba(0,151,178,.08); }
+.nl-ptab.is-on { color:var(--color-cyan-dark); }
+.nl-ptab.is-on .nl-ptab-ic { background:linear-gradient(135deg,var(--color-teal-dark),var(--color-cyan)); color:#fff; box-shadow:0 6px 16px rgba(0,151,178,.22); }
+.nl-ptab::after { background:linear-gradient(90deg,var(--color-teal-dark),var(--color-cyan)); }
+.nl-ptab:focus-visible { outline-color:rgba(0,151,178,.40); }
+
+@media (max-width: 1023px) {
+  .nl-profile-work { grid-template-columns:minmax(0,1fr); }
+  .nl-profile-highlights { grid-column:1; }
+}

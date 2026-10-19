@@ -22,6 +22,7 @@ export function ProfileHighlights({ userId, isOwn }: { userId: string; isOwn: bo
 
   return (
     <section className="nl-hl" aria-label="Story highlights">
+      <div className="nl-hl-head"><div><span className="nl-hl-eyebrow"><Sparkles aria-hidden="true" /> STORIES</span><h2>Highlights</h2></div>{list.length > 4 && <span className="nl-hl-scroll-hint">Swipe to see more</span>}</div>
       <div className="nl-hl-row">
         {list.map((h, idx) => (
           <button key={h.id} type="button" className="nl-hl-item" onClick={() => h.items.length ? setViewer({ h: idx, i: 0 }) : isOwn && setPicker({ target: h.id })} aria-label={`Open highlight ${h.title}`}>
