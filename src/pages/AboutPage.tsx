@@ -5,7 +5,8 @@ import { AboutSectionBlock } from '@/components/AboutSectionsView';
 import AdSenseAdSlot from '@/components/AdSenseAdSlot';
 import { HowWeRate } from '@/components/HowWeRate';
 import { RoadmapTable } from '@/components/RoadmapTable';
-import { ArrowLeft, Home, BookOpen, Send, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Home, BookOpen, Send, BarChart3, ArrowRight } from 'lucide-react';
+import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 
 interface AboutPageProps {
   navigate: (path: string) => void;
@@ -44,6 +45,15 @@ export function AboutPage({ navigate }: AboutPageProps) {
                   <HowWeRate navigate={navigate} />
                   <AdSenseAdSlot className="my-12" />
                   <div className="nl-about-roadmap-gap"><RoadmapTable scrollTarget /></div>
+                  <section className="nl-about-taste-note" aria-labelledby="nl-about-taste-title">
+                    <div className="nl-about-taste-mark"><TasteMatchIcon size={42} /></div>
+                    <div className="nl-about-taste-copy">
+                      <span className="nl-about-taste-kicker">A more personal way to discover books</span>
+                      <h2 id="nl-about-taste-title">Meet Taste Match</h2>
+                      <p>Taste Match looks beyond ratings and genres to help you find books that fit your reading mood, preferences, and the qualities you love in a story. Its evolving 40-metric framework considers signals such as pace, atmosphere, writing style, emotional resonance, and cognitive load—so recommendations can reflect <em>your</em> taste, not just what is popular.</p>
+                      <button type="button" className="nl-about-taste-button" onClick={() => navigate('/taste-match')}>Explore Taste Match <ArrowRight aria-hidden="true" /></button>
+                    </div>
+                  </section>
                   <AdSenseAdSlot className="my-10" />
                 </>
               )}

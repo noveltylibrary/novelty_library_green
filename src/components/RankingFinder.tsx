@@ -102,7 +102,7 @@ export function RankingSearch({ books, openBook }: CommonProps) {
         <div>
           <span className="nl-live-kicker">SEARCH THE LIBRARY</span>
           <h2 id="nl-find-title">Find your next read</h2>
-          <p>Row 1 looks for the exact word first. Row 2 reads your own words and brings back wider, related picks.</p>
+          <p>Search by a specific detail, then add the feeling or story qualities you want. Your extra description helps find wider matches and reflects the Taste Match idea: matching books to your reading taste, not just a single keyword.</p>
         </div>
       </header>
 
@@ -123,8 +123,8 @@ export function RankingSearch({ books, openBook }: CommonProps) {
       </div>
 
       <label className="nl-find-field nl-find-wide">
-        <span>More detail <em>· wider keyword match</em></span>
-        <input type="text" value={moreQ} onChange={(e) => setMoreQ(e.target.value)} placeholder="Tell us more about your search — e.g. dark, mind games, detective" autoComplete="off" />
+        <span>More detail <em>· describe your taste for Taste Match</em></span>
+        <input type="text" value={moreQ} onChange={(e) => setMoreQ(e.target.value)} placeholder="Describe the story you want — e.g. a dark, slow-burn mystery with mind games, layered characters, and a haunting atmosphere" autoComplete="off" />
       </label>
 
       <div className="nl-find-tools">
