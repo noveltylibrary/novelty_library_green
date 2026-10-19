@@ -3,6 +3,11 @@
 All version notes in one place, newest first. (Per-version files were merged here in v1.136.)
 
 
+# v1.167b
+- Build fix, no feature changes. The previous GitHub upload was missing 59 files (the rest of `src/lib` after `moderation.ts`, all of `src/pages`, and `src/types/review.ts`), so Vercel failed with `Could not resolve "./lib/pwa"`. This package contains the complete project. Upload it with git (push or GitHub Desktop) rather than the browser drag-and-drop, which stops at 100 files.
+- Footer and Admin dashboard now show v1.167b. `package.json` carries it as `1.167.0-b` because npm needs a valid semver string.
+- No SQL.
+
 # v1.164
 - Profile Card page: the Followers | Following bar now sits inside the same width box as the profile card (380 px for portrait formats, 560 px for 16:9) and follows the card when you switch format. Same on public profiles.
 - Highlights moved into the right column directly under the "Share a reading moment" story card, same width as it, with the normal gap between the two (it used to sit under the card on the left with a big empty gap beside it). On phones it still comes after the story card.

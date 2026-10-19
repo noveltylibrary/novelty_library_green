@@ -1,7 +1,7 @@
 {
   "name": "novelty-library",
   "private": true,
-  "version": "1.164.0",
+  "version": "1.167.0-b",
   "type": "module",
   "scripts": {
     "dev": "vite",
