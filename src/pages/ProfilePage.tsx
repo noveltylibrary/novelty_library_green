@@ -271,7 +271,7 @@ export function ProfilePage({ navigate }: ProfilePageProps) {
       <div className="nl-profile-main min-w-0"><ProfileCard layout="rows" header={<FollowStatsBar followers={followStats.followers} following={followStats.following} hideFollowers={hideFollowers} hideFollowing={hideFollowing} isOwn onOpen={setConnKind}/>} data={cardData} onFollowersClick={()=>setConnKind('followers')} download initialFormat={publicFormat} publicFormat={publicFormat} onPublicFormatChange={setPublicView} onAvatarUpload={()=>avatarInputRef.current?.click()} onHeaderUpload={()=>headerInputRef.current?.click()} onSuperBlitzBannerUpload={()=>sbBannerInputRef.current?.click()} onViewPublicProfile={()=>profile?.novelty_username && navigate(`/profile/@${encodeURIComponent(profile.novelty_username)}`)} /></div>
       <aside className="nl-profile-story-col min-w-0">
         <details className="nl-profile-stories-dropdown">
-          <summary className="nl-profile-stories-summary"><span><BookOpen className="w-5 h-5" aria-hidden="true"/>Stories and Highlights</span><ChevronDown className="nl-profile-stories-caret w-5 h-5" aria-hidden="true"/></summary>
+          <summary className="nl-profile-stories-summary"><span className="nl-profile-stories-label"><span className="nl-profile-stories-icon"><BookOpen className="w-5 h-5" aria-hidden="true"/></span><span>Stories and Highlights</span></span><ChevronDown className="nl-profile-stories-caret w-5 h-5" aria-hidden="true"/></summary>
           <div className="nl-profile-stories-content space-y-5">
             <div className="surface-card p-5 sm:p-6 nl-story-composer">
               <p className="text-xs uppercase tracking-[.18em] font-semibold" style={{color:'var(--color-teal-dark)'}}>24-hour story</p>

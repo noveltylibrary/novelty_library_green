@@ -862,10 +862,12 @@ html[data-nl-ads-restricted="true"] iframe[src*="googleadservices.com"] {
   transition: opacity 0.5s ease, visibility 0.5s ease;
 }
 .nl-splash.is-leaving { opacity: 0; visibility: hidden; }
-.nl-splash-book-stage { position: relative; display: grid; place-items: center; }
-.nl-splash-brand-mark { position: absolute; width: 38px; height: 38px; object-fit: contain; top: -5px; right: -13px; filter: drop-shadow(0 4px 8px rgba(0,80,95,.20)); animation: nl-splash-logo-pop .9s cubic-bezier(.2,.9,.3,1.25) .35s both; }
-@keyframes nl-splash-logo-pop { 0% { opacity: 0; transform: translate(5px,8px) scale(.35) rotate(18deg); } 68% { opacity: 1; transform: translate(0,-3px) scale(1.12) rotate(-5deg); } 100% { opacity: 1; transform: translate(0,0) scale(1) rotate(0); } }
-.nl-splash-title { font-family: 'Fraunces', serif; font-size: 1.6rem; font-weight: 600; color: var(--color-text); letter-spacing: 0.01em; animation: fadeUp 0.7s ease 0.5s both; }
+.nl-splash-book-stage { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; }
+/* Large, poster-scale brand mark: let the official logo be a co-star with the flipping book, not a tiny badge. */
+.nl-splash-brand-mark { position: relative; z-index: 1; display: block; flex: 0 0 auto; width: clamp(198px, 31vw, 236px); height: auto; aspect-ratio: 1; object-fit: contain; margin-bottom: -72px; filter: drop-shadow(0 10px 22px rgba(0,80,95,.24)); animation: nl-splash-logo-pop 1.15s cubic-bezier(.18,.88,.24,1.24) .12s both; }
+@keyframes nl-splash-logo-pop { 0% { opacity: 0; transform: translate3d(0,34px,0) scale(.38) rotate(-14deg); } 58% { opacity: 1; transform: translate3d(0,-12px,0) scale(1.12) rotate(4deg); } 76% { opacity: 1; transform: translate3d(0,4px,0) scale(.96) rotate(-2deg); } 100% { opacity: 1; transform: translate3d(0,0,0) scale(1) rotate(0); } }
+.nl-splash-title { font-family: 'Fraunces', serif; font-size: clamp(1.75rem, 3.5vw, 2rem); font-weight: 700; color: var(--color-text); letter-spacing: 0.01em; text-shadow: 0 3px 20px rgba(0,151,178,.12); animation: fadeUp 0.7s ease 0.6s both; }
+@media (max-width: 520px) { .nl-splash-brand-mark { width: 198px; margin-bottom: -60px; } .nl-splash-book-stage .nl-book { max-width: 178px; height: auto; } }
 @media (prefers-reduced-motion: reduce) {
   .nl-splash-brand-mark { animation: none; }
   .nl-book-pop, .nl-book-loop .nl-book-flip, .nl-book-loop .nl-spark, .nl-book-loop .nl-book-glow, .nl-book-loop .nl-book-ribbon { animation: none; }
@@ -3084,13 +3086,15 @@ header.fixed { max-width: 100vw; z-index: 60; }
 .nl-taste-page { width: 100%; }
 .nl-taste-page-inner { width: min(100%, 1040px); margin: 0 auto; display: grid; gap: 1.1rem; }
 .nl-taste-page-hero { display: flex; align-items: center; gap: 1.2rem; padding: clamp(1.1rem,3.5vw,2rem); border: 1px solid rgba(0,151,178,.22); border-radius: 26px; background: radial-gradient(ellipse at 2% 0%, rgba(92,225,230,.23), transparent 48%), radial-gradient(ellipse at 100% 100%, rgba(99,102,241,.08), transparent 50%), linear-gradient(135deg, var(--color-surface), rgba(92,225,230,.045)); box-shadow: 0 16px 42px rgba(0,70,90,.065); }
-.nl-taste-page-logo { display: grid; place-items: center; flex: 0 0 auto; width: 100px; height: 100px; padding: 3px; border-radius: 27px; border: 1px solid rgba(0,151,178,.35); background: linear-gradient(145deg, #c9f8ff 0%, #d8e4ff 62%, #fce9b8 100%); box-shadow: 0 9px 22px rgba(0,89,117,.17), inset 0 1px 0 rgba(255,255,255,.85); }
-.nl-taste-page-mascot { display:block; width:100%; height:100%; overflow:visible; filter:drop-shadow(0 4px 5px rgba(3,55,74,.14)); }
+.nl-taste-page-logo { position: relative; isolation: isolate; display: grid; place-items: center; flex: 0 0 auto; width: 124px; height: 124px; padding: 3px; border-radius: 34px; border: 1px solid rgba(0,151,178,.42); background: linear-gradient(145deg, #c9f8ff 0%, #d8e4ff 62%, #fce9b8 100%); box-shadow: 0 12px 30px rgba(0,89,117,.22), inset 0 1px 0 rgba(255,255,255,.9); }
+.nl-taste-page-logo::before { content: ''; position: absolute; z-index: -1; inset: -7px; border: 2px solid rgba(0,151,178,.42); border-radius: 39px; opacity: 0; pointer-events: none; animation: nl-taste-mascot-impact 1.15s ease-out .28s both; }
+.nl-taste-page-logo::after { content: ''; position: absolute; z-index: -1; left: -22px; right: -22px; top: 48%; height: 5px; border-radius: 999px; background: linear-gradient(90deg, transparent, rgba(0,151,178,.45), rgba(99,102,241,.44), rgba(242,188,75,.28), transparent); opacity: 0; filter: blur(1px); pointer-events: none; animation: nl-taste-mascot-swoosh .95s cubic-bezier(.16,.8,.25,1) .08s both; }
+.nl-taste-page-mascot { display:block; width:100%; height:100%; overflow:visible; filter:drop-shadow(0 5px 7px rgba(3,55,74,.18)); transform-origin: center; animation: nl-taste-mascot-idle 3.8s ease-in-out 1.45s infinite; }
 .nl-taste-page-hero h1 { margin: .25rem 0 .45rem; color: var(--color-text); font-family: Fraunces, Georgia, serif; font-size: clamp(2rem,5vw,3.3rem); font-weight: 750; line-height: 1.04; letter-spacing: -.04em; }
 .nl-taste-page-hero p { max-width: 54rem; color: var(--color-text-muted); font-size: .94rem; line-height: 1.65; }
 .nl-taste-page .nl-taste { margin: 0; }
 .nl-taste-page .nl-find-head { scroll-margin-top: 6rem; }
-@media (max-width: 560px) { .nl-taste-page-hero { align-items: flex-start; gap: .8rem; border-radius: 21px; } .nl-taste-page-logo { width: 66px; height: 66px; border-radius: 17px; padding: 1px; } .nl-taste-page-logo svg { width: 100%; height: 100%; } .nl-taste-page-hero p { font-size: .84rem; } .nl-taste-launch { width: 100%; max-width: 100%; } }
+@media (max-width: 560px) { .nl-taste-page-hero { align-items: flex-start; gap: .8rem; border-radius: 21px; } .nl-taste-page-logo { width: 82px; height: 82px; border-radius: 22px; padding: 1px; } .nl-taste-page-logo::before { inset: -5px; border-radius: 26px; } .nl-taste-page-logo::after { left: -15px; right: -15px; } .nl-taste-page-logo svg { width: 100%; height: 100%; } .nl-taste-page-hero p { font-size: .84rem; } .nl-taste-launch { width: 100%; max-width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .nl-taste-launch { transition: none; } .nl-taste-launch:hover { transform: none; } }
 
 /* Let the custom Taste Match thinking/search mark fill its poster orbit cleanly. */
@@ -3136,9 +3140,27 @@ header.fixed { max-width: 100vw; z-index: 60; }
 @media (max-width: 560px) { .nl-live-hero-actions { gap:.45rem; } .nl-live-analytics-quick-link { padding:.58rem .72rem; } }
 
 /* Taste Match SE destination mascot motion: deliberately scoped to this page only. */
-@keyframes nl-taste-mascot-float {
+/* The mascot makes a one-time, character-like entrance on every visit to Taste Match SE. */
+@keyframes nl-taste-mascot-arrive {
+  0% { opacity: 0; transform: translate3d(-110vw, 54px, 0) rotate(-32deg) scale(.32); }
+  46% { opacity: 1; transform: translate3d(12px, -13px, 0) rotate(10deg) scale(1.16); }
+  62% { opacity: 1; transform: translate3d(-5px, 6px, 0) rotate(-7deg) scale(.94); }
+  78% { opacity: 1; transform: translate3d(2px, -2px, 0) rotate(3deg) scale(1.035); }
+  100% { opacity: 1; transform: translate3d(0,0,0) rotate(0) scale(1); }
+}
+@keyframes nl-taste-mascot-impact {
+  0% { opacity: 0; transform: scale(.72); }
+  45% { opacity: .72; transform: scale(1.12); }
+  100% { opacity: 0; transform: scale(1.48); }
+}
+@keyframes nl-taste-mascot-swoosh {
+  0% { opacity: 0; transform: translateX(-35%) scaleX(.2) rotate(-12deg); }
+  40% { opacity: .8; transform: translateX(0) scaleX(1) rotate(-5deg); }
+  100% { opacity: 0; transform: translateX(28%) scaleX(.65) rotate(2deg); }
+}
+@keyframes nl-taste-mascot-idle {
   0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-4px) rotate(-1deg); }
+  50% { transform: translateY(-4px) rotate(-1.4deg); }
 }
 @keyframes nl-taste-brain-breathe {
   0%, 100% { transform: scale(1); }
@@ -3156,29 +3178,41 @@ header.fixed { max-width: 100vw; z-index: 60; }
   0%, 100% { transform: rotate(0deg); }
   50% { transform: rotate(-1.4deg); }
 }
-.nl-taste-page .nl-taste-page-logo { animation: nl-taste-mascot-float 4.2s ease-in-out infinite; transform-origin: center; }
+@keyframes nl-taste-mascot-blink {
+  0%, 42%, 47%, 82%, 87%, 100% { transform: scaleY(1); }
+  44%, 85% { transform: scaleY(.12); }
+}
+.nl-taste-page .nl-taste-page-logo { animation: nl-taste-mascot-arrive 1.42s cubic-bezier(.18,.86,.24,1.12) both; transform-origin: center; }
 .nl-taste-page .tm-mascot-brain { transform-box: fill-box; transform-origin: center; animation: nl-taste-brain-breathe 3.8s ease-in-out infinite; }
+.nl-taste-page .tm-mascot-eyes { transform-box: fill-box; transform-origin: center; animation: nl-taste-mascot-blink 4.8s ease-in-out 1.6s infinite; }
 .nl-taste-page .tm-mascot-lens { transform-box: view-box; transform-origin: 78px 65px; animation: nl-taste-lens-glide 3.7s ease-in-out infinite; }
 .nl-taste-page .tm-mascot-sparkle { transform-box: fill-box; transform-origin: center; animation: nl-taste-sparkle-twinkle 2.2s ease-in-out infinite; }
 .nl-taste-page .tm-mascot-sparkle-two { animation-delay: 1.05s; }
 .nl-taste-page .tm-mascot-book { transform-box: fill-box; transform-origin: center; animation: nl-taste-book-nod 4.2s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   .nl-taste-page .nl-taste-page-logo,
+  .nl-taste-page .nl-taste-page-logo::before,
+  .nl-taste-page .nl-taste-page-logo::after,
+  .nl-taste-page .nl-taste-page-mascot,
   .nl-taste-page .tm-mascot-brain,
+  .nl-taste-page .tm-mascot-eyes,
   .nl-taste-page .tm-mascot-lens,
   .nl-taste-page .tm-mascot-sparkle,
   .nl-taste-page .tm-mascot-book { animation: none !important; }
 }
 
 
-/* Profile editor only: collapse story creation and highlights under one disclosure. */
-.nl-profile-stories-dropdown { border: 1px solid var(--color-border); border-radius: 1.1rem; background: var(--color-paper); overflow: hidden; }
-.nl-profile-stories-summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: 1rem 1.15rem; cursor: pointer; list-style: none; color: var(--color-text); font-weight: 800; background: linear-gradient(100deg, rgba(0,151,178,.08), rgba(92,225,230,.10)); }
+/* Profile editor only: glowing Stories & Highlights disclosure with a circular open-book emblem. */
+.nl-profile-stories-dropdown { border: 1px solid transparent; border-radius: 1.1rem; background: linear-gradient(var(--color-paper),var(--color-paper)) padding-box, linear-gradient(120deg, rgba(0,151,178,.72), rgba(92,225,230,.88), rgba(99,102,241,.58), rgba(242,188,75,.46), rgba(0,151,178,.72)) border-box; box-shadow: 0 0 0 1px rgba(0,151,178,.10), 0 0 18px rgba(0,151,178,.16); overflow: hidden; animation: nl-profile-stories-border-glow 3.8s ease-in-out infinite; }
+.nl-profile-stories-summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .8rem 1.05rem; border: 1px solid rgba(0,151,178,.36); cursor: pointer; list-style: none; color: var(--color-text); font-weight: 800; background: linear-gradient(100deg, rgba(0,151,178,.11), rgba(92,225,230,.13), rgba(99,102,241,.06)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), 0 0 14px rgba(0,151,178,.16); animation: nl-profile-stories-button-glow 3.4s ease-in-out infinite; }
 .nl-profile-stories-summary::-webkit-details-marker { display: none; }
-.nl-profile-stories-summary > span { display: inline-flex; align-items: center; gap: .65rem; }
-.nl-profile-stories-summary > span svg { color: var(--color-cyan-dark); }
+.nl-profile-stories-label { display: inline-flex; align-items: center; gap: .72rem; min-width: 0; }
+.nl-profile-stories-icon { display: grid; place-items: center; flex: 0 0 2.55rem; width: 2.55rem; height: 2.55rem; border-radius: 50%; color: #f4ffff; background: linear-gradient(135deg, #087d7c, #0ba6b5 62%, #5964d0); border: 1px solid rgba(255,255,255,.62); box-shadow: 0 0 0 3px rgba(0,151,178,.12), 0 5px 16px rgba(0,132,151,.24), inset 0 1px 0 rgba(255,255,255,.45); }
+.nl-profile-stories-icon svg { width: 1.25rem; height: 1.25rem; color: #fff !important; stroke-width: 2.35; }
 .nl-profile-stories-summary:focus-visible { outline: 3px solid rgba(0,151,178,.45); outline-offset: -3px; }
-.nl-profile-stories-caret { transition: transform .18s ease; color: var(--color-teal-dark); }
+.nl-profile-stories-caret { transition: transform .18s ease; color: var(--color-teal-dark); flex: 0 0 auto; }
 .nl-profile-stories-dropdown[open] .nl-profile-stories-caret { transform: rotate(180deg); }
 .nl-profile-stories-content { padding: 1rem; }
-@media (prefers-reduced-motion: reduce) { .nl-profile-stories-caret { transition: none; } }
+@keyframes nl-profile-stories-border-glow { 0%, 100% { box-shadow: 0 0 0 1px rgba(0,151,178,.10), 0 0 13px rgba(0,151,178,.13); } 50% { box-shadow: 0 0 0 2px rgba(92,225,230,.24), 0 0 23px rgba(0,151,178,.25); } }
+@keyframes nl-profile-stories-button-glow { 0%, 100% { border-color: rgba(0,151,178,.32); box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), 0 0 10px rgba(0,151,178,.10); } 50% { border-color: rgba(92,225,230,.82); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22), 0 0 20px rgba(0,151,178,.25); } }
+@media (prefers-reduced-motion: reduce) { .nl-profile-stories-dropdown, .nl-profile-stories-summary { animation: none; } .nl-profile-stories-caret { transition: none; } }

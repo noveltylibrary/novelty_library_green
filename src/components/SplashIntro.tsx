@@ -37,8 +37,8 @@ export function SplashIntro({ onComplete }: SplashIntroProps) {
   return (
     <div className={`nl-splash${leaving ? ' is-leaving' : ''}`} aria-hidden>
       <div className="nl-splash-book-stage" aria-hidden="true">
-        <AnimatedBook size={150} />
         <img className="nl-splash-brand-mark" src="/novelty-library-logo.png" alt="" />
+        <AnimatedBook size={180} />
       </div>
       <div className="nl-splash-title">Novelty Library</div>
     </div>
