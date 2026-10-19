@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowLeft, BookOpen, CheckCircle, User, X, Flag, AlertTriangle, BookMarked, MessageCircleQuestion } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle, User, X, Flag, AlertTriangle, BookMarked, MessageCircleQuestion, Share2, Check, UserPlus, UserCheck } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { fetchPublicProfile, fetchPublicPublishedReviews, type AcceptedReviewCard, type PublicProfileData } from '@/lib/reviews';
 import { fetchFollowStats, followUsername, unfollowUsername, fetchFollowPrivacy, type FollowStats, type FollowPrivacy } from '@/lib/social';
 import { FollowStatsBar, ConnectionsModal, type ConnKind } from '@/components/ConnectionsBar';
-import { FollowButton } from '@/components/FollowButton';
 import { ProfileHighlights } from '@/components/ProfileHighlights';
 import { ProfileTabs, PublishedPanel, TabEmpty } from '@/components/ProfileTabs';
 import { fetchProfileQuestions, isLegacyProfileFieldKey, type LegacyProfileFieldKey, type ProfileQuestion } from '@/lib/profileQuestions';
@@ -81,6 +80,19 @@ export function PublicProfilePage({ username, navigate }: Props) {
     };
   },[profile,published,questions,follow.followers,shelfInfo]);
   const doFollow=async()=>{if(!user){navigate('/auth');return;}if(busy)return;setBusy(true);try{if(follow.is_following)await unfollowUsername(username);else await followUsername(username);setFollow(await fetchFollowStats(username));}finally{setBusy(false);}};
+  const [shared,setShared]=useState(false);
+  const shareProfile=async()=>{
+    const handle=profile?.novelty_username||username;
+    const url=`${window.location.origin}/profile/@${encodeURIComponent(handle)}`;
+    try{
+      if(navigator.share){ await navigator.share({title:`@${handle} on Novelty Library`,text:`Check out @${handle}'s reader profile on Novelty Library`,url}); return; }
+    }catch(e){ if((e as Error)?.name==='AbortError') return; }
+    try{
+      if(navigator.clipboard&&window.isSecureContext) await navigator.clipboard.writeText(url);
+      else{ const t=document.createElement('textarea'); t.value=url; t.style.position='fixed'; t.style.opacity='0'; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+      setShared(true); window.setTimeout(()=>setShared(false),2200);
+    }catch{ /* clipboard blocked */ }
+  };
   if(loading)return <div className="pt-32 pb-20 container-prose text-center">Loading profile…</div>;
   if(!profile||!cardData)return <div className="pt-32 pb-20 container-prose text-center max-w-md mx-auto"><User className="w-12 h-12 mx-auto mb-4"/><h1 className="font-serif text-2xl font-semibold mb-2">Profile not found</h1><p className="text-sm mb-6" style={{color:'var(--color-text-muted)'}}>That Novelty Library username is not attached to a public account.</p><button onClick={()=>navigate('/reviews')} className="btn-ghost"><ArrowLeft className="w-4 h-4"/> Back to Reviews</button></div>;
   const openConn=(kind:ConnKind)=>{if(!isOwn&&(kind==='followers'?privacy.hide_followers:privacy.hide_following))return;setConnKind(kind);};
@@ -110,9 +122,9 @@ export function PublicProfilePage({ username, navigate }: Props) {
     return <div className="space-y-5">{grouped.map(group=><div key={group.section} className="space-y-3"><h3 className="text-sm font-bold uppercase tracking-wider" style={{color:'var(--color-cyan-dark)'}}>{({'Reading Identity':'Reading taste','Beyond Books':'Beyond books'} as Record<string,string>)[group.section]||group.section}</h3><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{group.items.map(({q,value})=><article key={q.id} className="rounded-2xl p-4 min-w-0" style={{background:'var(--color-paper)',border:'1px solid var(--color-border)'}}><h4 className="text-xs font-bold uppercase tracking-wide mb-2" style={{color:'var(--color-teal-dark)'}}>{sanitizeUserText(q.question,300)}</h4>{q.type==='image_upload'?<div className="grid grid-cols-2 gap-2">{answerImageUrls(value).map((url,i)=>{const safe=safeExternalUrl(url);return safe?<img key={i} src={safe} alt="Reader answer" loading="lazy" className="rounded-xl w-full object-cover"/>:null;})}</div>:<p className="text-sm leading-6 whitespace-pre-wrap break-words">{sanitizeUserText(answerText(value),1200)}</p>}</article>)}</div></div>)}</div>;
   })();
   return <div className="pt-24 pb-20 container-prose animate-fade-in"><div className="max-w-4xl mx-auto space-y-7">
-    {(blacklisted||!isOwn)&&<div className="profile-social-actions px-1 sm:px-2 animate-fade-up">{blacklisted&&<span className="inline-flex items-center gap-1.5 text-xs font-bold rounded-full px-3 py-2" style={{background:'rgba(239,68,68,.10)',color:'#b91c1c'}}><AlertTriangle className="w-3.5 h-3.5"/> Profile blacklisted</span>}{!isOwn&&<div className="profile-follow-stack">{<FollowButton following={follow.is_following} busy={busy} onClick={()=>void doFollow()} label={profile.novelty_username?`@${profile.novelty_username}`:undefined}/>} {user&&<button type="button" onClick={()=>{setReportMessage(null);setReportOpen(true)}} className="profile-report-action"><Flag className="w-4 h-4"/> Report user</button>}</div>}</div>}
+    {(blacklisted||(!isOwn&&!!user))&&<div className="profile-social-actions px-1 sm:px-2 animate-fade-up">{blacklisted&&<span className="inline-flex items-center gap-1.5 text-xs font-bold rounded-full px-3 py-2" style={{background:'rgba(239,68,68,.10)',color:'#b91c1c'}}><AlertTriangle className="w-3.5 h-3.5"/> Profile blacklisted</span>}{!isOwn&&user&&<div className="profile-follow-stack"><button type="button" onClick={()=>{setReportMessage(null);setReportOpen(true)}} className="profile-report-action"><Flag className="w-4 h-4"/> Report user</button></div>}</div>}
     <div className="relative">
-      <ProfileCard header={<FollowStatsBar followers={follow.followers} following={follow.following} hideFollowers={privacy.hide_followers} hideFollowing={privacy.hide_following} isOwn={isOwn} onOpen={openConn}/>} data={cardData} download={isOwn} onFollowersClick={()=>openConn('followers')} initialFormat={asFormatKey((profile.profile_answers||{}).__public_view)||undefined}/>
+      <ProfileCard header={<FollowStatsBar followers={follow.followers} following={follow.following} hideFollowers={privacy.hide_followers} hideFollowing={privacy.hide_following} isOwn={isOwn} onOpen={openConn}/>} data={cardData} topActions={({replay,replayKey})=><div className="nl-trio" role="group" aria-label="Profile actions">{!isOwn?<button type="button" disabled={busy} onClick={()=>void doFollow()} aria-pressed={follow.is_following} aria-label={`${follow.is_following?'Unfollow':'Follow'}${profile.novelty_username?` @${profile.novelty_username}`:''}`} className={`nl-trio-btn nl-trio-follow ${follow.is_following?'is-following':''}`}>{follow.is_following?<UserCheck aria-hidden="true"/>:<UserPlus aria-hidden="true"/>}<span>{follow.is_following?'Following':'Follow'}</span></button>:null}<button type="button" onClick={replay} className="nl-trio-btn nl-trio-replay" aria-label="Replay animation"><svg key={replayKey} className="nl-ico-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>Replay</span></button><button type="button" onClick={()=>void shareProfile()} className={`nl-trio-btn nl-trio-share ${shared?'is-done':''}`} aria-label="Share this profile">{shared?<Check aria-hidden="true"/>:<Share2 aria-hidden="true"/>}<span>{shared?'Link copied':'Share'}</span></button></div>} onFollowersClick={()=>openConn('followers')} initialFormat={asFormatKey((profile.profile_answers||{}).__public_view)||undefined}/>
     </div>
     <ProfileHighlights userId={profile.id} isOwn={isOwn}/>
     <ProfileTabs panes={{reading:readingPane,questions:questionsPane,published:<PublishedPanel reviews={published} avgNl={cardData.avgNlRating??null} renderReview={r=><ReviewCard review={r} navigate={navigate} posterUrl={shelfInfo[r.review_no]?.posterUrl}/>}/>}}/>
