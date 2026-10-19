@@ -48,7 +48,7 @@ export function AdminTasteMatchPanel() {
             <div className="flex items-center gap-2"><Wand2 className="w-5 h-5" style={{ color: 'var(--color-teal-dark)' }} /><h2 className="font-serif text-xl font-semibold">What Taste Match does</h2></div>
             <p className="text-sm mt-1 max-w-3xl" style={{ color: 'var(--color-text-muted)' }}>Taste Match suggests three published reviews that fit what a reader feels like reading, and says why. The same engine also powers Live Rankings search, "More like this" on review pages, and "Did you mean" suggestions. It runs in the reader's browser over the published reviews: no extra server, no database change.</p>
           </div>
-          <a href="#/taste-match" className="btn-ghost !w-auto text-sm"><ExternalLink className="w-4 h-4" /> Open it on the site</a>
+          <a href="#/live-rankings#taste" className="btn-ghost !w-auto text-sm"><ExternalLink className="w-4 h-4" /> Open it on the site</a>
         </div>
         <ol className="nl-tmadmin-steps">
           {STEPS.map((s, i) => <li key={s.title}><span>{i + 1}</span><div><strong>{s.title}</strong><p>{s.body}</p></div></li>)}

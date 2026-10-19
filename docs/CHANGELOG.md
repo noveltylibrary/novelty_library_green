@@ -3,6 +3,12 @@
 All version notes in one place, newest first. (Per-version files were merged here in v1.136.)
 
 
+# v1.164
+- Profile Card page: the Followers | Following bar now sits inside the same width box as the profile card (380 px for portrait formats, 560 px for 16:9) and follows the card when you switch format. Same on public profiles.
+- Highlights moved into the right column directly under the "Share a reading moment" story card, same width as it, with the normal gap between the two (it used to sit under the card on the left with a big empty gap beside it). On phones it still comes after the story card.
+- Followers/Following popup recoloured to the Novelty Library teal/cyan (tabs, hover, avatars, @handles, the "who can see this list" panel). Only the Follow / Following buttons stay blue.
+- No SQL.
+
 # v1.163
 - Story Highlights (Instagram-style, max 7 per reader, up to 30 photos each) under the followers bar on public profiles. Owners get a New button, "From archive" picker (own stories from the last 30 days, live ones included), add/remove photos and delete in the highlight viewer, and a Highlight button on their own story on Home. Highlights are public; photos are copied into a separate public `highlights` bucket so they outlive the purge.
 - Stories are deleted after 30 days. The notice is shown in the story composer, profile story card, the archive picker, Terms and Privacy.

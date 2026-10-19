@@ -127,7 +127,7 @@ const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() 
 
 function imageAnswerGrid(urls: string[], cols: number): string { return urls.length <= 1 ? '1fr' : cols === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)'; }
 
-export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUpload, onSuperBlitzBannerUpload, onViewPublicProfile, onFollowersClick, layout = 'inline', initialFormat, publicFormat, onPublicFormatChange }: { data: ProfileCardData; onFollowersClick?: () => void; download?: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void; onSuperBlitzBannerUpload?: () => void; onViewPublicProfile?: () => void; layout?: 'inline' | 'rows'; initialFormat?: FormatKey; publicFormat?: FormatKey; onPublicFormatChange?: (f: FormatKey) => void | Promise<void> }) {
+export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUpload, onSuperBlitzBannerUpload, onViewPublicProfile, onFollowersClick, layout = 'inline', initialFormat, publicFormat, onPublicFormatChange, header }: { header?: ReactNode; data: ProfileCardData; onFollowersClick?: () => void; download?: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void; onSuperBlitzBannerUpload?: () => void; onViewPublicProfile?: () => void; layout?: 'inline' | 'rows'; initialFormat?: FormatKey; publicFormat?: FormatKey; onPublicFormatChange?: (f: FormatKey) => void | Promise<void> }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [format, setFormat] = useState<FormatKey>(initialFormat || PREVIEW_FORMAT);
@@ -376,6 +376,9 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
 
       </div>}
     </div>}
+
+    {/* Optional slot above the card (the Followers | Following bar). Same max width as the card so the two always line up, whichever format is selected. */}
+    {header && <div className="nl-pc-head w-full mx-auto" style={{ maxWidth: selected.width > selected.height ? 560 : 380 }}>{header}</div>}
 
     {/* The preview is the exact export canvas, scaled down to fit the page. What you see is what you download. */}
     <div ref={wrapRef} className="relative w-full mx-auto overflow-hidden rounded-[24px] nl-pc-preview" style={{ height: selected.height * scale, maxWidth: selected.width > selected.height ? 560 : 380, boxShadow: '0 26px 60px rgba(0,80,95,.28)', border: '1px solid rgba(8,145,178,.3)' }}>
