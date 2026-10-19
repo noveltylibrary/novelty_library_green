@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect, useMemo } from 'react';
-import { Search, ArrowUp, Sparkles, FileText, BookMarked, PenTool, BarChart3 } from 'lucide-react';
+import { Search, ArrowUp, Sparkles, FileText, Trophy, PenTool } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import { loadReviewCached, fetchReviews } from '@/lib/reviews';
@@ -136,7 +136,7 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
       <header className="mb-8">
         <div className="nl-reviews-actions" role="group" aria-label="Review shortcuts">
           <button type="button" className="nl-action-btn" onClick={() => navigate('/review-guidelines')}><FileText aria-hidden="true" /><span>Review Guide</span></button>
-          <button type="button" className="nl-action-btn" onClick={() => navigate('/live-rankings')}><BookMarked aria-hidden="true" /><span>Rankings</span></button>
+          <button type="button" className="nl-action-btn" onClick={() => navigate('/live-rankings')}><Trophy aria-hidden="true" /><span>Rankings</span></button>
           <button type="button" className="nl-action-btn" onClick={() => navigate('/submit')}><PenTool aria-hidden="true" /><span>Submit</span></button>
           <button type="button" className="nl-action-btn" onClick={() => navigate('/taste-match')}><TasteMatchIcon className="w-5 h-5" aria-hidden="true" /><span>Taste Match</span></button>
         </div>

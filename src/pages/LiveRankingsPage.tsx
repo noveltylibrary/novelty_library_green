@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Activity, BookOpen, ChevronLeft, ChevronRight, LoaderCircle, Sparkles, TrendingUp, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Activity, BarChart3, BookOpen, ChevronLeft, ChevronRight, LoaderCircle, Sparkles, TrendingUp, Trophy } from 'lucide-react';
 import { AdSenseAdSlot } from '@/components/AdSenseAdSlot';
 import type { Review } from '@/types/review';
 import { fetchReviews } from '@/lib/reviews';
@@ -254,7 +254,10 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
             <h1>Live Rankings</h1>
             <p className="nl-live-one-liner">Explore the books readers rate highest, then open Taste Match for a personal recommendation based on your mood and reading preferences.</p>
             <p className="nl-live-hero-note">A reader-powered snapshot of the books the Novelty Library community rates highest.</p>
-            <button type="button" className="nl-taste-launch" onClick={() => navigate('/taste-match')}><TasteMatchIcon size={25} /><span><strong>Open Taste Match</strong><small>Find a book that fits your mind</small></span><ArrowRight size={17} aria-hidden="true" /></button>
+            <div className="nl-live-hero-actions">
+              <button type="button" className="nl-taste-launch" onClick={() => navigate('/taste-match')}><TasteMatchIcon size={25} /><span><strong>Open Taste Match SE</strong><small>Find a book that fits your mind</small></span><ArrowRight size={17} aria-hidden="true" /></button>
+              <button type="button" className="nl-live-analytics-quick-link" onClick={() => navigate('/analytics')}><BarChart3 size={17} aria-hidden="true" /><span>Analytics</span></button>
+            </div>
           </div>
         </header>
 

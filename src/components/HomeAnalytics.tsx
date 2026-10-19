@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { BLOG_URL } from '@/lib/links';
+import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import { RwStarRating } from '@/components/RwStarRating';
 import {
   contributorLink, formatFloor10, formatLangCount, milestone, useCountUp,
@@ -71,6 +72,11 @@ export function HomeAnalytics({ navigate, published, data, failed }: Props) {
           <p>Accepted reviews, published reads and reader ratings flow into the library below.</p>
         </div>
         <div className="nl-an-bridge-line" aria-hidden="true"><i /></div>
+        <button type="button" className="nl-an-bridge-taste" onClick={() => navigate('/taste-match')}>
+          <TasteMatchIcon size={22} aria-hidden="true" />
+          <span>Taste Match SE</span>
+          <ArrowRight className="nl-an-bridge-taste-arrow" aria-hidden="true" />
+        </button>
       </div>
 
       <button type="button" className="nl-live-entry" onClick={() => navigate('/live-rankings')} aria-label="Open Live Rankings">
