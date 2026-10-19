@@ -45,9 +45,9 @@ const tally = (values: string[]) => {
 };
 
 /** The "tank" above the published reviews. Counts published reviews only. */
-export function PublishedStats({ reviews }: { reviews: AcceptedReviewCard[] }) {
+export function PublishedStats({ reviews, nlRatingForReview }: { reviews: AcceptedReviewCard[]; nlRatingForReview?: (review: AcceptedReviewCard) => number | null | undefined }) {
   const s = useMemo(() => {
-    const rated = reviews.map((r) => Number(r.reviewers_rating)).filter((n) => n > 0);
+    const rated = reviews.map((r) => nlRatingForReview?.(r)).filter((n): n is number => n != null && Number.isFinite(n) && n > 0);
     const genres = tally(reviews.map((r) => (r.genre || '').split(/[,/&]/)[0] || ''));
     const langs = tally(reviews.map((r) => r.language || ''));
     const mins = reviews.map((r) => readingMinutes(r.review || '')).filter((n) => n > 0);
@@ -58,7 +58,7 @@ export function PublishedStats({ reviews }: { reviews: AcceptedReviewCard[] }) {
       langCount: langs.length,
       minutes: mins.length ? Math.max(1, Math.round(mins.reduce((a, b) => a + b, 0) / mins.length)) : null,
     };
-  }, [reviews]);
+  }, [reviews, nlRatingForReview]);
   if (!reviews.length) return null;
   const tile = (Icon: typeof Star, label: string, value: ReactNode, sub?: string) => (
     <div className="nl-pstat"><span className="nl-pstat-ic"><Icon aria-hidden="true" /></span><div className="min-w-0"><small>{label}</small><b>{value}</b>{sub && <em>{sub}</em>}</div></div>
@@ -66,7 +66,7 @@ export function PublishedStats({ reviews }: { reviews: AcceptedReviewCard[] }) {
   return (
     <div className="nl-pstats" aria-label="Reading summary">
       {tile(CheckCircle, 'Reviews published', reviews.length)}
-      {tile(Star, 'Average R/W rating', s.avg != null ? `${s.avg.toFixed(1)}/10` : '—')}
+      {tile(Star, 'Average NL rating', s.avg != null ? `${s.avg.toFixed(1)}/10` : '—')}
       {tile(Layers, 'Most read genres', s.genres.length ? s.genres.map(([g]) => sanitizeUserText(g, 24)).join(', ') : '—')}
       {tile(Languages, 'Most reviewed language', s.lang ? sanitizeUserText(s.lang[0], 24) : '—', s.lang ? `${s.lang[1]} of ${reviews.length} review${reviews.length === 1 ? '' : 's'}` : undefined)}
       {tile(Clock, 'Average read time', s.minutes != null ? `${s.minutes} min` : '—', 'per review')}
@@ -75,13 +75,13 @@ export function PublishedStats({ reviews }: { reviews: AcceptedReviewCard[] }) {
 }
 
 /** Stats tank, then reviews capped at three with a "Show more" button. */
-export function PublishedPanel({ reviews, renderReview, cap = 2 }: { reviews: AcceptedReviewCard[]; renderReview: (r: AcceptedReviewCard) => ReactNode; cap?: number }) {
+export function PublishedPanel({ reviews, renderReview, cap = 2, nlRatingForReview }: { reviews: AcceptedReviewCard[]; renderReview: (r: AcceptedReviewCard) => ReactNode; cap?: number; nlRatingForReview?: (review: AcceptedReviewCard) => number | null | undefined }) {
   const [all, setAll] = useState(false);
   if (!reviews.length) return <TabEmpty icon={<CheckCircle aria-hidden="true" />} text="No published reviews yet." />;
   const shown = all ? reviews : reviews.slice(0, cap);
   return (
     <div className="space-y-4">
-      <PublishedStats reviews={reviews} />
+      <PublishedStats reviews={reviews} nlRatingForReview={nlRatingForReview} />
       <div className="grid md:grid-cols-2 gap-4">{shown.map((r) => <div key={r.id} className="min-w-0">{renderReview(r)}</div>)}</div>
       {reviews.length > cap && (
         <div className="text-center"><button type="button" className="nl-more-btn" onClick={() => setAll((v) => !v)}>{all ? 'Show less' : `Show more (${reviews.length - cap})`}</button></div>

@@ -3,7 +3,7 @@ import { BookOpen, ChevronDown, Dices, Search, Sparkles, X } from 'lucide-react'
 import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import type { Review } from '@/types/review';
 import { VERDICTS, normalizeVerdict, type Verdict } from '@/lib/verdict';
-import { getTmaiMetricReadiness, rankTmai40 } from '@/lib/tmai40Engine';
+import { rankTmai40 } from '@/lib/tmai40Engine';
 import {
   FIELD_LABELS, FIELD_PLACEHOLDERS, MOODS, cleanTraits, norm, popularValues, didYouMean, nearestBooks, runSearch,
   type Match, type SearchBook, type SearchField,
@@ -207,7 +207,6 @@ export function TasteMatchPanel({ books, openBook }: CommonProps) {
   const languages = useMemo(() => popularValues(searchBooks, 'language', 12), [searchBooks]);
   const titles = useMemo(() => [...searchBooks].sort((a, b) => a.title.localeCompare(b.title)), [searchBooks]);
   const picks = useMemo(() => rankTmai40(searchBooks, { description: deferredDescription, moods, lovedId, language, verdicts }, 3), [searchBooks, deferredDescription, moods, lovedId, language, verdicts]);
-  const metricReadiness = useMemo(() => getTmaiMetricReadiness(searchBooks), [searchBooks]);
   const active = !!description.trim() || moods.length > 0 || !!lovedId || !!language || verdicts.length > 0;
   const verdictCounts = useMemo(() => {
     const c: Record<Verdict, number> = { perfection: 0, go_for_it: 0, timepass: 0 };
@@ -321,7 +320,6 @@ export function TasteMatchPanel({ books, openBook }: CommonProps) {
           </ul>
         )}
       </div>
-      <p className="nl-taste-note">Taste Match SE considers multiple dimensions, but the current public review catalog does not store structured values for every signal. {metricReadiness.withCatalogSupport} of {metricReadiness.total} metrics currently have some catalog/text evidence; {metricReadiness.metadataOnly} require dedicated metadata before they can be scored. Unsupported signals are skipped rather than invented. Match scores are relative rankings, not probabilities. Reviews without a verdict are excluded when a verdict filter is selected.</p>
     </section>
   );
 }

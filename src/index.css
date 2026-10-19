@@ -3042,7 +3042,7 @@ header.fixed { max-width: 100vw; z-index: 60; }
 .nl-trio-btn:active { transform: scale(.96); }
 .nl-trio-btn:focus-visible { outline: 3px solid rgba(0,151,178,.45); outline-offset: 2px; }
 .nl-trio-btn:disabled { opacity: .65; cursor: wait; }
-.nl-trio-follow { flex: 1.25 1 0; color: #fff; background: linear-gradient(135deg, #3b82f6, var(--nl-blue-d)); border: 1px solid rgba(255,255,255,.35); box-shadow: 0 8px 22px rgba(37,99,235,.36); }
+.nl-trio-follow { flex: 1.5 1 0; color: #fff; background: linear-gradient(135deg, #3b82f6, var(--nl-blue-d)); border: 1px solid rgba(255,255,255,.35); box-shadow: 0 8px 22px rgba(37,99,235,.36); }
 .nl-trio-follow::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.35) 50%, transparent 70%); transform: translateX(-120%); animation: nlTrioShine 4.5s ease-in-out infinite; pointer-events: none; }
 .nl-trio-follow:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(37,99,235,.46); }
 .nl-trio-follow.is-following { background: var(--nl-blue-soft); color: var(--nl-blue-d); border-color: rgba(37,99,235,.45); box-shadow: none; }
@@ -3169,3 +3169,16 @@ header.fixed { max-width: 100vw; z-index: 60; }
   .nl-taste-page .tm-mascot-sparkle,
   .nl-taste-page .tm-mascot-book { animation: none !important; }
 }
+
+
+/* Profile editor only: collapse story creation and highlights under one disclosure. */
+.nl-profile-stories-dropdown { border: 1px solid var(--color-border); border-radius: 1.1rem; background: var(--color-paper); overflow: hidden; }
+.nl-profile-stories-summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: 1rem 1.15rem; cursor: pointer; list-style: none; color: var(--color-text); font-weight: 800; background: linear-gradient(100deg, rgba(0,151,178,.08), rgba(92,225,230,.10)); }
+.nl-profile-stories-summary::-webkit-details-marker { display: none; }
+.nl-profile-stories-summary > span { display: inline-flex; align-items: center; gap: .65rem; }
+.nl-profile-stories-summary > span svg { color: var(--color-cyan-dark); }
+.nl-profile-stories-summary:focus-visible { outline: 3px solid rgba(0,151,178,.45); outline-offset: -3px; }
+.nl-profile-stories-caret { transition: transform .18s ease; color: var(--color-teal-dark); }
+.nl-profile-stories-dropdown[open] .nl-profile-stories-caret { transform: rotate(180deg); }
+.nl-profile-stories-content { padding: 1rem; }
+@media (prefers-reduced-motion: reduce) { .nl-profile-stories-caret { transition: none; } }

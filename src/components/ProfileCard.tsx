@@ -615,8 +615,8 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
     { value: data.booksThisMonth == null ? '—' : String(data.booksThisMonth), label: 'read this month', icon: <BookOpen width={s(14)} height={s(14)} aria-hidden="true" /> },
     { value: data.totalBooksRead == null ? '—' : String(data.totalBooksRead), label: 'books read', icon: <BookOpen width={s(14)} height={s(14)} aria-hidden="true" /> },
     { value: String(data.publishedBooks), label: 'published reviews', icon: <BookOpen width={s(14)} height={s(14)} aria-hidden="true" /> },
-    // Profile card displays the reviewer R/W average only; NL rating is intentionally omitted.
-    { value: data.avgRating == null ? '—' : Number(data.avgRating).toFixed(1), label: 'average R/W rating', icon: <StarIcon size={s(18)} />, rating: 'rw' },
+    // Profile summaries use the community NL rating, never a relabelled reviewer R/W score.
+    { value: data.avgNlRating == null ? '—' : Number(data.avgNlRating).toFixed(1), label: 'average NL rating', icon: <StarIcon size={s(18)} />, rating: 'nl' },
   ];
 
   const statCues = stats.map(() => cue(0.08));
@@ -626,9 +626,9 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
       const m = mv('pop', statCues[i]);
       const tileStyle: CSSProperties = { ...m.style, minWidth: 0, textAlign: 'center', borderRadius: s(18), padding: `${s(isTall ? 10 : isFourFive ? 7 : 13)}px ${s(isFourFive ? 3 : 8)}px`, background: 'linear-gradient(150deg,rgba(255,255,255,.15),rgba(255,255,255,.07))', border: `1px solid ${C.line}`, boxShadow: '0 10px 26px rgba(0,25,35,.22), inset 0 1px 0 rgba(255,255,255,.16)' };
       const bigNum = s(isTall ? 32 : isFourFive ? 25 : 38);
-      if (st.rating) return <div key={st.label} className={m.className} role="img" aria-label={`${st.label} ${st.value}`} title={st.label} style={{ ...tileStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: s(5), background: st.rating === 'rw' ? 'linear-gradient(145deg,rgba(92,225,230,.20),rgba(255,255,255,.07))' : tileStyle.background, borderColor: st.rating === 'rw' ? 'rgba(92,225,230,.48)' : C.line }}>
+      if (st.rating) return <div key={st.label} className={m.className} role="img" aria-label={`${st.label} ${st.value}`} title={st.label} style={{ ...tileStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: s(5), background: st.rating === 'nl' ? 'linear-gradient(145deg,rgba(92,225,230,.20),rgba(255,255,255,.07))' : tileStyle.background, borderColor: st.rating === 'nl' ? 'rgba(92,225,230,.48)' : C.line }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(6) }}><p className="font-serif" style={{ fontSize: bigNum, fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p><StarIcon size={bigNum * 0.82} /></div>
-        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(4), fontSize: s(8), lineHeight: 1.15, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 900, color: C.mint, textAlign: 'center' }}><BookOpen width={s(11)} height={s(11)} aria-hidden="true" />Avg R/W Rating</span>
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(4), fontSize: s(8), lineHeight: 1.15, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 900, color: C.mint, textAlign: 'center' }}><BookOpen width={s(11)} height={s(11)} aria-hidden="true" />Avg NL Rating</span>
       </div>;
       return <div key={st.label} className={m.className} style={tileStyle}>
         <p className="font-serif" style={{ fontSize: bigNum, fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
@@ -662,9 +662,9 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
       <span className="font-serif" style={{ fontSize: s(17), fontWeight: 700, minWidth: s(36), textAlign: 'center', borderRadius: 999, padding: `${s(3)}px ${s(8)}px`, background: 'rgba(255,255,255,.16)', border: `1px solid ${C.line}`, color: C.ink }}>{data.publishedReviews.length}</span>
     </div>
     <div style={{ display: 'grid', gridTemplateColumns: isTall ? '1fr' : reviews.length > 1 ? 'repeat(2,minmax(0,1fr))' : '1fr', gap: s(8) }}>
-      {reviews.map((review) => { const rw = review.rating ?? null; const posterSize = s(isTall ? 72 : 90); return <div key={review.id} style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: s(10), borderRadius: s(14), padding: s(8), background: 'rgba(1,43,54,.40)', border: `1px solid ${C.line}` }}>
+      {reviews.map((review) => { const nl = review.nlRating ?? null; const posterSize = s(isTall ? 72 : 90); return <div key={review.id} style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: s(10), borderRadius: s(14), padding: s(8), background: 'rgba(1,43,54,.40)', border: `1px solid ${C.line}` }}>
         <Cover urls={[review.posterUrl, review.coverUrl]} w={posterSize} h={posterSize} radius={s(9)} iconSize={s(22)} />
-        <div style={{ minWidth: 0, flex: 1 }}><p className="font-serif" style={{ fontSize: s(15), fontWeight: 700, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.title, 160)}</p><p style={{ fontSize: s(10), color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.author, 120)}{review.reviewNo ? ` · #${sanitizeUserText(review.reviewNo, 30)}` : ''}</p>{rw != null && rw > 0 && <span aria-label={`R/W rating ${Number(rw).toFixed(1)} out of 10`} title="Reviewer R/W rating" style={{ display: 'inline-flex', alignItems: 'center', gap: s(4), marginTop: s(3), fontSize: s(12), fontWeight: 800, color: C.ink }}><StarIcon size={s(14)} />{Number(rw).toFixed(1)}<small style={{ fontSize: s(8), letterSpacing: '.06em', color: C.soft }}>R/W</small></span>}</div>
+        <div style={{ minWidth: 0, flex: 1 }}><p className="font-serif" style={{ fontSize: s(15), fontWeight: 700, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.title, 160)}</p><p style={{ fontSize: s(10), color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanitizeUserText(review.author, 120)}{review.reviewNo ? ` · #${sanitizeUserText(review.reviewNo, 30)}` : ''}</p>{nl != null && nl > 0 && <span aria-label={`NL rating ${Number(nl).toFixed(1)} out of 10`} title="Novelty Library community rating" style={{ display: 'inline-flex', alignItems: 'center', gap: s(4), marginTop: s(3), fontSize: s(12), fontWeight: 800, color: C.ink }}><StarIcon size={s(14)} />{Number(nl).toFixed(1)}<small style={{ fontSize: s(8), letterSpacing: '.06em', color: C.soft }}>NL</small></span>}</div>
       </div>; })}
     </div>
     {moreReviews > 0 && <span style={{ display: 'inline-flex', marginTop: s(9), borderRadius: 999, padding: `${s(4)}px ${s(9)}px`, background: 'rgba(92,225,230,.10)', border: `1px solid rgba(92,225,230,.26)`, color: C.mint, fontSize: s(9), fontWeight: 800 }}>+{moreReviews} more reviews</span>}
@@ -724,10 +724,10 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
     const sbAvatar = 136;
     const bannerUrl = safeExternalUrl(data.superBlitzBannerUrl || '');
     const sbStats = <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: s(6) }}>
-      {stats.map((st, i) => { const m = mv('pop', statCues[i]); const sbTile: CSSProperties = { ...m.style, minWidth: 0, textAlign: 'center', borderRadius: s(14), padding: `${s(7)}px ${s(3)}px`, background: st.rating === 'rw' ? 'rgba(92,225,230,.18)' : 'rgba(1,43,54,.30)', border: `1px solid ${st.rating === 'rw' ? 'rgba(92,225,230,.48)' : C.line}` };
+      {stats.map((st, i) => { const m = mv('pop', statCues[i]); const sbTile: CSSProperties = { ...m.style, minWidth: 0, textAlign: 'center', borderRadius: s(14), padding: `${s(7)}px ${s(3)}px`, background: st.rating === 'nl' ? 'rgba(92,225,230,.18)' : 'rgba(1,43,54,.30)', border: `1px solid ${st.rating === 'nl' ? 'rgba(92,225,230,.48)' : C.line}` };
         if (st.rating) return <div key={st.label} className={m.className} role="img" aria-label={`${st.label} ${st.value}`} title={st.label} style={{ ...sbTile, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: s(3) }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(3) }}><p className="font-serif" style={{ fontSize: s(24), fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p><StarIcon size={s(20)} /></div>
-          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(3), fontSize: s(6.5), letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 900, color: C.mint, lineHeight: 1.15 }}><BookOpen width={s(9)} height={s(9)} aria-hidden="true" />Avg R/W</span>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(3), fontSize: s(6.5), letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 900, color: C.mint, lineHeight: 1.15 }}><BookOpen width={s(9)} height={s(9)} aria-hidden="true" />Avg NL</span>
         </div>;
 
         return <div key={st.label} className={m.className} style={sbTile}>

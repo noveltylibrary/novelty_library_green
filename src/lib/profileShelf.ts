@@ -66,9 +66,11 @@ export async function fetchShelfCommunityInfo(input: Array<ShelfReviewRef | stri
   const matchedRows = [...new Map([...rowsByNo.values()].map((row) => [row.id, row])).values()];
   const totals: Record<string, { count: number; sum: number }> = {};
   const ids = matchedRows.map((row) => row.id);
+  let readerRatingsAvailable = true;
   if (ids.length) {
     try {
-      const { data: feedback } = await supabase.from('community_review_feedback').select('review_id,rating').in('review_id', ids);
+      const { data: feedback, error } = await supabase.from('community_review_feedback').select('review_id,rating').in('review_id', ids);
+      if (error) throw error;
       for (const row of (feedback ?? []) as Array<{ review_id: string; rating: number | null }>) {
         const rating = row.rating == null ? null : Number(row.rating);
         if (rating == null || !Number.isFinite(rating)) continue;
@@ -77,7 +79,7 @@ export async function fetchShelfCommunityInfo(input: Array<ShelfReviewRef | stri
         current.sum += rating;
         totals[row.review_id] = current;
       }
-    } catch { /* reader ratings unavailable: use the R/W score alone */ }
+    } catch { readerRatingsAvailable = false; /* don't relabel an unknown R/W fallback as NL */ }
   }
 
   for (const ref of refs) {
@@ -87,7 +89,7 @@ export async function fetchShelfCommunityInfo(input: Array<ShelfReviewRef | stri
     const rw = Number.parseFloat(String(row?.reviewers_rating ?? ''));
     out[String(ref.reviewNo)] = {
       posterUrl: validImageUrl(row?.poster_url),
-      nlRating: row ? computeNlRating(Number.isFinite(rw) ? rw : null, total ? { likeCount: 0, reviewCount: 0, ratingCount: total.count, ratingSum: total.sum } : undefined) : null,
+      nlRating: row && readerRatingsAvailable ? computeNlRating(Number.isFinite(rw) ? rw : null, total ? { likeCount: 0, reviewCount: 0, ratingCount: total.count, ratingSum: total.sum } : undefined) : null,
     };
   }
 
@@ -111,10 +113,10 @@ export async function fetchShelfCommunityInfo(input: Array<ShelfReviewRef | stri
   return out;
 }
 
-/** Average NL rating across a reader's published reviews (falls back to the R/W score where NL is unknown). */
-export function averageNlRating(items: Array<{ nl: number | null | undefined; rw: number | null | undefined }>): number | null {
+/** Average of available NL community ratings only. Never relabel a reviewer R/W score as NL. */
+export function averageNlRating(items: Array<{ nl: number | null | undefined }>): number | null {
   const vals = items
-    .map((item) => item.nl != null && Number.isFinite(item.nl) && item.nl > 0 ? item.nl : (item.rw != null && Number.isFinite(item.rw) && item.rw > 0 ? item.rw : null))
+    .map((item) => item.nl != null && Number.isFinite(item.nl) && item.nl > 0 ? item.nl : null)
     .filter((value): value is number => value != null);
   return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
 }
