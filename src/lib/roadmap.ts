@@ -20,10 +20,10 @@ export const DEFAULT_ROADMAP: RoadmapConfig = {
   rows: [
     { id: 'd1', feature: 'Reviews with R/W and NL ratings', status: 'live', note: "Every published review carries the reviewer's R/W score and the community's NL score." },
     { id: 'd2', feature: 'Reader profiles, follows and stories', status: 'live', note: 'A shareable reader card, followers, and short stories for the community.' },
-    { id: 'd3', feature: 'Live Rankings, search and basic taste match', status: 'live', note: 'Search by genre, language, traits or author, or describe what you feel like reading.' },
+    { id: 'd3', feature: 'Live Rankings and search', status: 'live', note: 'Search by genre, language, traits or author, and browse the library rankings.' },
     { id: 'd4', feature: 'Currently Reading, Up Next and Someday shelves', status: 'live', note: 'Show what you are reading now and what you plan to read, on your profile.' },
     { id: 'd5', feature: 'Featured announcements on Home', status: 'live', note: 'Posters for featured readers, launches and news.' },
-    { id: 'd6', feature: 'Full Taste Match engine', status: 'building', note: 'A deeper, personal recommendation engine. A basic version is already in Live Rankings.' },
+    { id: 'd6', feature: 'Taste Match', status: 'live', note: 'A dedicated discovery page that matches moods, books, verdicts and languages to published reviews.' },
     { id: 'd7', feature: 'Adaptations and events', status: 'planned', note: 'Book-to-screen news and reader events, shared as announcement posters first.' },
   ],
 };

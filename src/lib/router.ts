@@ -5,6 +5,7 @@ export type Route =
   | { name: 'reviews' }
   | { name: 'analytics' }
   | { name: 'live-rankings' }
+  | { name: 'taste-match' }
   | { name: 'review'; slug: string }
   | { name: 'blog-review'; id: string }
   | { name: 'submit' }
@@ -74,6 +75,7 @@ function parseHash(): Route {
   if (parts[0] === 'reviews') return { name: 'reviews' };
   if (parts[0] === 'analytics') return { name: 'analytics' };
   if (parts[0] === 'live-rankings' || parts[0] === 'love-rankings' || parts[0] === 'rankings') return { name: 'live-rankings' };
+  if (parts[0] === 'taste-match' || parts[0] === 'taste') return { name: 'taste-match' };
   if (parts[0] === 'author' && parts[1]) return { name: 'author', author: decodeURIComponent(parts.slice(1).join('/')) };
   if (parts[0] === 'saved') return { name: 'saved' };
   if (parts[0] === 'genres') return { name: 'genre', genre: '' };

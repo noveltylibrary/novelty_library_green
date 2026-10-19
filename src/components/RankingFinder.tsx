@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { BookOpen, ChevronDown, Dices, Search, Sparkles, Wand2, X } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { VERDICTS, normalizeVerdict, type Verdict } from '@/lib/verdict';
@@ -169,18 +169,11 @@ export function RankingSearch({ books, openBook }: CommonProps) {
 }
 
 /** Taste match: pick moods (and optionally a book you loved) and get three picks with a reason. */
-export function TasteMatchPanel({ books, openBook }: CommonProps & { goRoadmap?: () => void }) {
+export function TasteMatchPanel({ books, openBook }: CommonProps) {
   const [moods, setMoods] = useState<string[]>([]);
   const [lovedId, setLovedId] = useState('');
   const [language, setLanguage] = useState('');
   const [verdicts, setVerdicts] = useState<Verdict[]>([]);
-
-  // The Home "Taste Match" poster links to #/live-rankings#taste.
-  useEffect(() => {
-    if (!window.location.hash.endsWith('#taste')) return;
-    const id = window.setTimeout(() => document.getElementById('nl-taste')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
-    return () => window.clearTimeout(id);
-  }, []);
 
   const searchBooks = useMemo(() => books.map(toSearchBook), [books]);
   const byId = useMemo(() => new Map(books.map((b) => [b.review.id, b])), [books]);

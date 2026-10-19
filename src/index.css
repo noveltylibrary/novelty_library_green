@@ -331,18 +331,14 @@ input:not(:-webkit-autofill) {
   .home-nav-icon svg { width: 1.95rem; height: 1.95rem; transform-origin: 50% 55%; will-change: transform; animation-delay: var(--nl-icon-delay, 0s); animation-iteration-count: infinite; }
   /* One distinct, clearly visible animation per icon. */
   .home-action-grid > :nth-child(1) .home-nav-icon svg { animation: nl-ico-book 2.2s ease-in-out infinite; animation-delay: var(--nl-icon-delay, 0s); }
-  .home-action-grid > :nth-child(2) .home-nav-icon svg { animation: nl-ico-write 1.9s ease-in-out infinite; animation-delay: var(--nl-icon-delay, 0s); }
-  .home-action-grid > :nth-child(3) .home-nav-icon svg { animation: nl-ico-beat 1.7s ease-in-out infinite; animation-delay: var(--nl-icon-delay, 0s); }
-  .home-action-grid > :nth-child(4) .home-nav-icon svg { animation: nl-ico-rise 2s ease-in-out infinite; animation-delay: var(--nl-icon-delay, 0s); }
-  .home-action-grid > :nth-child(4) .home-nav-icon svg path:nth-child(n+2) { transform-box: fill-box; transform-origin: 50% 100%; animation: nl-bar 1.5s ease-in-out infinite; }
-  .home-action-grid > :nth-child(4) .home-nav-icon svg path:nth-child(3) { animation-delay: .18s; }
-  .home-action-grid > :nth-child(4) .home-nav-icon svg path:nth-child(4) { animation-delay: .36s; }
+  .home-action-grid > :nth-child(2) .home-nav-icon svg { animation: nl-ico-rise 2s ease-in-out infinite; animation-delay: var(--nl-icon-delay, 0s); }
+  .home-action-grid > :nth-child(3) .home-nav-icon svg { animation: nl-ico-flip 2.6s ease-in-out infinite; animation-delay: var(--nl-icon-delay, 0s); }
+  .home-action-grid > :nth-child(4) .home-nav-icon svg { animation: nl-ico-write 1.9s ease-in-out infinite; animation-delay: var(--nl-icon-delay, 0s); }
+  .home-action-grid > :nth-child(5) .home-nav-icon svg { animation: nl-ico-beat 1.7s ease-in-out infinite; animation-delay: var(--nl-icon-delay, 0s); }
   .home-nav-card:hover .home-nav-icon svg { animation-duration: .8s; }
-  .home-action-grid > :nth-child(4):hover .home-nav-icon svg path:nth-child(n+2) { animation-duration: .75s; }
   .home-action-grid > :nth-child(2) { --nl-icon-delay: -.45s; }
   .home-action-grid > :nth-child(3) { --nl-icon-delay: -.9s; }
   .home-action-grid > :nth-child(4) { --nl-icon-delay: -1.35s; }
-  .home-action-grid > :nth-child(5) .home-nav-icon svg { animation: nl-ico-flip 2.6s ease-in-out infinite; animation-delay: var(--nl-icon-delay, 0s); }
   .home-action-grid > :nth-child(5) { --nl-icon-delay: -1.8s; }
   .home-nav-title { position: relative; z-index: 1; font-family: var(--font-serif, Georgia, serif); font-size: 1.3rem; font-weight: 800; line-height: 1.2; color: var(--nl-btn-fg); }
   @keyframes nl-ico-book { 0%, 70%, 100% { transform: scale(1,1) rotate(0) translateY(0); } 12% { transform: scale(.76,1.08) rotate(-4deg) translateY(-3px); } 26% { transform: scale(1.16,.94) rotate(4deg) translateY(0); } 40% { transform: scale(.88,1.04) rotate(-2deg) translateY(-2px); } 54% { transform: scale(1.06,.98) rotate(0) translateY(0); } }
@@ -2987,4 +2983,23 @@ header.fixed { max-width: 100vw; z-index: 60; }
 @media (max-width: 1023px) {
   .nl-profile-work { grid-template-columns:minmax(0,1fr); }
   .nl-profile-highlights { grid-column:1; }
+}
+
+/* ───────────── Dedicated Taste Match page ───────────── */
+.nl-taste-page { width: 100%; }
+.nl-taste-page-inner { width: min(100%, 1160px); margin: 0 auto; display: grid; gap: 1.25rem; }
+.nl-taste-page-hero { display: flex; align-items: center; gap: 1rem; padding: clamp(1.15rem, 3vw, 1.8rem); border: 1px solid rgba(0,151,178,.22); border-radius: 24px; background: linear-gradient(135deg, var(--color-surface), rgba(92,225,230,.08)); box-shadow: 0 12px 34px rgba(0,65,80,.055); }
+.nl-taste-page-icon { display: grid; place-items: center; width: 58px; height: 58px; flex: 0 0 auto; border-radius: 18px; color: #fff; background: linear-gradient(135deg, #0097b2, #35d3d9); box-shadow: 0 8px 20px rgba(0,151,178,.2); }
+.dark .nl-taste-page-icon { color: #03272d; }
+.nl-taste-page-hero h1 { margin: .35rem 0 .35rem; color: var(--color-text); font-family: Fraunces, Georgia, serif; font-size: clamp(2rem, 5vw, 3.35rem); font-weight: 700; line-height: 1.03; letter-spacing: -.04em; }
+.nl-taste-page-hero p { max-width: 48rem; color: var(--color-text-muted); font-size: .92rem; line-height: 1.6; }
+.nl-taste-page-content { display: grid; gap: 1.25rem; }
+.nl-taste-about { display: flex; align-items: flex-start; gap: .8rem; padding: 1rem 1.1rem; border: 1px solid var(--color-border); border-radius: 18px; background: var(--color-surface); }
+.nl-taste-about-icon { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 auto; border-radius: 10px; color: var(--color-teal-dark); background: rgba(53,211,217,.14); }
+.nl-taste-about h2 { color: var(--color-text); font-family: Fraunces, Georgia, serif; font-size: 1.05rem; font-weight: 700; }
+.nl-taste-about p { margin-top: .25rem; color: var(--color-text-muted); font-size: .76rem; line-height: 1.55; }
+
+@media (max-width: 640px) {
+  .nl-taste-page-hero { align-items: flex-start; }
+  .nl-taste-page-icon { width: 50px; height: 50px; border-radius: 15px; }
 }

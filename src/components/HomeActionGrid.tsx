@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BookOpen, PenTool, Users, BarChart3, Trophy, Newspaper, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, PenTool, BarChart3, Trophy, Newspaper, Wand2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BLOG_URL } from '@/lib/links';
 
 type CardProps = { icon: typeof BookOpen; title: string } & ({ onClick: () => void; href?: undefined } | { href: string; onClick?: undefined });
@@ -18,7 +18,7 @@ function NavCard({ icon: Icon, title, onClick, href }: CardProps) {
 }
 
 /**
- * Home shortcuts in a swipeable row: four are in view, the rest (About, Blog) is one swipe / arrow away.
+ * Home shortcuts in a swipeable row: four are in view, the rest (Analytics, Blog) is one swipe / arrow away.
  * Same layout on phones and desktop; desktop also gets arrow buttons.
  */
 export function HomeActionGrid({ navigate }: { navigate: (path: string) => void }) {
@@ -50,9 +50,9 @@ export function HomeActionGrid({ navigate }: { navigate: (path: string) => void 
       <section ref={scroller} onScroll={sync} className="home-action-grid" aria-label="Main sections">
         <NavCard icon={BookOpen} title="Reviews" onClick={() => navigate('/reviews')} />
         <NavCard icon={Trophy} title="Rankings" onClick={() => navigate('/live-rankings')} />
+        <NavCard icon={Wand2} title="Taste Match" onClick={() => navigate('/taste-match')} />
         <NavCard icon={PenTool} title="Submit" onClick={() => navigate('/submit')} />
         <NavCard icon={BarChart3} title="Analytics" onClick={() => navigate('/analytics')} />
-        <NavCard icon={Users} title="About" onClick={() => navigate('/about')} />
         <NavCard icon={Newspaper} title="Blog" href={BLOG_URL} />
       </section>
       <div className="home-action-pager">

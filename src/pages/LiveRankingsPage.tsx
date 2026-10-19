@@ -6,15 +6,15 @@ import { fetchReviews } from '@/lib/reviews';
 import { supabase } from '@/lib/supabase';
 import { computeNlRating, type EngagementStats } from '@/lib/engagement';
 import { RwStarRating } from '@/components/RwStarRating';
-import { RankingSearch, TasteMatchPanel } from '@/components/RankingFinder';
 
-type RankedBook = { review: Review; nlRating: number | null };
+
+export type RankedBook = { review: Review; nlRating: number | null };
 type ReaderRatingRow = { review_id: string; rating: number | null };
 
 const emptyStats: EngagementStats = { likeCount: 0, ratingCount: 0, ratingSum: 0, reviewCount: 0 };
 const sortTitle = (a: RankedBook, b: RankedBook) => a.review.title.localeCompare(b.review.title);
 
-async function loadRankedBooks(): Promise<RankedBook[]> {
+export async function loadRankedBooks(): Promise<RankedBook[]> {
   // fetchReviews reads community_reviews with is_published=true: accepted or
   // queued records are deliberately not included in Live Rankings.
   const published = await fetchReviews();
@@ -52,7 +52,7 @@ async function loadRankedBooks(): Promise<RankedBook[]> {
   });
 }
 
-function bookSlug(book: Review): string {
+export function bookSlug(book: Review): string {
   return book.slug || `${book.title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-')}-${book.master_review_no ?? book.review_number ?? ''}`;
 }
 
@@ -251,7 +251,7 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
           <div className="nl-live-hero-copy">
             <span className="nl-live-eyebrow"><Activity size={13} aria-hidden="true" /> NOVELTY LIBRARY · LIVE RANKINGS</span>
             <h1>Live Rankings</h1>
-            <p className="nl-live-one-liner">Search the library, get a taste match, and see the top books by NL score and R/W stars.</p>
+            <p className="nl-live-one-liner">See the books the Novelty Library community rates highest by NL score and R/W stars.</p>
             <p className="nl-live-hero-note">A reader-powered snapshot of the books the Novelty Library community rates highest.</p>
           </div>
         </header>
@@ -266,11 +266,9 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
               <RankingSection id="nl-rankings" kicker="COMMUNITY + REVIEWER SCORE" title="Top 5 · NL Rating" description="Highest NL scores first, with each book’s R/W stars included." books={byNl} metric="nl" navigate={navigate} icon="trending" />
               <RankingSection id="rw-rankings" kicker="REVIEWER SCORE · STAR VIEW" title="Top 5 · R/W Rating" description="Highest R/W ratings first, shown with the familiar star score." books={byRw} metric="rw" navigate={navigate} icon="trophy" />
             </div>
-            <RankingSearch books={books} openBook={(review) => navigate(`/review/${encodeURIComponent(bookSlug(review))}`)} />
-            <TasteMatchPanel books={books} openBook={(review) => navigate(`/review/${encodeURIComponent(bookSlug(review))}`)} goRoadmap={() => navigate('/about#roadmap')} />
           </div>
         )}
-        <p className="nl-live-footnote">Explore published reviews ranked by NL Rating or R/W stars. Use the search above to find books by genre, language, traits or author, or describe what you feel like reading.</p>
+        <p className="nl-live-footnote">Explore published reviews ranked by NL Rating or R/W stars. Rankings use the same published-review library that powers Novelty Library discovery.</p>
       </div>
       {showSideAds && <aside className="nl-live-ad-rail nl-live-ad-rail-left" aria-label="Advertisement"><AdSenseAdSlot className="nl-live-rail-ad-slot" active={showSideAds} /></aside>}
       {showSideAds && <aside className="nl-live-ad-rail nl-live-ad-rail-right" aria-label="Advertisement"><AdSenseAdSlot className="nl-live-rail-ad-slot" active={showSideAds} /></aside>}
