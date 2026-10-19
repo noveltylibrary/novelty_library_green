@@ -12,7 +12,7 @@ export function ProfileTabs({ panes, initial = 'reading' }: { panes: Record<Prof
   const defs: { key: ProfileTabKey; label: string; Icon: typeof BookOpen }[] = [
     { key: 'reading', label: 'Reading', Icon: BookMarked },
     { key: 'questions', label: 'Questions', Icon: MessageCircleQuestion },
-    { key: 'published', label: 'Published', Icon: CheckCircle },
+    { key: 'published', label: 'Reviews', Icon: CheckCircle },
   ];
   const onKey = (e: React.KeyboardEvent) => {
     const i = defs.findIndex((d) => d.key === tab);
@@ -48,12 +48,12 @@ const tally = (values: string[]) => {
 export function PublishedStats({ reviews, avgNl }: { reviews: AcceptedReviewCard[]; avgNl?: number | null }) {
   const s = useMemo(() => {
     const rated = reviews.map((r) => Number(r.reviewers_rating)).filter((n) => n > 0);
-    const genres = tally(reviews.flatMap((r) => (r.genre || '').split(/[,/&]/)));
+    const genres = tally(reviews.map((r) => (r.genre || '').split(/[,/&]/)[0] || ''));
     const langs = tally(reviews.map((r) => r.language || ''));
     const mins = reviews.map((r) => readingMinutes(r.review || '')).filter((n) => n > 0);
     return {
       avg: rated.length ? rated.reduce((a, b) => a + b, 0) / rated.length : null,
-      genres: genres.slice(0, 3),
+      genres: genres.slice(0, 1),
       lang: langs[0] || null,
       langCount: langs.length,
       minutes: mins.length ? Math.max(1, Math.round(mins.reduce((a, b) => a + b, 0) / mins.length)) : null,
@@ -75,7 +75,7 @@ export function PublishedStats({ reviews, avgNl }: { reviews: AcceptedReviewCard
 }
 
 /** Stats tank, then reviews capped at three with a "Show more" button. */
-export function PublishedPanel({ reviews, avgNl, renderReview, cap = 3 }: { reviews: AcceptedReviewCard[]; avgNl?: number | null; renderReview: (r: AcceptedReviewCard) => ReactNode; cap?: number }) {
+export function PublishedPanel({ reviews, avgNl, renderReview, cap = 2 }: { reviews: AcceptedReviewCard[]; avgNl?: number | null; renderReview: (r: AcceptedReviewCard) => ReactNode; cap?: number }) {
   const [all, setAll] = useState(false);
   if (!reviews.length) return <TabEmpty icon={<CheckCircle aria-hidden="true" />} text="No published reviews yet." />;
   const shown = all ? reviews : reviews.slice(0, cap);

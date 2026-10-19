@@ -18,9 +18,9 @@ function TasteMatchExplainer({ navigate }: { navigate: (path: string) => void })
       <div className="nl-about-taste-mark"><TasteMatchIcon size={42} /></div>
       <div className="nl-about-taste-copy">
         <span className="nl-about-taste-kicker">A more personal way to discover books</span>
-        <h2 id="nl-about-taste-title">Meet Taste Match</h2>
-        <p>Taste Match looks beyond ratings and genres to help you find books that fit your reading mood, preferences, and the qualities you love in a story. Its evolving 40-metric framework considers signals such as pace, atmosphere, writing style, emotional resonance, and cognitive load—so recommendations can reflect <em>your</em> taste, not just what is popular.</p>
-        <button type="button" className="nl-about-taste-button" onClick={() => navigate('/taste-match')}>Explore Taste Match <ArrowRight aria-hidden="true" /></button>
+        <h2 id="nl-about-taste-title">Meet Taste Match SE</h2>
+        <p>Taste Match SE is our personal book-discovery system: it looks for the overlap between what you ask for, what you have loved, and the story signals available across our review shelf. Instead of treating one genre or rating as the whole answer, it weighs several complementary clues and ranks the closest fits. The result is a living match score—not a promise or a popularity contest, but a starting point for your next read. We are keeping the exact recipe under wraps while we continue to refine it.</p>
+        <button type="button" className="nl-about-taste-button" onClick={() => navigate('/taste-match')}>Explore Taste Match SE <ArrowRight aria-hidden="true" /></button>
       </div>
     </section>
   );

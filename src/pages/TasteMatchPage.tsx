@@ -66,10 +66,10 @@ export function TasteMatchPage({ navigate }: { navigate: (path: string) => void 
           <button type="button" onClick={() => navigate('/')} className="nl-live-back nl-taste-home"><Home size={16} aria-hidden="true" /> Home</button>
         </div>
         <header className="nl-taste-page-hero">
-          <span className="nl-taste-page-logo"><TasteMatchIcon size={54} /></span>
+          <span className="nl-taste-page-logo" style={{ color: "#fff" }}><TasteMatchIcon size={54} /></span>
           <div>
             <span className="nl-live-kicker">NOVELTY LIBRARY · PERSONAL DISCOVERY</span>
-            <h1>Taste Match</h1>
+            <h1>Taste Match SE</h1>
             <p>Not just what is highly rated — find what fits <em>your</em> taste. Describe the read you crave, choose a mood, or start from a book you loved.</p>
           </div>
         </header>

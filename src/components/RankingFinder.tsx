@@ -176,7 +176,7 @@ export function RankingSearch({ books, openBook }: CommonProps) {
         />
         {norm(deferredMore) && <ResultGroup
           title="Taste Match suggestions"
-          hint="TMAI-40 compares your description with the available review text and book details, then explains the closest fits. These are relative matches, not probabilities."
+          hint="Taste Match SE weighs your description against the clues available in each review and explains why certain books rise to the top. Scores are relative matches, not probabilities."
           matches={tasteMatches}
           byId={byId}
           openBook={openBook}
@@ -234,9 +234,9 @@ export function TasteMatchPanel({ books, openBook }: CommonProps) {
       <header className="nl-find-head">
         <span className="nl-find-icon nl-taste-icon"><TasteMatchIcon size={30} /></span>
         <div>
-          <span className="nl-live-kicker">TASTE MATCH · TMAI-40 ENGINE</span>
+          <span className="nl-live-kicker">TASTE MATCH SE · PERSONAL DISCOVERY</span>
           <h2 id="nl-taste-title">Find a read that matches your taste</h2>
-          <p>Describe the book you want, choose up to three moods, or add a book you loved. The 40-metric engine ranks the published library using the evidence currently available.</p>
+          <p>Describe the book you want, choose up to three moods, or add a book you loved. Our matching system ranks the published library using the evidence currently available.</p>
         </div>
       </header>
 
@@ -321,7 +321,7 @@ export function TasteMatchPanel({ books, openBook }: CommonProps) {
           </ul>
         )}
       </div>
-      <p className="nl-taste-note">TMAI evaluates all 40 metric definitions, but the current public review catalog does not store structured values for every dimension. {metricReadiness.withCatalogSupport} of {metricReadiness.total} metrics currently have some catalog/text evidence; {metricReadiness.metadataOnly} require dedicated metadata before they can be scored. Unsupported signals are skipped rather than invented. Match scores are relative rankings, not probabilities. Reviews without a verdict are excluded when a verdict filter is selected.</p>
+      <p className="nl-taste-note">Taste Match SE considers multiple dimensions, but the current public review catalog does not store structured values for every signal. {metricReadiness.withCatalogSupport} of {metricReadiness.total} metrics currently have some catalog/text evidence; {metricReadiness.metadataOnly} require dedicated metadata before they can be scored. Unsupported signals are skipped rather than invented. Match scores are relative rankings, not probabilities. Reviews without a verdict are excluded when a verdict filter is selected.</p>
     </section>
   );
 }
