@@ -8,7 +8,7 @@ import { Footer } from '@/components/Footer';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { SplashIntro } from '@/components/SplashIntro';
 import { HomePage } from '@/pages/HomePage';
-import { ReviewsPage } from '@/pages/ReviewsPage';
+import { ReviewsPage } from '@/pages/ReviewsPage.tsx';
 import { ReviewPage } from '@/pages/ReviewPage';
 import { BlogReviewPage } from '@/pages/BlogReviewPage';
 import { SubmitPage } from '@/pages/SubmitPage';
