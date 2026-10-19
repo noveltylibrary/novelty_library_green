@@ -54,8 +54,8 @@ export function HomeActionGrid({ navigate }: { navigate: (path: string) => void 
       <section ref={scroller} onScroll={sync} className="home-action-grid" aria-label="Main sections">
         <NavCard animation="book" icon={BookOpen} title="Reviews" onClick={() => navigate('/reviews')} />
         <NavCard animation="beat" icon={Trophy} title="Rankings" onClick={() => navigate('/live-rankings')} />
-        <NavCard animation="flip" icon={TasteMatchIcon} title="Taste Match SE" onClick={() => navigate('/taste-match')} />
         <NavCard animation="write" icon={PenTool} title="Submit" onClick={() => navigate('/submit')} />
+        <NavCard animation="flip" icon={TasteMatchIcon} title="Taste Match" onClick={() => navigate('/taste-match')} />
         <NavCard animation="rise" icon={BarChart3} title="Analytics" onClick={() => navigate('/analytics')} />
         <NavCard animation="none" icon={Newspaper} title="Blog" href={BLOG_URL} />
       </section>

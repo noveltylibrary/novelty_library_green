@@ -17,18 +17,18 @@ function TasteMatchPageMascot() {
         <linearGradient id="tmPageBook" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#fff3b5"/><stop offset="1" stopColor="#f4be54"/></linearGradient>
         <linearGradient id="tmPageLens" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#a9b8ff"/><stop offset="1" stopColor="#626ee7"/></linearGradient>
       </defs>
-      <circle cx="56" cy="56" r="51" fill="#f0fdff" stroke="#07566a" strokeWidth="2.7"/>
-      <circle cx="56" cy="56" r="44" fill="#d8f7fb"/>
-      <path d="M48 25c-5-6-15-3-16 5-8 1-11 10-6 16-4 7 0 15 7 17 0 8 9 12 16 7 2 3 8 3 11 0 7 5 16 1 16-7 7-3 10-11 5-18 4-8-2-16-9-16-2-8-11-10-17-4-2-3-5-3-7 0Z" fill="url(#tmPageBrain)" stroke="#07566a" strokeWidth="3" strokeLinejoin="round"/>
-      <path d="M55 28c-4 6-2 11 2 14-4 4-5 9-1 14-3 4-3 8 0 12" fill="none" stroke="#08798b" strokeWidth="2.6" strokeLinecap="round"/>
-      <path d="M39 38c4 0 7 3 6 7m-15 5c5-1 9 2 9 7m28-20c-4 0-6 3-5 7m16 5c-5-1-9 2-9 7" fill="none" stroke="#08798b" strokeWidth="2.3" strokeLinecap="round"/>
-      <ellipse cx="46" cy="49" rx="2.2" ry="3" fill="#073a4b"/><ellipse cx="64" cy="49" rx="2.2" ry="3" fill="#073a4b"/>
-      <path d="M49 57q6 6 12 0" fill="none" stroke="#073a4b" strokeWidth="2.5" strokeLinecap="round"/>
-      <path d="M25 76q14-6 31 6 17-12 31-6v16q-15-6-31 5-16-11-31-5Z" fill="url(#tmPageBook)" stroke="#07566a" strokeWidth="2.8" strokeLinejoin="round"/>
-      <path d="M56 82v15M32 81q9-2 17 3m14-1q8-5 17-3" fill="none" stroke="#b68120" strokeWidth="2.2" strokeLinecap="round"/>
-      <g transform="rotate(-12 78 65)"><circle cx="78" cy="64" r="11.5" fill="url(#tmPageLens)" stroke="#fff" strokeWidth="3"/><circle cx="78" cy="64" r="8" fill="none" stroke="#eaf5ff" strokeWidth="1.6"/><path d="m86 72 8 8" stroke="#07566a" strokeWidth="5" strokeLinecap="round"/><path d="m86 72 8 8" stroke="#f1fbff" strokeWidth="2" strokeLinecap="round"/></g>
-      <path d="m20 29 2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5Z" fill="#f3bd4d" stroke="#07566a" strokeWidth="1.5" strokeLinejoin="round"/>
-      <path d="m89 20 1.8 4.2 4.2 1.8-4.2 1.8-1.8 4.2-1.8-4.2-4.2-1.8 4.2-1.8Z" fill="#f3bd4d" stroke="#07566a" strokeWidth="1.3" strokeLinejoin="round"/>
+      <circle className="tm-mascot-disc" cx="56" cy="56" r="51" fill="#f0fdff" stroke="#07566a" strokeWidth="2.7"/>
+      <circle className="tm-mascot-disc-inner" cx="56" cy="56" r="44" fill="#d8f7fb"/>
+      <path className="tm-mascot-brain" d="M48 25c-5-6-15-3-16 5-8 1-11 10-6 16-4 7 0 15 7 17 0 8 9 12 16 7 2 3 8 3 11 0 7 5 16 1 16-7 7-3 10-11 5-18 4-8-2-16-9-16-2-8-11-10-17-4-2-3-5-3-7 0Z" fill="url(#tmPageBrain)" stroke="#07566a" strokeWidth="3" strokeLinejoin="round"/>
+      <path className="tm-mascot-brain-fold" d="M55 28c-4 6-2 11 2 14-4 4-5 9-1 14-3 4-3 8 0 12" fill="none" stroke="#08798b" strokeWidth="2.6" strokeLinecap="round"/>
+      <path className="tm-mascot-brain-folds" d="M39 38c4 0 7 3 6 7m-15 5c5-1 9 2 9 7m28-20c-4 0-6 3-5 7m16 5c-5-1-9 2-9 7" fill="none" stroke="#08798b" strokeWidth="2.3" strokeLinecap="round"/>
+      <g className="tm-mascot-eyes"><ellipse cx="46" cy="49" rx="2.2" ry="3" fill="#073a4b"/><ellipse cx="64" cy="49" rx="2.2" ry="3" fill="#073a4b"/></g>
+      <path className="tm-mascot-smile" d="M49 57q6 6 12 0" fill="none" stroke="#073a4b" strokeWidth="2.5" strokeLinecap="round"/>
+      <path className="tm-mascot-book" d="M25 76q14-6 31 6 17-12 31-6v16q-15-6-31 5-16-11-31-5Z" fill="url(#tmPageBook)" stroke="#07566a" strokeWidth="2.8" strokeLinejoin="round"/>
+      <path className="tm-mascot-book-lines" d="M56 82v15M32 81q9-2 17 3m14-1q8-5 17-3" fill="none" stroke="#b68120" strokeWidth="2.2" strokeLinecap="round"/>
+      <g className="tm-mascot-lens" transform="rotate(-12 78 65)"><circle cx="78" cy="64" r="11.5" fill="url(#tmPageLens)" stroke="#fff" strokeWidth="3"/><circle cx="78" cy="64" r="8" fill="none" stroke="#eaf5ff" strokeWidth="1.6"/><path d="m86 72 8 8" stroke="#07566a" strokeWidth="5" strokeLinecap="round"/><path d="m86 72 8 8" stroke="#f1fbff" strokeWidth="2" strokeLinecap="round"/></g>
+      <path className="tm-mascot-sparkle tm-mascot-sparkle-one" d="m20 29 2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5Z" fill="#f3bd4d" stroke="#07566a" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path className="tm-mascot-sparkle tm-mascot-sparkle-two" d="m89 20 1.8 4.2 4.2 1.8-4.2 1.8-1.8 4.2-1.8-4.2-4.2-1.8 4.2-1.8Z" fill="#f3bd4d" stroke="#07566a" strokeWidth="1.3" strokeLinejoin="round"/>
     </svg>
   );
 }

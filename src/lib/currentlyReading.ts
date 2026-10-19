@@ -7,22 +7,25 @@ export const CURRENTLY_READING_KEY = 'q_mux1az58';
 export const isCurrentlyReadingQuestion = (q: Pick<ProfileQuestion, 'key' | 'question'>): boolean =>
   q.key === CURRENTLY_READING_KEY || /^\s*currently\s+reading\s*$/i.test(q.question || '');
 
-export type CurrentlyReading = { title: string; cover: string | null };
+export type CurrentlyReading = { title: string; author: string; cover: string | null };
 
 /**
  * The answer is still stored under the question's own key (so visitors receive it exactly like before),
- * as plain text when there is no cover and as `{ value, cover }` when a cover was added.
+ * as plain text when there is no optional metadata and as `{ value, cover?, author? }` when a cover or author is saved.
  * answerText() already understands the object form, so the card, onboarding and admin views keep showing the title.
  */
 export function readCurrentlyReading(value: unknown, forEditing = false): CurrentlyReading {
   // The editor needs the text exactly as typed (a trimmed value swallows every space the person types).
   const title = forEditing ? answerText(value) : humanizeTitle(answerText(value).trim());
+  const rawAuthor = value && typeof value === 'object' && 'author' in value ? String((value as { author?: unknown }).author ?? '') : '';
   const cover = value && typeof value === 'object' && 'cover' in value ? String((value as { cover?: unknown }).cover ?? '') : '';
-  return { title, cover: /^https?:\/\//i.test(cover) ? cover : null };
+  return { title, author: rawAuthor, cover: /^https?:\/\//i.test(cover) ? cover : null };
 }
 
-export function packCurrentlyReading(title: string, cover: string | null): unknown {
-  return cover ? { value: title, cover } : title;
+export function packCurrentlyReading(title: string, cover: string | null, author = ''): unknown {
+  const cleanAuthor = author.trim();
+  // Keep the legacy plain-string shape unless optional metadata needs to be stored.
+  return cover || cleanAuthor ? { value: title, ...(cover ? { cover } : {}), ...(cleanAuthor ? { author: cleanAuthor } : {}) } : title;
 }
 
 /**

@@ -74,7 +74,7 @@ export function HomeAnalytics({ navigate, published, data, failed }: Props) {
         <div className="nl-an-bridge-line" aria-hidden="true"><i /></div>
         <button type="button" className="nl-an-bridge-taste" onClick={() => navigate('/taste-match')}>
           <TasteMatchIcon size={22} aria-hidden="true" />
-          <span>Taste Match SE</span>
+          <span>Taste Match</span>
           <ArrowRight className="nl-an-bridge-taste-arrow" aria-hidden="true" />
         </button>
       </div>

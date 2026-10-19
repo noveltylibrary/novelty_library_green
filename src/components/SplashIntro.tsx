@@ -36,7 +36,10 @@ export function SplashIntro({ onComplete }: SplashIntroProps) {
   if (!visible) return null;
   return (
     <div className={`nl-splash${leaving ? ' is-leaving' : ''}`} aria-hidden>
-      <AnimatedBook size={150} />
+      <div className="nl-splash-book-stage" aria-hidden="true">
+        <AnimatedBook size={150} />
+        <img className="nl-splash-brand-mark" src="/novelty-library-logo.png" alt="" />
+      </div>
       <div className="nl-splash-title">Novelty Library</div>
     </div>
   );
