@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Lock, ArrowLeft, FileText, Save, ExternalLink, Plus, Trash2, ChevronUp, ChevronDown, GripVertical, Eye, ListChecks, LayoutTemplate, Pencil, FolderPlus, X, ImagePlus } from 'lucide-react';
+import { Lock, ArrowLeft, FileText, Save, ExternalLink, Plus, Trash2, ChevronUp, ChevronDown, GripVertical, Eye, ListChecks, LayoutTemplate, Pencil, FolderPlus, X, ImagePlus, Megaphone, Route, BookOpen, Info } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { fetchEditablePage, saveEditablePage, PAGE_DEFAULTS } from '@/lib/adminConfig';
 import { AdminReviewGuidelinesEditor } from '@/components/AdminReviewGuidelinesEditor';
 import { AdminAboutEditor } from '@/components/AdminAboutEditor';
+import { AdminAnnouncementsPanel } from '@/components/AdminAnnouncementsPanel';
+import { AdminRoadmapPanel } from '@/components/AdminRoadmapPanel';
+import { AdminSubmitFreezePanel } from '@/components/AdminSubmitFreezePanel';
 import {
   fetchProfileQuestions,
   fetchProfileSections,
@@ -32,10 +35,11 @@ const QUESTION_TYPES: { value: ProfileQuestionType; label: string }[] = [
   { value: 'image_upload', label: 'Image upload' },
 ];
 
-export function AdminPagesModerationPage({ navigate }: { navigate: (path: string) => void }) {
+export function AdminPagesModerationPage({ navigate, view }: { navigate: (path: string) => void; view?: 'editor' | 'guide' | 'about' | 'profile' | 'announcements' | 'roadmap' | 'submit' }) {
   const { user, isAdmin, loading } = useAuth();
-  const [active, setActive] = useState<typeof PAGE_KEYS[number]>('review-guidelines');
-  const [adminView, setAdminView] = useState<'editor' | 'profile'>('editor');
+  const [active, setActive] = useState<typeof PAGE_KEYS[number]>('privacy');
+  const [adminView, setAdminView] = useState<'editor' | 'guide' | 'about' | 'profile' | 'announcements' | 'roadmap' | 'submit'>(view ?? 'editor');
+  useEffect(() => { if (view) setAdminView(view); }, [view]);
   const [profilePreview, setProfilePreview] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const questionInputRef = useRef<HTMLInputElement>(null);
@@ -577,13 +581,28 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
           <FileText className="w-4 h-4" /> Admin content
         </div>
         <h1 className="font-serif text-4xl font-semibold mt-2">WebApp Pages Moderation</h1>
-        <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>Edit site pages or fully control the reader profile: section names, reader-facing headers, helper text, order, visibility, built-in fields, questions and profile-card visibility.</p>
+        <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>Edit the policy pages, the Review Guide, About, announcements, the roadmap and the Submit page freeze, or fully control the reader profile: section names, reader-facing headers, helper text, order, visibility, built-in fields, questions and profile-card visibility.</p>
         <div className="mt-5 inline-flex flex-wrap gap-2 rounded-2xl p-1.5" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)', boxShadow: '0 10px 28px rgba(1,43,54,.08)' }}>
           <button type="button" onClick={() => { setAdminView('editor'); setMsg(''); }} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition" style={{ background: adminView === 'editor' ? 'linear-gradient(135deg,#013a46,#0097b2)' : 'transparent', color: adminView === 'editor' ? 'white' : 'var(--color-text)' }}>
-            <Pencil className="w-4 h-4" /> Editor
+            <Pencil className="w-4 h-4" /> Policy Editor
+          </button>
+          <button type="button" onClick={() => { setAdminView('guide'); setMsg(''); }} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition" style={{ background: adminView === 'guide' ? 'linear-gradient(135deg,#013a46,#0097b2)' : 'transparent', color: adminView === 'guide' ? 'white' : 'var(--color-text)' }}>
+            <BookOpen className="w-4 h-4" /> Review Guide
+          </button>
+          <button type="button" onClick={() => { setAdminView('about'); setMsg(''); }} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition" style={{ background: adminView === 'about' ? 'linear-gradient(135deg,#013a46,#0097b2)' : 'transparent', color: adminView === 'about' ? 'white' : 'var(--color-text)' }}>
+            <Info className="w-4 h-4" /> About
           </button>
           <button type="button" onClick={() => { setAdminView('profile'); setMsg(''); }} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition" style={{ background: adminView === 'profile' ? 'linear-gradient(135deg,#013a46,#0097b2)' : 'transparent', color: adminView === 'profile' ? 'white' : 'var(--color-text)' }}>
             <LayoutTemplate className="w-4 h-4" /> Profile Page
+          </button>
+          <button type="button" onClick={() => { setAdminView('announcements'); setMsg(''); }} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition" style={{ background: adminView === 'announcements' ? 'linear-gradient(135deg,#013a46,#0097b2)' : 'transparent', color: adminView === 'announcements' ? 'white' : 'var(--color-text)' }}>
+            <Megaphone className="w-4 h-4" /> Announcements
+          </button>
+          <button type="button" onClick={() => { setAdminView('roadmap'); setMsg(''); }} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition" style={{ background: adminView === 'roadmap' ? 'linear-gradient(135deg,#013a46,#0097b2)' : 'transparent', color: adminView === 'roadmap' ? 'white' : 'var(--color-text)' }}>
+            <Route className="w-4 h-4" /> Roadmap
+          </button>
+          <button type="button" onClick={() => { setAdminView('submit'); setMsg(''); }} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition" style={{ background: adminView === 'submit' ? 'linear-gradient(135deg,#013a46,#0097b2)' : 'transparent', color: adminView === 'submit' ? 'white' : 'var(--color-text)' }}>
+            <Lock className="w-4 h-4" /> Submit Freeze
           </button>
         </div>
       </header>
@@ -591,7 +610,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
       {adminView === 'editor' && (
       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6">
         <aside className="surface-card p-3 h-fit space-y-2">
-          {PAGE_KEYS.map(key => <button key={key} onClick={() => { setActive(key); setMsg(''); }} className="w-full text-left rounded-xl p-3" style={{ background: active === key ? 'rgba(0,151,178,.09)' : 'transparent', color: 'var(--color-text)' }}>
+          {PAGE_KEYS.filter(k => k !== 'review-guidelines' && k !== 'about').map(key => <button key={key} onClick={() => { setActive(key); setMsg(''); }} className="w-full text-left rounded-xl p-3" style={{ background: active === key ? 'rgba(0,151,178,.09)' : 'transparent', color: 'var(--color-text)' }}>
             <strong className="block">{PAGE_DEFAULTS[key].title}</strong><span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>/{key}</span>
           </button>)}
           <div className="pt-2 border-t" style={{ borderColor: 'var(--color-border)' }}>
@@ -599,7 +618,7 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
           </div>
         </aside>
 
-        {active === 'review-guidelines' ? <AdminReviewGuidelinesEditor /> : active === 'about' ? <AdminAboutEditor /> : <section className="surface-card p-6">
+        <section className="surface-card p-6">
           <div className="flex items-center justify-between gap-3 mb-5">
             <div><p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--color-teal-dark)' }}>Editing</p><h2 className="font-serif text-2xl font-semibold">{title}</h2></div>
             <button className="btn-primary !w-auto" disabled={saving} onClick={save}><Save className="w-4 h-4" />{saving ? 'Saving…' : 'Save Page'}</button>
@@ -608,10 +627,16 @@ export function AdminPagesModerationPage({ navigate }: { navigate: (path: string
             <div><label className="label">Page title</label><input value={title} onChange={e => setTitle(e.target.value)} className="input-field" /></div>
             <div><label className="label">{active === 'cookie-banner' ? 'Banner message (shown in the accept-cookies bar)' : 'Page copy'}</label><textarea value={content} onChange={e => setContent(e.target.value)} className="input-field min-h-[520px] resize-y font-mono text-sm leading-6" /></div>
           </div>
-        </section>}
+        </section>
       </div>
 
       )}
+
+      {adminView === 'guide' && <AdminReviewGuidelinesEditor />}
+      {adminView === 'about' && <AdminAboutEditor />}
+      {adminView === 'announcements' && <AdminAnnouncementsPanel />}
+      {adminView === 'roadmap' && <AdminRoadmapPanel />}
+      {adminView === 'submit' && <AdminSubmitFreezePanel />}
 
       {adminView === 'profile' && (
         <>

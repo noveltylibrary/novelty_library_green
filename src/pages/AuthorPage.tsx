@@ -3,9 +3,12 @@ import { ArrowLeft, BookOpen, UserRound } from 'lucide-react';
 import { authorKey, reviewPath, usePublished } from '@/lib/readerTools';
 import { VerdictBanner } from '@/components/VerdictBanner';
 import { sanitizeUserText } from '@/lib/sanitize';
+import { FollowButton } from '@/components/FollowButton';
+import { useFollowedAuthors } from '@/lib/followAuthors';
 
 export function AuthorPage({ name, navigate }: { name: string; navigate: (path: string) => void }) {
   const all = usePublished();
+  const followed = useFollowedAuthors();
   const key = authorKey(name);
   const books = useMemo(() => all.filter((r) => authorKey(r.author || '') === key).sort((a, b) => (b.rw_rating || 0) - (a.rw_rating || 0)), [all, key]);
   const display = books[0]?.author || name;
@@ -24,6 +27,7 @@ export function AuthorPage({ name, navigate }: { name: string; navigate: (path: 
             {books.length ? `${books.length} review${books.length === 1 ? '' : 's'} on Novelty Library · average R/W ${avg.toFixed(1)}/10${genres.length ? ` · ${genres.join(', ')}` : ''}` : 'Loading reviews…'}
           </p>
         </div>
+        <div className="nl-author-follow"><FollowButton following={followed.isFollowing(key)} onClick={() => followed.toggle(key)} label={sanitizeUserText(display, 60)} /></div>
       </header>
       {all.length > 0 && books.length === 0 && <p className="nl-find-hint">No published reviews of this author yet.</p>}
       <ul className="nl-find-list">

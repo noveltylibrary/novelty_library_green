@@ -123,6 +123,9 @@ export function TermsPage({ navigate }: TermsPageProps) {
               <p>
                 You are responsible for everything you add to your profile, including pictures, answers, book covers and reading lists. Upload only content you have the right to share, and do not post anything unlawful, hateful, misleading or that infringes someone else’s rights. You control which profile items are visible to others. We may remove content, or suspend an account, that breaks these terms or harms the community.
               </p>
+              <p className="mt-3">
+                <strong>Stories and Highlights.</strong> A story is visible to your followers for 24 hours and is permanently deleted from Novelty Library after 30 days. While it is within those 30 days you can add it to a Highlight (up to 7 Highlights). A copy kept in a Highlight stays on your public profile, visible to anyone, until you remove it or delete your account.
+              </p>
             </section>
 
             <section>

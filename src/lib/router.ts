@@ -19,10 +19,10 @@ export type Route =
   | { name: 'admin-master-list' }
   | { name: 'admin-posters' }
   | { name: 'admin-book-reviews'; tab: 'submitted' | 'accepted' | 'published' | 'reserved' | 'posters' | 'community' }
-  | { name: 'admin-admins'; tab?: 'control' | 'notifications' | 'announcements' | 'roadmap' }
+  | { name: 'admin-admins'; tab?: 'control' | 'notifications' | 'taste' }
   | { name: 'admin-users' }
   | { name: 'admin-finances' }
-  | { name: 'admin-pages' }
+  | { name: 'admin-pages'; view?: 'editor' | 'guide' | 'about' | 'profile' | 'announcements' | 'roadmap' | 'submit' }
   | { name: 'profile'; username?: string }
   | { name: 'account' }
   | { name: 'notifications' }
@@ -52,11 +52,13 @@ function parseHash(): Route {
     if (parts[1] === 'posters') return { name: 'admin-posters' };
     if (parts[1] === 'admins') return { name: 'admin-admins', tab: 'control' };
     if (parts[1] === 'notify' || parts[1] === 'notifications') return { name: 'admin-admins', tab: 'notifications' };
-    if (parts[1] === 'announcements') return { name: 'admin-admins', tab: 'announcements' };
-    if (parts[1] === 'roadmap') return { name: 'admin-admins', tab: 'roadmap' };
+    if (parts[1] === 'announcements') return { name: 'admin-pages', view: 'announcements' };
+    if (parts[1] === 'roadmap') return { name: 'admin-pages', view: 'roadmap' };
+    if (parts[1] === 'submit-freeze' || parts[1] === 'freeze') return { name: 'admin-pages', view: 'submit' };
+    if (parts[1] === 'taste' || parts[1] === 'taste-match') return { name: 'admin-admins', tab: 'taste' };
     if (parts[1] === 'users') return { name: 'admin-users' };
     if (parts[1] === 'finances') return { name: 'admin-finances' };
-    if (parts[1] === 'pages') return { name: 'admin-pages' };
+    if (parts[1] === 'pages') return { name: 'admin-pages', view: (['editor', 'guide', 'about', 'profile', 'announcements', 'roadmap', 'submit'] as const).find((v) => v === parts[2]) };
     if (parts[1] === 'book-reviews') {
       const validTabs = ['submitted', 'accepted', 'published', 'reserved', 'posters', 'community'] as const;
       const requested = parts[2] as (typeof validTabs)[number] | undefined;

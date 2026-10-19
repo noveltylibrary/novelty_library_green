@@ -5,6 +5,8 @@ import {
   Clock, BookOpen, Sparkles, Heart, Plus, Trash2, FileText, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { useSubmitFreeze } from '@/lib/submitFreeze';
+import { SubmitFrozenNotice } from '@/components/SubmitFrozenNotice';
 import { VERDICTS, normalizeVerdict, verdictRatingWarning, type Verdict } from '@/lib/verdict';
 import { VerdictIcon, VerdictBanner } from '@/components/VerdictBanner';
 import { supabase } from '@/lib/supabase';
@@ -182,7 +184,10 @@ function reviewQualityTips(text: string): string[] {
 }
 
 export function SubmitPage({ navigate }: SubmitPageProps) {
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, isAdmin } = useAuth();
+  const freeze = useSubmitFreeze();
+  const locked = freeze.frozen && !isAdmin;
+  const [freezeOpenTick, setFreezeOpenTick] = useState(0);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -489,6 +494,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
 
   const handleSubmit = async (e?: React.FormEvent, skipVerdictCheck = false) => {
     e?.preventDefault();
+    if (locked) { setFreezeOpenTick((n) => n + 1); return; }
 
     // Honeypot check: a real visitor never sees or fills this field. If it
     // has any value, this is a bot — abort silently with no Supabase write
@@ -1107,7 +1113,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
             <button type="button" onClick={() => navigate('/review-guidelines')} className="btn-ghost inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm nl-guide-glow-btn">
               <FileText className="w-4 h-4" /> Review Guidelines
             </button>
-            <button id="reserve" type="button" onClick={() => setReservationModalOpen(true)} className="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5" style={{ background: 'var(--color-teal-dark)' }}>
+            <button id="reserve" type="button" disabled={locked} onClick={() => setReservationModalOpen(true)} className="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5" style={{ background: 'var(--color-teal-dark)' }}>
               <BookOpen className="w-4 h-4" /> Reserve a Book
             </button>
             <button type="button" onClick={() => void openLoadDraftModal()} className="btn-ghost inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm">
@@ -1117,6 +1123,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
           <p className="text-[11px] mt-3" style={{ color: 'var(--color-text-muted)' }}>Read the submission guidelines, reserve a book without writing a review, or load one of your saved drafts.</p>
         </div>
 
+        <fieldset disabled={locked} className="nl-freeze-fieldset" data-locked={locked ? 'true' : undefined}>
         {/* Open Library Search */}
         <div className="surface-card p-5 mb-6">
           <div className="flex items-center gap-2 mb-3">
@@ -1170,6 +1177,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
             </div>
           )}
         </div>
+        </fieldset>
 
         {/* Form progress — tracks only the compulsory (*) questions, and
             stays accurate through autofill via syncAutofill on each field. */}
@@ -1217,7 +1225,10 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {freeze.frozen && <SubmitFrozenNotice reason={freeze.reason} note={freeze.note} adminBypass={isAdmin} forceOpen={freezeOpenTick} />}
+
+        <form onSubmit={handleSubmit}>
+          <fieldset disabled={locked} className="nl-freeze-fieldset space-y-6" data-locked={locked ? 'true' : undefined}>
           {/*
             Honeypot spam trap — invisible to sighted users and removed from
             the accessibility tree, so it should never be seen or filled in
@@ -1374,10 +1385,11 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
           <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">
             {submitting ? 'Submitting...' : (<><Send className="w-4 h-4" /> Submit Review</>)}
           </button>
+          </fieldset>
         </form>
 
         <div className="draft-actions flex mt-6">
-          <button type="button" onClick={openDraftSaveModal} className="btn-ghost text-sm w-full">
+          <button type="button" onClick={openDraftSaveModal} disabled={locked} className="btn-ghost text-sm w-full disabled:opacity-50">
             <Save className="w-4 h-4" /> Save Draft
           </button>
         </div>

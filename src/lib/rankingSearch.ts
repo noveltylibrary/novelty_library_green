@@ -272,16 +272,34 @@ export function broadSearch(books: SearchBook[], text: string, opts: BroadOption
  * Runs entirely in the browser: no server, no database change. */
 
 type Vec = Map<string, number>;
-type FieldKey = 'genre' | 'traits' | 'title' | 'author' | 'language' | 'verdict';
+export type FieldKey = 'genre' | 'traits' | 'title' | 'author' | 'language' | 'verdict';
 interface TfDoc { book: SearchBook; vec: Vec; fields: Record<FieldKey, Set<string>>; text: Set<string>; concepts: Map<string, number> }
-interface TfIndex { docs: TfDoc[]; idf: Map<string, number>; vocab: string[] }
+interface TfIndex { docs: TfDoc[]; idf: Map<string, number>; vocab: string[]; cfg: TfConfig }
+
+/** Every knob of the TF-IDF engine. The live site always uses DEFAULT_TF_CONFIG; the admin Taste Match lab can try others. */
+export interface TfConfig {
+  /** Weight of a word found in each field (genre, traits...). Higher = that field matters more. */
+  fieldWeights: Record<FieldKey, number>;
+  /** Weight of a word found in the review text. */
+  textWeight: number;
+  /** Only the first N words of the review text are used. */
+  textTermLimit: number;
+  /** Weight of the concept tags (related-genre groups) a book belongs to. */
+  conceptWeight: number;
+  /** Weight of neighbouring concept tags (genres close to the book's own). */
+  neighbourWeight: number;
+  /** true: tf = 1 + ln(count) (scikit-learn sublinear_tf). false: raw count. */
+  sublinear: boolean;
+  /** smooth: ln((1+n)/(1+df)) + 1. plain: ln(n/df). off: every word weighs the same. */
+  idf: 'smooth' | 'plain' | 'off';
+}
+export const DEFAULT_TF_CONFIG: TfConfig = { fieldWeights: { genre: 3, traits: 3, title: 2, author: 2, language: 2, verdict: 1 }, textWeight: 1, textTermLimit: 600, conceptWeight: 3, neighbourWeight: 0.8, sublinear: true, idf: 'smooth' };
 
 const stem = (w: string): string => (w.length > 4 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
 const termsOf = (text: string): string[] => norm(text).split(' ').filter((t) => t && !STOP.has(t)).map(stem);
 const bigramsOf = (terms: string[]): string[] => terms.slice(0, -1).map((t, i) => `${t} ${terms[i + 1]}`);
-const FIELD_TF_WEIGHT: Record<FieldKey, number> = { genre: 3, traits: 3, title: 2, author: 2, language: 2, verdict: 1 };
 
-function bookCounts(book: SearchBook): { counts: Map<string, number>; fields: TfDoc['fields']; text: Set<string>; concepts: Map<string, number> } {
+function bookCounts(book: SearchBook, cfg: TfConfig): { counts: Map<string, number>; fields: TfDoc['fields']; text: Set<string>; concepts: Map<string, number> } {
   const counts = new Map<string, number>();
   const add = (t: string, w: number) => counts.set(t, (counts.get(t) ?? 0) + w);
   const fields = { genre: new Set<string>(), traits: new Set<string>(), title: new Set<string>(), author: new Set<string>(), language: new Set<string>(), verdict: new Set<string>() };
@@ -291,18 +309,18 @@ function bookCounts(book: SearchBook): { counts: Map<string, number>; fields: Tf
     const items = f === 'genre' || f === 'traits' ? String(raw[f] ?? '').split(/[,;/|]+/) : [raw[f]];
     for (const item of items) {
       const ts = termsOf(item);
-      ts.forEach((t) => { add(t, FIELD_TF_WEIGHT[f]); fields[f].add(t); });
-      if (f === 'genre' || f === 'traits') bigramsOf(ts).forEach((b) => { add(b, FIELD_TF_WEIGHT[f]); fields[f].add(b); });
+      ts.forEach((t) => { add(t, cfg.fieldWeights[f]); fields[f].add(t); });
+      if (f === 'genre' || f === 'traits') bigramsOf(ts).forEach((b) => { add(b, cfg.fieldWeights[f]); fields[f].add(b); });
     }
   });
   const text = new Set<string>();
-  termsOf(book.text).slice(0, 600).forEach((t) => { add(t, 1); text.add(t); });
+  termsOf(book.text).slice(0, cfg.textTermLimit).forEach((t) => { add(t, cfg.textWeight); text.add(t); });
   // Concept tags make "psychological thriller" and "psychological suspense" land close together.
   const concepts = new Map<string, number>();
   for (const v of [...fieldValues(book, 'genre'), ...fieldValues(book, 'traits')]) for (const [id, st] of conceptsOf(v)) concepts.set(id, Math.max(concepts.get(id) ?? 0, st));
   for (const [id, st] of concepts) {
-    add(`§${id}`, 3 * st);
-    for (const n of NEIGHBOURS.get(id) ?? []) if (!concepts.has(n)) add(`§${n}`, 0.8 * st);
+    add(`§${id}`, cfg.conceptWeight * st);
+    for (const n of NEIGHBOURS.get(id) ?? []) if (!concepts.has(n)) add(`§${n}`, cfg.neighbourWeight * st);
   }
   return { counts, fields, text, concepts };
 }
@@ -314,19 +332,22 @@ function l2(vec: Vec): Vec {
   return vec;
 }
 
-function buildIndex(books: SearchBook[]): TfIndex {
-  const prepared = books.map((book) => ({ book, ...bookCounts(book) }));
+/** Review side clamps at 1 (a word is never weighed below one occurrence); the query side keeps fractional weights as they are. */
+const tfOf = (count: number, cfg: TfConfig, clamp = true): number => (cfg.sublinear ? 1 + Math.log(clamp ? Math.max(count, 1) : count) : count);
+
+export function buildIndex(books: SearchBook[], cfg: TfConfig = DEFAULT_TF_CONFIG): TfIndex {
+  const prepared = books.map((book) => ({ book, ...bookCounts(book, cfg) }));
   const df = new Map<string, number>();
   prepared.forEach((p) => p.counts.forEach((_, t) => df.set(t, (df.get(t) ?? 0) + 1)));
   const n = prepared.length;
   const idf = new Map<string, number>();
-  df.forEach((d, t) => idf.set(t, Math.log((1 + n) / (1 + d)) + 1));
+  df.forEach((d, t) => idf.set(t, cfg.idf === 'off' ? 1 : cfg.idf === 'plain' ? Math.max(Math.log(n / d), 0.05) : Math.log((1 + n) / (1 + d)) + 1));
   const docs: TfDoc[] = prepared.map((p) => {
     const vec: Vec = new Map();
-    p.counts.forEach((c, t) => vec.set(t, (1 + Math.log(Math.max(c, 1))) * (idf.get(t) ?? 1)));
+    p.counts.forEach((c, t) => vec.set(t, tfOf(c, cfg) * (idf.get(t) ?? 1)));
     return { book: p.book, vec: l2(vec), fields: p.fields, text: p.text, concepts: p.concepts };
   });
-  return { docs, idf, vocab: [...idf.keys()].filter((t) => !t.startsWith('§')) };
+  return { docs, idf, vocab: [...idf.keys()].filter((t) => !t.startsWith('§')), cfg };
 }
 
 const indexCache = new WeakMap<SearchBook[], TfIndex>();
@@ -365,11 +386,11 @@ function queryVector(idx: TfIndex, text: string, extraConcepts?: Map<string, num
   const concepts = new Map<string, number>(extraConcepts ?? []);
   for (const part of parts) for (const [id, st] of conceptsOf(part)) concepts.set(id, Math.max(concepts.get(id) ?? 0, st));
   for (const [id, st] of concepts) {
-    add(`§${id}`, 3 * st);
-    if (st >= 0.8) for (const n of NEIGHBOURS.get(id) ?? []) add(`§${n}`, 0.8 * st);
+    add(`§${id}`, idx.cfg.conceptWeight * st);
+    if (st >= 0.8) for (const n of NEIGHBOURS.get(id) ?? []) add(`§${n}`, idx.cfg.neighbourWeight * st);
   }
   const vec: Vec = new Map();
-  counts.forEach((c, t) => vec.set(t, (1 + Math.log(c)) * (idx.idf.get(t) ?? 1)));
+  counts.forEach((c, t) => vec.set(t, tfOf(c, idx.cfg, false) * (idx.idf.get(t) ?? 1)));
   return { vec: l2(vec), terms: [...new Set(raw)], concepts };
 }
 
@@ -580,4 +601,36 @@ export function similarBooks(books: SearchBook[], id: string, limit = 3, minPct 
     out.push({ book: doc.book, score: Math.round(pct * 10) / 10, reasons: reasons.slice(0, 3) });
   }
   return out.sort((a, b) => b.score - a.score || (b.book.nl ?? -1) - (a.book.nl ?? -1) || b.book.rw - a.book.rw).slice(0, limit);
+}
+
+
+/* ───────────── admin Taste Match lab ───────────── */
+
+export interface LabTerm { term: string; /** query weight × review weight, i.e. this term's share of the cosine. */ share: number }
+export interface LabResult { book: SearchBook; /** cosine similarity, 0–100 */ score: number; terms: LabTerm[] }
+export interface LabOutput { queryTerms: { term: string; weight: number }[]; results: LabResult[]; vocabularySize: number; reviews: number }
+
+const prettyTerm = (t: string): string => (t.startsWith('§') ? `[${conceptLabel(t.slice(1))}]` : t);
+
+/**
+ * Runs the real engine with any settings and shows its working: the query's strongest terms, and for every review the
+ * terms that contributed most to its cosine score. Builds its own index, so the live site is never affected.
+ */
+export function labSearch(books: SearchBook[], text: string, cfg: TfConfig, minScore = 1, limit = 10): LabOutput {
+  const idx = buildIndex(books, cfg);
+  const empty: LabOutput = { queryTerms: [], results: [], vocabularySize: idx.idf.size, reviews: books.length };
+  if (!norm(text) || !books.length) return empty;
+  const q = queryVector(idx, text);
+  if (!q.vec.size) return empty;
+  const results: LabResult[] = [];
+  for (const doc of idx.docs) {
+    const parts: LabTerm[] = [];
+    let dot = 0;
+    q.vec.forEach((qw, t) => { const dw = doc.vec.get(t); if (dw) { const c = qw * dw; dot += c; parts.push({ term: prettyTerm(t), share: c }); } });
+    const pct = dot * 100;
+    if (pct >= minScore) results.push({ book: doc.book, score: Math.round(pct * 10) / 10, terms: parts.sort((a, b) => b.share - a.share).slice(0, 6).map((p) => ({ ...p, share: Math.round(p.share * 1000) / 10 })) });
+  }
+  results.sort((a, b) => b.score - a.score);
+  const queryTerms = [...q.vec.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([term, weight]) => ({ term: prettyTerm(term), weight: Math.round(weight * 1000) / 1000 }));
+  return { queryTerms, results: results.slice(0, limit), vocabularySize: idx.idf.size, reviews: books.length };
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Review } from '@/types/review';
 import { fetchReviews } from '@/lib/reviews';
+import { cleanTraits, type SearchBook } from '@/lib/rankingSearch';
 
 let listPromise: Promise<Review[]> | null = null;
 let listAt = 0;
@@ -64,3 +65,9 @@ export function useSavedReviews() {
   }, []);
   return { ids, isSaved: (id: string) => ids.includes(id), toggle };
 }
+
+/** A published review as the matching engine sees it. */
+export const reviewToSearchBook = (r: Review): SearchBook => ({
+  id: r.id, title: r.title || '', author: r.author || '', genre: r.genre || '', language: r.language || '', traits: cleanTraits(r.traits),
+  verdict: r.verdict || '', text: (r.review_text || '').slice(0, 4000), nl: null, rw: Number.isFinite(r.rw_rating) ? r.rw_rating : 0,
+});

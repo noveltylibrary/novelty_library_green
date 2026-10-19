@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Plus, X, Clock3, Heart, Repeat2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, X, Clock3, Heart, Repeat2, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchActiveStories, repostStory, toggleStoryLike, type Story } from '@/lib/social';
 import { useAuth } from '@/lib/auth';
 import { StoryComposerModal } from '@/components/StoryComposerModal';
+import { HighlightPicker } from '@/components/ProfileHighlights';
 
 interface Props { navigate?: (path: string) => void; }
 
@@ -12,6 +13,7 @@ export function StoriesRail({ navigate }: Props) {
   const [active, setActive] = useState<Story | null>(null);
   const [reposting, setReposting] = useState(false);
   const [storyComposerOpen, setStoryComposerOpen] = useState(false);
+  const [highlightFor, setHighlightFor] = useState<string | null>(null);
 
   const load = () => { if (!user) { setStories([]); return; } fetchActiveStories(user.id).then(setStories).catch(() => setStories([])); };
   const refreshStoriesAfterPublish = async () => { if (!user) return; try { setStories(await fetchActiveStories(user.id)); } catch { /* published story remains saved even if list refresh fails */ } };
@@ -51,6 +53,7 @@ export function StoriesRail({ navigate }: Props) {
       </div>
     </section>
     <StoryComposerModal open={storyComposerOpen} onClose={() => setStoryComposerOpen(false)} onPublished={refreshStoriesAfterPublish}/>
+    {highlightFor && <HighlightPicker userId={user.id} preselect={[highlightFor]} onClose={() => setHighlightFor(null)} />}
     {active && <div className="nl-story-viewer" role="dialog" aria-modal="true" onClick={() => setActive(null)}>
       <div className="nl-story-viewer-card" onClick={(e) => e.stopPropagation()}>
         {siblings.length > 1 && <><div className="nl-story-count">{activeIdx + 1} / {siblings.length}</div>{activeIdx > 0 && <button type="button" className="nl-story-nav nl-story-nav-prev" onClick={() => go(-1)} aria-label="Previous story"><ChevronLeft className="w-5 h-5" /></button>}{activeIdx < siblings.length - 1 && <button type="button" className="nl-story-nav nl-story-nav-next" onClick={() => go(1)} aria-label="Next story"><ChevronRight className="w-5 h-5" /></button>}</>}
@@ -60,6 +63,7 @@ export function StoriesRail({ navigate }: Props) {
         <div className="nl-story-actions">
           <button type="button" className={`nl-story-action ${active.liked_by_me ? 'text-rose-300' : ''}`} onClick={() => void likeActive()}><Heart className="w-4 h-4" fill={active.liked_by_me ? 'currentColor' : 'none'} /> {active.like_count}</button>
           <button type="button" className="nl-story-action" disabled={reposting || active.reposted_by_me} onClick={() => void repost()}><Repeat2 className="w-4 h-4" /> {active.reposted_by_me ? 'Reposted' : 'Repost'}</button>
+          {active.user_id === user.id && <button type="button" className="nl-story-action" onClick={() => { setHighlightFor(active.id); setActive(null); }}><Sparkles className="w-4 h-4" /> Highlight</button>}
         </div>
       </div>
     </div>}

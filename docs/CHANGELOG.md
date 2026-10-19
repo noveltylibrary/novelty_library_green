@@ -3,6 +3,34 @@
 All version notes in one place, newest first. (Per-version files were merged here in v1.136.)
 
 
+# v1.163
+- Story Highlights (Instagram-style, max 7 per reader, up to 30 photos each) under the followers bar on public profiles. Owners get a New button, "From archive" picker (own stories from the last 30 days, live ones included), add/remove photos and delete in the highlight viewer, and a Highlight button on their own story on Home. Highlights are public; photos are copied into a separate public `highlights` bucket so they outlive the purge.
+- Stories are deleted after 30 days. The notice is shown in the story composer, profile story card, the archive picker, Terms and Privacy.
+- **Needs SQL + a function** (`sql/NL_SQL_162_highlights.sql`, `supabase/functions/purge-stories`). Until the SQL is run, the Highlights row stays hidden for visitors and the New/archive actions will show an error.
+- Not yet: video stories (needs the `stories` bucket opened to video and the 90 s cap).
+
+# v1.162
+- Profile page redone. Public profile now has an Instagram-style three-tab strip: Reading (Currently reading, Up Next, Someday), Questions (the answers that don't fit on the card) and Published (reviews capped at three with Show more). Above the published reviews a summary tank shows reviews published, average R/W rating, most read genres, most reviewed language and average read time (published reviews only). Same summary and cap on your own page.
+- A blue Followers | Following table now sits just above the profile card (respects each list's privacy). Tapping it opens one popup with both lists as two columns; it opens on the one you tapped and every row has a blue Follow/Unfollow button. Your own page keeps the "who can see this list" setting inside that popup.
+- All Follow buttons are blue. Author pages now have a Follow button too (stored in this browser only; authors are not accounts, so no database change).
+- Own profile: the section tiles are now behind one "Edit profile" tab that drops down when clicked.
+- No SQL.
+
+# v1.161
+- WebApp Pages Moderation tabs reorganised so each tab is one thing: Policy Editor (Privacy, Terms, Cookies, Cookie banner), Review Guide, About, Announcements, Roadmap, Submit Freeze, Profile Page. `#/admin/pages/guide` and `#/admin/pages/about` open the new tabs.
+
+# v1.160
+- WebApp Pages Moderation now holds Announcements and Roadmap (moved out of Control Settings; old `#/admin/announcements` and `#/admin/roadmap` links still open them there).
+- New Submit Freeze (Pages Moderation): admins freeze the Submit page with a reason and a note. Readers still see every question but the form, Quick Search, Save Draft and Reserve are read-only, a banner shows on top and a popup shows the note once per visit. Admins can still use the form. Stored in `editable_pages` (no SQL). Note: this locks the page in the browser; it is not enforced on the database.
+- Control Settings: new Taste Match tab explaining what the feature does, plus a Settings lab that runs the real matching engine on the published reviews with adjustable settings (field weights, text, concept tags, TF/IDF modes, minimum similarity), shows the query's weighted words, each review's top contributing words and how it moves against the live ranking. The lab is a sandbox: the live site is unchanged. The engine now takes a settings object internally; with default settings it produces exactly the same results as 1.159 (checked on 50 published reviews).
+
+# v1.159
+- Review page final order: review text, tags, More like this, Read next (any future taste-match blocks go here too), ad slot, note about R/W and NL, reader reviews with Rate & Review, comments.
+
+# v1.158
+- Review page order: review text and tags, ad, the note about R/W and NL ratings, then "Reader reviews" with Rate & Review, then the comments, then More like this and Read next.
+- An ad slot after every third reader review and after every third comment (never after the last one).
+
 # v1.157
 - Share card layout rebuilt: one column with equal gaps and identical left/right edges; logo and "Novelty Library" always on one line (name in the site's serif); excerpt capped at 4 lines; scores read "Reviewer score 9.0 / 10" and "readers" for the NL score. Popup tightened (narrower, smaller heading and buttons).
 - Share card covers: more address forms tried for Google Drive / Blogger images. Covers stored in Supabase are embedded normally.

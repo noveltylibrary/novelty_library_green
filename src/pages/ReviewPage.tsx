@@ -345,20 +345,10 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
               </div>
             )}
 
-            {/* Reader reviews (likes / ratings / reviews on this post) */}
-            <section className="mt-10 pt-6" style={{ borderTop: '1px solid var(--color-border)' }}>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <h2 className="font-serif text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Reader reviews ({feedback.length})</h2>
-                <button type="button" onClick={openModal} className="btn-primary text-sm" style={{ padding: '8px 18px' }}>{myFeedback ? 'Edit yours' : 'Rate & Review'}</button>
-              </div>
-              <FeedbackList entries={feedback} currentUserId={user?.id} user={user} profile={profile} navigate={navigate} onEdit={openModal} onDelete={() => void removeFeedback()} />
-            </section>
-
+            {/* Discovery blocks sit above the ad, so the page ends: ad, ratings note, reader reviews, comments. */}
             <SimilarReviews current={review} navigate={navigate} />
 
             <ReadNext current={review} navigate={navigate} />
-
-            <ReviewComments reviewId={review.id} navigate={navigate} />
 
             <AdSenseAdSlot className="mt-8 mb-8" />
 
@@ -368,6 +358,18 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
                 The R/W Rating reflects the specific reviewer's opinion. The NL Rating is the cumulative average of all ratings submitted by Novelty Library readers on this community review post. A book's impression varies from reader to reader. For a broader platform perspective, refer to the Goodreads rating.
               </p>
             </div>
+
+            {/* Rate & review, then the readers' comments (kept together, right after the note about ratings) */}
+            <section className="mt-10 pt-6" style={{ borderTop: '1px solid var(--color-border)' }}>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <h2 className="font-serif text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Reader reviews ({feedback.length})</h2>
+                <button type="button" onClick={openModal} className="btn-primary text-sm" style={{ padding: '8px 18px' }}>{myFeedback ? 'Edit yours' : 'Rate & Review'}</button>
+              </div>
+              <FeedbackList entries={feedback} currentUserId={user?.id} user={user} profile={profile} navigate={navigate} onEdit={openModal} onDelete={() => void removeFeedback()} />
+            </section>
+
+            <ReviewComments reviewId={review.id} navigate={navigate} />
+
           </div>
         </div>
       </div>

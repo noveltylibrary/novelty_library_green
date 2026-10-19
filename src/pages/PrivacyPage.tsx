@@ -49,7 +49,7 @@ export function PrivacyPage({ navigate }: PrivacyPageProps) {
                 address, display name, and Instagram handle via our authentication system. These details are collected
                 solely for account verification, spam prevention, and reviewer attribution. If you build a reader
                 profile, we also store what you choose to add: profile and header pictures, answers to profile questions,
-                your Currently Reading book (with an optional cover image), and your Up Next and Someday reading lists.
+                your Currently Reading book (with an optional cover image), and your Up Next and Someday reading lists. Stories you post are shown to your followers for 24 hours and are deleted after 30 days. Photos you add to a profile Highlight are copied and kept, publicly visible on your profile, until you remove them or delete your account.
               </p>
             </section>
 

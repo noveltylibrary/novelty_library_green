@@ -1,18 +1,16 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, UserCog, Trash2, AlertCircle, Shield, ListChecks, Bell, Megaphone, Route } from 'lucide-react';
+import { ArrowLeft, UserCog, Trash2, AlertCircle, Shield, ListChecks, Bell, Wand2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { AdminNotifyPanel } from '@/components/AdminNotifyPanel';
-import { AdminAnnouncementsPanel } from '@/components/AdminAnnouncementsPanel';
-import { AdminRoadmapPanel } from '@/components/AdminRoadmapPanel';
+import { AdminTasteMatchPanel } from '@/components/AdminTasteMatchPanel';
 import { fetchSupportEmail, updateSupportEmail } from '@/lib/siteSettings';
 
-type AdminTab = 'control' | 'notifications' | 'announcements' | 'roadmap';
+type AdminTab = 'control' | 'notifications' | 'taste';
 const TABS: { key: AdminTab; label: string; path: string; Icon: typeof Shield }[] = [
   { key: 'control', label: 'Control', path: '/admin/admins', Icon: ListChecks },
   { key: 'notifications', label: 'Notifications', path: '/admin/notifications', Icon: Bell },
-  { key: 'announcements', label: 'Announcements', path: '/admin/announcements', Icon: Megaphone },
-  { key: 'roadmap', label: 'Roadmap', path: '/admin/roadmap', Icon: Route },
+  { key: 'taste', label: 'Taste Match', path: '/admin/taste', Icon: Wand2 },
 ];
 
 interface AdminManageAdminsPageProps {
@@ -122,7 +120,7 @@ export function AdminManageAdminsPage({ navigate, tab = 'control' }: AdminManage
           <h1 className="font-serif text-3xl font-semibold tracking-tight" style={{ color: 'var(--color-text)' }}>Control Settings</h1>
         </div>
         <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
-          Control admin access and contacts, notify your readers, publish announcements, and edit the roadmap.
+          Control admin access and contacts, notify your readers, and see how Taste Match works. Announcements, the roadmap and the Submit freeze live in WebApp Pages Moderation.
         </p>
         <div className="mt-5 inline-flex flex-wrap items-center gap-1 rounded-xl p-1" role="tablist" aria-label="Control Settings sections" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
           {TABS.map(({ key, label, path, Icon }) => (
@@ -185,8 +183,7 @@ export function AdminManageAdminsPage({ navigate, tab = 'control' }: AdminManage
       </div>}
 
       {tab === 'notifications' && <AdminNotifyPanel />}
-      {tab === 'announcements' && <AdminAnnouncementsPanel />}
-      {tab === 'roadmap' && <AdminRoadmapPanel />}
+      {tab === 'taste' && <AdminTasteMatchPanel />}
     </div>
   );
 }

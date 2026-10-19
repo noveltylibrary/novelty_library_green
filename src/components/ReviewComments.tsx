@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { AdSenseAdSlot } from '@/components/AdSenseAdSlot';
 import { Loader2, MessageCircle, Send, Trash2, Heart, CornerDownRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { addReviewComment, deleteReviewComment, fetchReviewComments, toggleCommentLike, type ReviewComment } from '@/lib/communityComments';
@@ -85,6 +86,6 @@ export function ReviewComments({ reviewId, navigate }: Props) {
       <div className="flex items-center justify-between gap-3 mt-2"><span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{text.length}/800</span><button disabled={!user || !text.trim() || saving} className="btn-primary text-sm disabled:opacity-40">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} {user ? (replyTo ? 'Post reply' : 'Post comment') : 'Sign in to comment'}</button></div>
       {error && <p className="text-xs mt-2" style={{ color: '#ef4444' }}>{error}</p>}
     </form>
-    {loading ? <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--color-cyan-dark)' }} /> : roots.length === 0 ? <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>No comments yet. Start the conversation.</p> : <div className="space-y-3">{roots.map((comment) => renderComment(comment))}</div>}
+    {loading ? <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--color-cyan-dark)' }} /> : roots.length === 0 ? <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>No comments yet. Start the conversation.</p> : <div className="space-y-3">{roots.map((comment, i) => <Fragment key={comment.id}>{renderComment(comment)}{(i + 1) % 3 === 0 && i < roots.length - 1 && <AdSenseAdSlot className="my-3" />}</Fragment>)}</div>}
   </section>;
 }

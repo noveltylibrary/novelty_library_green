@@ -130,7 +130,7 @@ function AppContent() {
         {route.name === 'admin-admins' && <AdminManageAdminsPage navigate={navigate} tab={route.tab} />}
         {route.name === 'admin-users' && <AdminUsersPage navigate={navigate} />}
         {route.name === 'admin-finances' && <AdminFinancesPage navigate={navigate} />}
-        {route.name === 'admin-pages' && <AdminPagesModerationPage navigate={navigate} />}
+        {route.name === 'admin-pages' && <AdminPagesModerationPage navigate={navigate} view={route.view} />}
         {route.name === 'profile' && (route.username ? <PublicProfilePage username={route.username} navigate={navigate} /> : <ProfilePage navigate={navigate} />)}
         {route.name === 'account' && <AccountPage navigate={navigate} />}
         {route.name === 'notifications' && <NotificationsPage navigate={navigate} />}

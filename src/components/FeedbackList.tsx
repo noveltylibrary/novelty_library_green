@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { AdSenseAdSlot } from '@/components/AdSenseAdSlot';
 import { CornerDownRight, Loader2, MessageCircle, Pencil, Send, Star, Trash2 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { formatShortDate } from '@/lib/format';
@@ -92,14 +93,15 @@ export function FeedbackList({ entries, currentUserId, user = null, profile = nu
 
   return (
     <ul className="space-y-3">
-      {entries.map((e) => {
+      {entries.map((e, idx) => {
         const mine = e.user_id === currentUserId;
         const thread = byFeedback.get(e.id) ?? [];
         const roots = thread.filter((r) => !r.parent_id);
         const expanded = open.has(e.id);
         const composing = composer?.feedbackId === e.id;
         return (
-          <li key={e.id} className="surface-card p-4">
+          <Fragment key={e.id}>
+          <li className="surface-card p-4">
             <div className="flex items-center gap-3 mb-2">
               <UserAvatar name={e.user_name} url={avatars[e.user_id]} size={32} />
               <div className="min-w-0 flex-1">
@@ -153,6 +155,9 @@ export function FeedbackList({ entries, currentUserId, user = null, profile = nu
               </div>
             )}
           </li>
+          {/* An ad after every third reader review (never after the last one). */}
+          {(idx + 1) % 3 === 0 && idx < entries.length - 1 && <li className="list-none"><AdSenseAdSlot className="my-3" /></li>}
+          </Fragment>
         );
       })}
     </ul>
