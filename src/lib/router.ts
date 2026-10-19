@@ -5,6 +5,7 @@ export type Route =
   | { name: 'reviews' }
   | { name: 'analytics' }
   | { name: 'live-rankings' }
+  | { name: 'taste-match' }
   | { name: 'review'; slug: string }
   | { name: 'blog-review'; id: string }
   | { name: 'submit' }
@@ -37,6 +38,8 @@ function parseHash(): Route {
   // selects the app route; the trailing fragment is an action handled by the page.
   const routeHash = hash.split('#')[0];
   const parts = routeHash.split('/');
+  // Backwards compatibility for the former embedded Taste Match anchor.
+  if (parts[0] === 'live-rankings' && hash.includes('#taste')) return { name: 'taste-match' };
   if (parts[0] === 'review' && parts[1]) return { name: 'review', slug: decodeURIComponent(parts[1]) };
   if (parts[0] === 'blog-review' && parts[1]) return { name: 'blog-review', id: decodeURIComponent(parts.slice(1).join('/')) };
   if (parts[0] === 'submit') return { name: 'submit' };
@@ -73,6 +76,7 @@ function parseHash(): Route {
   if (parts[0] === 'notifications') return { name: 'notifications' };
   if (parts[0] === 'reviews') return { name: 'reviews' };
   if (parts[0] === 'analytics') return { name: 'analytics' };
+  if (parts[0] === 'taste-match' || parts[0] === 'taste') return { name: 'taste-match' };
   if (parts[0] === 'live-rankings' || parts[0] === 'love-rankings' || parts[0] === 'rankings') return { name: 'live-rankings' };
   if (parts[0] === 'author' && parts[1]) return { name: 'author', author: decodeURIComponent(parts.slice(1).join('/')) };
   if (parts[0] === 'saved') return { name: 'saved' };

@@ -56,7 +56,7 @@ export const BUILTIN_KEYS: BuiltinKey[] = ['rankings', 'taste'];
 export const BUILTIN_LABEL: Record<BuiltinKey, string> = { rankings: 'Live Rankings', taste: 'Taste Match' };
 export const DEFAULT_BUILTINS: Record<BuiltinKey, BuiltinPoster> = {
   rankings: { enabled: true, title: 'Live Rankings', caption: 'Ranked by readers. Search by genre, language, traits or author.', link: '/live-rankings', badge: 'LIVE', from: '', until: '' },
-  taste: { enabled: true, title: 'Taste Match', caption: 'Tell us your mood and we will match you to your next read.', link: '/live-rankings#taste', badge: 'NEWS', from: '', until: '' },
+  taste: { enabled: true, title: 'Taste Match', caption: 'Tell us your mood and we will match you to your next read.', link: '/taste-match', badge: 'NEWS', from: '', until: '' },
 };
 export const isBuiltinActive = (b: BuiltinPoster, now = new Date()): boolean => b.enabled && isWithinDates(b.from, b.until, now);
 
@@ -111,7 +111,11 @@ function normalizeBuiltins(src: Partial<AnnouncementsConfig> & { rankingsPoster?
       enabled: b.enabled !== false,
       title: typeof b.title === 'string' ? b.title.slice(0, 90) : d.title,
       caption: typeof b.caption === 'string' ? b.caption.slice(0, 160) : d.caption,
-      link: typeof b.link === 'string' ? cleanPosterLink(b.link) : d.link,
+      link: (() => {
+        const configured = typeof b.link === 'string' ? cleanPosterLink(b.link) : d.link;
+        // Move previously saved Taste Match posters from the embedded anchor to the new route.
+        return key === 'taste' && (configured === '/live-rankings#taste' || configured === 'live-rankings#taste') ? '/taste-match' : configured;
+      })(),
       badge: b.badge === undefined ? d.badge : cleanBadge(b.badge),
       from: cleanDate(b.from),
       until: cleanDate(b.until),

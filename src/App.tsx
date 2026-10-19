@@ -32,6 +32,7 @@ import { AccountPage } from '@/pages/AccountPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { LiveRankingsPage } from '@/pages/LiveRankingsPage';
+import { TasteMatchPage } from '@/pages/TasteMatchPage';
 import { AuthorPage } from '@/pages/AuthorPage';
 import { GenrePage } from '@/pages/GenrePage';
 import { SavedPage } from '@/pages/SavedPage';
@@ -113,6 +114,7 @@ function AppContent() {
         {route.name === 'reviews' && <ReviewsPage navigate={navigate} />}
         {route.name === 'analytics' && <AnalyticsPage navigate={navigate} />}
         {route.name === 'live-rankings' && <LiveRankingsPage navigate={navigate} />}
+        {route.name === 'taste-match' && <TasteMatchPage navigate={navigate} />}
         {route.name === 'review' && <ReviewPage slug={route.slug} navigate={navigate} />}
         {route.name === 'blog-review' && <BlogReviewPage id={route.id} navigate={navigate} />}
         {route.name === 'submit' && <SubmitPage navigate={navigate} />}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
-import { ChevronLeft, ChevronRight, Search, Sparkles, Trophy, Wand2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Sparkles, Trophy } from 'lucide-react';
+import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import { BUILTIN_KEYS, fetchAnnouncements, isBuiltinActive, isPosterLive, peekAnnouncements, type AnnouncementsConfig, type BuiltinKey, type Poster } from '@/lib/announcements';
 
 const BUILTIN_PREFIX = 'builtin-';
@@ -100,7 +101,7 @@ export function FeaturedPosters({ navigate, config }: FeaturedPostersProps) {
                         <span className="nl-tm-pick"><em>1</em><u /><span><b>Your best match</b><s style={{ width: '88%' }} /></span><strong>94%</strong></span>
                         <span className="nl-tm-pick"><em>2</em><u /><span><b>Also a great fit</b><s style={{ width: '71%' }} /></span><strong>81%</strong></span>
                       </span>
-                      <span className="nl-lr-orbit"><Wand2 /></span>
+                      <span className="nl-lr-orbit"><TasteMatchIcon size={30} /></span>
                     </span>
                   ) : ((
                     <span className="nl-feat-art" aria-hidden="true">

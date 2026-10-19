@@ -1,3 +1,13 @@
+# Taste Match — standalone TMAI-40 page
+
+- Added the dedicated `#/taste-match` destination, backed by the same published review catalog and NL-rating calculation used by Live Rankings.
+- Added an Open Taste Match CTA to Live Rankings and replaced the Home shortcut formerly labeled About with Taste Match; About remains available in the main navigation. Taste Match now appears among the first four Home shortcuts.
+- Introduced a distinctive reusable SVG identity combining a thinking brain, search lens and golden insight spark. Reused across the Home shortcut, Live Rankings CTA, Taste Match page, panel and featured Taste Match poster.
+- Redirected built-in Taste Match posters to the new route and migrated the legacy `/live-rankings#taste` link.
+- The recommendation model still uses the catalog evidence available in published reviews; unavailable metric metadata is not fabricated.
+
+---
+
 # Novelty Library — Changelog
 
 All version notes in one place, newest first. (Per-version files were merged here in v1.136.)

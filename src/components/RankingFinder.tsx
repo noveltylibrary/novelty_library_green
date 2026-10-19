@@ -1,5 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { BookOpen, ChevronDown, Dices, Search, Sparkles, Wand2, X } from 'lucide-react';
+import { BookOpen, ChevronDown, Dices, Search, Sparkles, X } from 'lucide-react';
+import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import type { Review } from '@/types/review';
 import { VERDICTS, normalizeVerdict, type Verdict } from '@/lib/verdict';
 import { getTmaiMetricReadiness, rankTmai40 } from '@/lib/tmai40Engine';
@@ -175,7 +176,7 @@ export function RankingSearch({ books, openBook }: CommonProps) {
 }
 
 /** Taste match: pick moods (and optionally a book you loved) and get three picks with a reason. */
-export function TasteMatchPanel({ books, openBook }: CommonProps & { goRoadmap?: () => void }) {
+export function TasteMatchPanel({ books, openBook }: CommonProps) {
   const [description, setDescription] = useState('');
   const deferredDescription = useDeferredValue(description);
   const [moods, setMoods] = useState<string[]>([]);
@@ -183,7 +184,7 @@ export function TasteMatchPanel({ books, openBook }: CommonProps & { goRoadmap?:
   const [language, setLanguage] = useState('');
   const [verdicts, setVerdicts] = useState<Verdict[]>([]);
 
-  // The Home "Taste Match" poster links to #/live-rankings#taste.
+  // Legacy #/live-rankings#taste links now route here; scroll past the page header to the matcher.
   useEffect(() => {
     if (!window.location.hash.endsWith('#taste')) return;
     const id = window.setTimeout(() => document.getElementById('nl-taste')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
@@ -220,7 +221,7 @@ export function TasteMatchPanel({ books, openBook }: CommonProps & { goRoadmap?:
   return (
     <section id="nl-taste" className="nl-find nl-taste" aria-labelledby="nl-taste-title">
       <header className="nl-find-head">
-        <span className="nl-find-icon nl-taste-icon"><Wand2 size={18} aria-hidden="true" /></span>
+        <span className="nl-find-icon nl-taste-icon"><TasteMatchIcon size={30} /></span>
         <div>
           <span className="nl-live-kicker">TASTE MATCH · TMAI-40 ENGINE</span>
           <h2 id="nl-taste-title">Find a read that matches your taste</h2>
