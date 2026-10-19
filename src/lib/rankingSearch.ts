@@ -25,6 +25,13 @@ export interface SearchBook {
   text: string;
   nl: number | null;
   rw: number;
+  /** Optional structured metrics from a future catalog integration; numeric values are normalized to 0..1. */
+  metricValues?: Record<string, string | number | null | undefined>;
+  translatedIn?: string | null;
+  seriesName?: string | null;
+  seriesNumber?: number | null;
+  goodreadsRating?: number | null;
+  amazonRating?: number | null;
 }
 
 export interface Match<T = SearchBook> {

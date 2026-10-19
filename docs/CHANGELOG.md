@@ -3,6 +3,13 @@
 All version notes in one place, newest first. (Per-version files were merged here in v1.136.)
 
 
+# v1.168b
+- Live Rankings Taste Match now calls the browser-native TMAI-40 engine: free-text taste description, moods, loved-book similarity, language and reviewer-verdict filters feed the recommendation ranking.
+- Added the 40-metric registry, weighted TF-IDF-style text retrieval, metric-level match explanations, optional structured `metricValues` for future catalog metadata, and honest coverage reporting for missing fields.
+- Existing NL Rating and R/W star leaderboards remain unchanged. No SQL or environment-variable changes required.
+- Metrics that lack catalog evidence are skipped; text-derived numeric values are heuristics, not calibrated predictions. Dedicated regional, sales, author-popularity, PQI and narrative-probe data still need to be supplied before those dimensions can be scored.
+- Footer/Admin version label and `package.json` bumped to v1.168b / `1.168.0-b`.
+
 # v1.167b
 - Build fix, no feature changes. The previous GitHub upload was missing 59 files (the rest of `src/lib` after `moderation.ts`, all of `src/pages`, and `src/types/review.ts`), so Vercel failed with `Could not resolve "./lib/pwa"`. This package contains the complete project. Upload it with git (push or GitHub Desktop) rather than the browser drag-and-drop, which stops at 100 files.
 - Footer and Admin dashboard now show v1.167b. `package.json` carries it as `1.167.0-b` because npm needs a valid semver string.

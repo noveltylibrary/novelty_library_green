@@ -2,8 +2,9 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { BookOpen, ChevronDown, Dices, Search, Sparkles, Wand2, X } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { VERDICTS, normalizeVerdict, type Verdict } from '@/lib/verdict';
+import { getTmaiMetricReadiness, rankTmai40 } from '@/lib/tmai40Engine';
 import {
-  FIELD_LABELS, FIELD_PLACEHOLDERS, MOODS, cleanTraits, norm, popularValues, didYouMean, nearestBooks, runSearch, tasteMatch,
+  FIELD_LABELS, FIELD_PLACEHOLDERS, MOODS, cleanTraits, norm, popularValues, didYouMean, nearestBooks, runSearch,
   type Match, type SearchBook, type SearchField,
 } from '@/lib/rankingSearch';
 
@@ -22,6 +23,11 @@ export function toSearchBook(item: FinderBook): SearchBook {
     text: (r.review_text || '').slice(0, 4000),
     nl: item.nlRating,
     rw: Number.isFinite(r.rw_rating) ? r.rw_rating : 0,
+    translatedIn: r.translated_from || null,
+    seriesName: r.series_name || null,
+    seriesNumber: r.series_number ?? null,
+    goodreadsRating: r.goodreads_rating ?? null,
+    amazonRating: r.amazon_rating ?? null,
   };
 }
 
@@ -170,6 +176,8 @@ export function RankingSearch({ books, openBook }: CommonProps) {
 
 /** Taste match: pick moods (and optionally a book you loved) and get three picks with a reason. */
 export function TasteMatchPanel({ books, openBook }: CommonProps & { goRoadmap?: () => void }) {
+  const [description, setDescription] = useState('');
+  const deferredDescription = useDeferredValue(description);
   const [moods, setMoods] = useState<string[]>([]);
   const [lovedId, setLovedId] = useState('');
   const [language, setLanguage] = useState('');
@@ -186,8 +194,9 @@ export function TasteMatchPanel({ books, openBook }: CommonProps & { goRoadmap?:
   const byId = useMemo(() => new Map(books.map((b) => [b.review.id, b])), [books]);
   const languages = useMemo(() => popularValues(searchBooks, 'language', 12), [searchBooks]);
   const titles = useMemo(() => [...searchBooks].sort((a, b) => a.title.localeCompare(b.title)), [searchBooks]);
-  const picks = useMemo(() => tasteMatch(searchBooks, { moods, lovedId, language, verdicts }, 3), [searchBooks, moods, lovedId, language, verdicts]);
-  const active = moods.length > 0 || !!lovedId || verdicts.length > 0;
+  const picks = useMemo(() => rankTmai40(searchBooks, { description: deferredDescription, moods, lovedId, language, verdicts }, 3), [searchBooks, deferredDescription, moods, lovedId, language, verdicts]);
+  const metricReadiness = useMemo(() => getTmaiMetricReadiness(searchBooks), [searchBooks]);
+  const active = !!description.trim() || moods.length > 0 || !!lovedId || !!language || verdicts.length > 0;
   const verdictCounts = useMemo(() => {
     const c: Record<Verdict, number> = { perfection: 0, go_for_it: 0, timepass: 0 };
     searchBooks.forEach((b) => { const v = normalizeVerdict(b.verdict); if (v) c[v] += 1; });
@@ -195,7 +204,7 @@ export function TasteMatchPanel({ books, openBook }: CommonProps & { goRoadmap?:
   }, [searchBooks]);
   /** Random pick: from the current matches when something is chosen, else from the strongest verdicts. */
   const surprise = () => {
-    let pool = active ? tasteMatch(searchBooks, { moods, lovedId, language, verdicts }, 12).map((m) => m.book) : [];
+    let pool = active ? rankTmai40(searchBooks, { description, moods, lovedId, language, verdicts }, 12).map((m) => m.book) : [];
     if (!pool.length) {
       pool = searchBooks.filter((b) => { const v = normalizeVerdict(b.verdict); return (v === 'perfection' || v === 'go_for_it') && (!language || b.language === language); });
     }
@@ -213,11 +222,16 @@ export function TasteMatchPanel({ books, openBook }: CommonProps & { goRoadmap?:
       <header className="nl-find-head">
         <span className="nl-find-icon nl-taste-icon"><Wand2 size={18} aria-hidden="true" /></span>
         <div>
-          <span className="nl-live-kicker">TASTE MATCH</span>
-          <h2 id="nl-taste-title">Tonight, you want something…</h2>
-          <p>Pick up to three moods. Add a book you loved if you like, and we'll suggest three reads with the reason each one fits.</p>
+          <span className="nl-live-kicker">TASTE MATCH · TMAI-40 ENGINE</span>
+          <h2 id="nl-taste-title">Find a read that matches your taste</h2>
+          <p>Describe the book you want, choose up to three moods, or add a book you loved. The 40-metric engine ranks the published library using the evidence currently available.</p>
         </div>
       </header>
+
+      <label className="nl-find-field nl-find-wide nl-taste-description">
+        <span>Describe your ideal read <em>· natural language</em></span>
+        <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} maxLength={500} placeholder="e.g. A dense, haunting psychological thriller with philosophical ideas, political twists and an unsettling atmosphere" />
+      </label>
 
       <div className="nl-taste-moods" role="group" aria-label="Moods">
         {MOODS.map((m) => (
@@ -264,7 +278,7 @@ export function TasteMatchPanel({ books, openBook }: CommonProps & { goRoadmap?:
       </div>
 
       <div className="nl-find-results" aria-live="polite">
-        {!active && <p className="nl-find-hint">Choose a mood or a verdict to see your picks.</p>}
+        {!active && <p className="nl-find-hint">Describe your ideal read, choose a mood, pick a book you loved, or filter by language or verdict to see your matches.</p>}
         {active && picks.length === 0 && <p className="nl-find-hint">Nothing fits that mix yet. Try another mood, or remove the language or verdict filter.</p>}
         {picks.length > 0 && (
           <ul className="nl-find-list">
@@ -283,6 +297,7 @@ export function TasteMatchPanel({ books, openBook }: CommonProps & { goRoadmap?:
                           <strong>{item.review.title}</strong>
                           <small>{item.review.author || 'Author unavailable'}</small>
                           <span className="nl-taste-why"><Sparkles size={13} aria-hidden="true" /> {m.score > 0 && <><b className="nl-find-pct">{Math.round(m.score)}% match</b> · </>}<b>{m.score > 0 ? 'Why it fits you:' : 'Why it is here:'}</b> {m.reasons.join(' · ')}</span>
+                          {m.metricMatches.length > 0 && <span className="nl-taste-metric-signals">Metric signals: {m.metricMatches.slice(0, 3).map((metric) => metric.label).join(' · ')}</span>}
                         </span>
                       </button>
                       <span className="nl-find-score"><b>{item.nlRating == null ? '—' : item.nlRating.toFixed(1)}</b><small>NL</small></span>
@@ -294,7 +309,7 @@ export function TasteMatchPanel({ books, openBook }: CommonProps & { goRoadmap?:
           </ul>
         )}
       </div>
-      <p className="nl-taste-note">Picks are matched on genre, traits, verdict, ratings and what each review says. Reviews published before verdicts were added are left out while a verdict is chosen.</p>
+      <p className="nl-taste-note">TMAI evaluates all 40 metric definitions, but the current public review catalog does not store structured values for every dimension. {metricReadiness.withCatalogSupport} of {metricReadiness.total} metrics currently have some catalog/text evidence; {metricReadiness.metadataOnly} require dedicated metadata before they can be scored. Unsupported signals are skipped rather than invented. Match scores are relative rankings, not probabilities. Reviews without a verdict are excluded when a verdict filter is selected.</p>
     </section>
   );
 }

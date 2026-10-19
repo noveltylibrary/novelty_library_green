@@ -267,6 +267,7 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
               <RankingSection id="rw-rankings" kicker="REVIEWER SCORE · STAR VIEW" title="Top 5 · R/W Rating" description="Highest R/W ratings first, shown with the familiar star score." books={byRw} metric="rw" navigate={navigate} icon="trophy" />
             </div>
             <RankingSearch books={books} openBook={(review) => navigate(`/review/${encodeURIComponent(bookSlug(review))}`)} />
+            {/* TMAI-40 runs inside this panel over the already-loaded published reviews. */}
             <TasteMatchPanel books={books} openBook={(review) => navigate(`/review/${encodeURIComponent(bookSlug(review))}`)} goRoadmap={() => navigate('/about#roadmap')} />
           </div>
         )}
