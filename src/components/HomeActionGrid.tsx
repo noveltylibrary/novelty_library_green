@@ -4,9 +4,11 @@ import type { ComponentType } from 'react';
 import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import { BLOG_URL } from '@/lib/links';
 
-type CardProps = { icon: ComponentType<{ className?: string }>; title: string } & ({ onClick: () => void; href?: undefined } | { href: string; onClick?: undefined });
+type AnimationKey = 'book' | 'write' | 'beat' | 'rise' | 'flip' | 'none';
+type CardProps = { icon: ComponentType<{ className?: string }>; title: string; animation: AnimationKey } & ({ onClick: () => void; href?: undefined } | { href: string; onClick?: undefined });
 
-function NavCard({ icon: Icon, title, onClick, href }: CardProps) {
+function NavCard({ icon: Icon, title, animation, onClick, href }: CardProps) {
+  const cardClassName = `home-nav-card group home-nav-card--${animation}`;
   const inner = (
     <>
       <span className="home-nav-icon" aria-hidden="true"><Icon /></span>
@@ -14,9 +16,9 @@ function NavCard({ icon: Icon, title, onClick, href }: CardProps) {
     </>
   );
   if (href) {
-    return <a href={href} target="_blank" rel="noopener noreferrer" className="home-nav-card group" aria-label={`${title} (opens in a new tab)`}>{inner}</a>;
+    return <a href={href} target="_blank" rel="noopener noreferrer" className={cardClassName} aria-label={`${title} (opens in a new tab)`}>{inner}</a>;
   }
-  return <button type="button" onClick={onClick} className="home-nav-card group" aria-label={title}>{inner}</button>;
+  return <button type="button" onClick={onClick} className={cardClassName} aria-label={title}>{inner}</button>;
 }
 
 /**
@@ -50,12 +52,12 @@ export function HomeActionGrid({ navigate }: { navigate: (path: string) => void 
   return (
     <div className="home-action-wrap" data-at-start={atStart} data-at-end={atEnd}>
       <section ref={scroller} onScroll={sync} className="home-action-grid" aria-label="Main sections">
-        <NavCard icon={BookOpen} title="Reviews" onClick={() => navigate('/reviews')} />
-        <NavCard icon={Trophy} title="Rankings" onClick={() => navigate('/live-rankings')} />
-        <NavCard icon={TasteMatchIcon} title="Taste Match" onClick={() => navigate('/taste-match')} />
-        <NavCard icon={PenTool} title="Submit" onClick={() => navigate('/submit')} />
-        <NavCard icon={BarChart3} title="Analytics" onClick={() => navigate('/analytics')} />
-        <NavCard icon={Newspaper} title="Blog" href={BLOG_URL} />
+        <NavCard animation="book" icon={BookOpen} title="Reviews" onClick={() => navigate('/reviews')} />
+        <NavCard animation="write" icon={Trophy} title="Rankings" onClick={() => navigate('/live-rankings')} />
+        <NavCard animation="flip" icon={TasteMatchIcon} title="Taste Match" onClick={() => navigate('/taste-match')} />
+        <NavCard animation="beat" icon={PenTool} title="Submit" onClick={() => navigate('/submit')} />
+        <NavCard animation="rise" icon={BarChart3} title="Analytics" onClick={() => navigate('/analytics')} />
+        <NavCard animation="none" icon={Newspaper} title="Blog" href={BLOG_URL} />
       </section>
       <div className="home-action-pager">
         <button type="button" className="home-action-arrow" onClick={() => go(-1)} disabled={atStart} aria-label="Show previous shortcuts"><ChevronLeft aria-hidden="true" /></button>
