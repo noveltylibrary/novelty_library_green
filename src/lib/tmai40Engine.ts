@@ -333,12 +333,12 @@ export function rankTmai40(books: SearchBook[], input: Tmai40Input, limit = 3): 
     if (hasQuery && combined < 0.015) return;
     metricMatches.sort((a, b) => (b.score * b.weight) - (a.score * a.weight));
     const reasons: string[] = [];
-    if (textScores[index] >= 0.04) reasons.push('Description/review-text similarity');
-    metricMatches.filter((metric) => metric.score >= 0.25).slice(0, 3).forEach((metric) => reasons.push(metric.label));
+    if (textScores[index] >= 0.04) reasons.push('Echoes your words');
+    if (metricMatches.some((metric) => metric.score >= 0.25)) reasons.push('Shares the story feel');
     if (language) reasons.push(`Language: ${book.language}`);
     if (verdicts.length) reasons.push(`Verdict: ${book.verdict}`);
-    if (!reasons.length && !hasQuery && !metricWeight) reasons.push('Highest available reader/reviewer ratings');
-    if (!reasons.length) reasons.push('Closest available match in the current catalog');
+    if (!reasons.length && !hasQuery && !metricWeight) reasons.push('Loved by readers');
+    if (!reasons.length) reasons.push('Closest fit on the shelf');
 
     output.push({
       book,

@@ -3,9 +3,11 @@ import { Download, Instagram, Linkedin, Link2, BookOpen, RotateCcw, ChevronDown,
 import { toCanvas, toPng } from 'html-to-image';
 import type { ProfileQuestion } from '@/lib/profileQuestions';
 import { NlLogo } from '@/components/NlLogo';
+import { NameBlock } from '@/components/NameBlock';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
 import { normalizePosterUrl } from '@/lib/posterUrl';
 import { answerImageUrls, answerText, decodeOtherAnswer } from '@/components/ProfileQuestionAnswer';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 export type ProfileCardData = {
   name: string | null;
@@ -103,11 +105,6 @@ const FIT_STEPS = (() => {
 export function cleanInstagram(value: string | null | undefined): string {
   return (value || '').trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/^(www\.)?instagram\.com\//i, '').split(/[/?#]/)[0].replace(/^@+/, '').slice(0, 30);
 }
-/** Name size steps down with length so long names stay readable and never run off the card. */
-function nameScale(name: string): number {
-  const n = name.trim().length;
-  return n <= 9 ? 1 : n <= 14 ? 0.82 : n <= 20 ? 0.66 : n <= 28 ? 0.54 : 0.46;
-}
 function normalizeUrl(value: string) { return safeExternalUrl(value) || '#'; }
 function platformLabel(platform: string) { return platform === 'x' ? 'X' : platform.charAt(0).toUpperCase() + platform.slice(1); }
 function platformIcon(platform: string, size: number) {
@@ -134,6 +131,7 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
   const [publicSaved, setPublicSaved] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  useOverlayHistory(downloadMenuOpen && download, () => setDownloadMenuOpen(false));
   const [exportType, setExportType] = useState<'png' | 'pdf' | 'video'>('png');
   const [boxWidth, setBoxWidth] = useState(0);
   const [inView, setInView] = useState(false);
@@ -755,7 +753,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
       </div>
 
       <div className={heroMv.className} style={{ ...heroMv.style, position: 'absolute', left: 45, width: 579, top: 178, display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-        <h2 className="font-serif" style={{ fontSize: 40 * nameScale(data.name || 'Novelty Reader'), fontWeight: 700, lineHeight: 1.05, color: C.ink, overflow: 'hidden', overflowWrap: 'anywhere', maxHeight: 84, minWidth: 0, flexShrink: 1 }}>{sanitizeUserText(data.name || 'Novelty Reader', 120)}</h2>
+        <NameBlock name={data.name || 'Novelty Reader'} size={40} color={C.ink} restColor={C.soft} style={{ flex: '1 1 auto', maxHeight: 84, overflow: 'hidden' }} />
         <p style={{ flexShrink: 0, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 15, fontWeight: 700, padding: '3px 11px', borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader', 80)}</p>
         <FollowerPill count={data.followerCount} fontSize={13} padX={10} padY={3} onClick={still ? undefined : onFollowersClick} />
       </div>
@@ -806,7 +804,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ fontSize: s(10), letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: s(5) }}>Novelty Library · Reader</p>
-            <h2 className="font-serif" style={{ fontSize: s((isWide ? 54 : 48) * nameScale(data.name || 'Novelty Reader')), fontWeight: 700, lineHeight: 1.04, color: C.ink, textShadow: '0 4px 22px rgba(0,25,35,.5)', overflow: 'hidden', overflowWrap: 'anywhere' }}>{sanitizeUserText(data.name || 'Novelty Reader',120)}</h2>
+            <NameBlock name={data.name || 'Novelty Reader'} size={s(isWide ? 54 : 48)} color={C.ink} restColor={C.soft} shadow="0 4px 22px rgba(0,25,35,.5)" />
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: s(6), marginTop: s(6) }}><p style={{ display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: s(17), fontWeight: 700, padding: `${s(4)}px ${s(11)}px`, borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader',80)}</p><FollowerPill count={data.followerCount} fontSize={s(14)} padX={s(10)} padY={s(4)} onClick={still ? undefined : onFollowersClick} /></div>
             {bio && isTall && <p style={{ marginTop: s(7), color: C.soft, fontSize: s(11), lineHeight: 1.3 }}>{sanitizeUserText(String(cappedBio), 140)}</p>}
           </div>

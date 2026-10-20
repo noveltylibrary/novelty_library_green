@@ -1,3 +1,24 @@
+# v2.11 — Back button, Taste Match polish
+
+- **Back button closes popups, not the page.** Every popup, sheet and lightbox (profile sections, followers list, stories and highlights, share card, feedback, submit-page dialogs, guidelines, report, admin dialogs, mobile menu) now owns one history entry: Back / swipe-back closes just the popup and you stay on the same page, at the same scroll position, on the control you tapped. Closing with X / backdrop / Esc removes that entry again so Back still goes to the previous page. (`src/lib/overlayHistory.ts`)
+- **Back between pages restores your place.** Going Back / Forward returns to the scroll position you left (waits for content to load); opening a link starts at the top. A link clicked inside a popup closes it cleanly first.
+- **About: Taste Match** now a short teaser blurb with no scoring details.
+- **Taste Match results** no longer show internal metric names or "Metric signals"; reasons are friendly and generic ("Echoes your words", "Shares the story feel").
+- **New Taste Match icon** everywhere (organic mind + lens + spark, same curves in every size) and a new animated page emblem: outline draws itself, lens drops in, spark pops, then gentle idle motion (respects reduced-motion).
+
+---
+
+# v2.10 — Author profiles, reviewer profiles, smarter names
+
+- **Names on profile cards**: the first name stays big; middle name(s) and surname are set smaller beside it (wrapping inside their own column). A very long first name steps its own size down, so a full name no longer eats the card. Used on every reader card format and the new author/reviewer cards (`NameBlock`).
+- **Author pages** (`#/author/Name`): purple + gold AUTHOR ribbon at the top, avatar, big-first-name heading, follower count, reviews, average R/W, genres, Follow button, a shareable 4:5 **author card** (PNG download, purple/gold) and the author's reviews.
+- **Author followers**: signed-in readers follow through Supabase so the count is real (anonymous visitors are sent to sign in, like reader profiles). If `NL_SQL_200` has not been run, Follow keeps working in this browser only and the count is hidden.
+- **Reviewer profiles**: every reviewer e-mail found in reviews gets a private random unique ID (e-mails are never public). Reviewers with an account go to their normal `@username` profile; reviewers without one get `#/reviewer/<id>` (REVIEWER tag, teal card, their reviews). The review page links to the reviewer.
+- **Directories**: `#/authors` (with follower counts) and `#/reviewers` (grouped by unique ID, searchable), linked from the footer.
+- **SQL**: `sql/NL_SQL_200_author_reviewer_profiles.sql` — additive only (new tables/functions, no existing table, view or row changed; `public_community_reviews` untouched).
+
+---
+
 # Taste Match — standalone TMAI-40 page
 
 - Added the dedicated `#/taste-match` destination, backed by the same published review catalog and NL-rating calculation used by Live Rankings.

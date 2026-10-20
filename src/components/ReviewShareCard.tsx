@@ -6,6 +6,7 @@ import { NlLogo } from '@/components/NlLogo';
 import { extractDriveId, normalizePosterUrl } from '@/lib/posterUrl';
 import { safeExternalUrl, sanitizeUserText } from '@/lib/sanitize';
 import { normalizeVerdict, verdictLabel } from '@/lib/verdict';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 // Same palette, export recipe and rounded transparent corners as the profile card export (ProfileCard.tsx).
 const C = { deep: '#012b36', deep2: '#013a46', teal: '#0097b2', cyan: '#5ce1e6', mint: '#9ff3f5', soft: 'rgba(255,255,255,.78)', faint: 'rgba(255,255,255,.6)', glass: 'rgba(255,255,255,.10)', line: 'rgba(255,255,255,.24)' };
@@ -121,6 +122,7 @@ function CardFace({ review, nl, cover }: { review: Review; nl: number | null; co
 export function ReviewShareButton({ review, nl }: { review: Review; nl: number | null }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  useOverlayHistory(open, () => setOpen(false));
   const [png, setPng] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cover, setCover] = useState<string | null>(null);

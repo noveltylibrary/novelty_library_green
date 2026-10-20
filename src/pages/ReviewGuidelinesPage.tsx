@@ -5,6 +5,7 @@ import { fetchReviewGuidelineSections, withNlRating, type ReviewGuidelineSection
 import { GUIDE_CSS } from '@/components/ReviewGuidelinesModal';
 import AdSenseAdSlot from '@/components/AdSenseAdSlot';
 import { RatingGuideCard, RATING_GUIDE_CSS } from '@/components/RatingGuideCard';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 interface ReviewGuidelinesPageProps {
   navigate: (path: string) => void;
@@ -196,6 +197,7 @@ export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [zoom, setZoom] = useState<GuideImage | null>(null);
+  useOverlayHistory(zoom !== null, () => setZoom(null));
 
   useEffect(() => {
     let active = true;

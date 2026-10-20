@@ -4,6 +4,7 @@ import { fetchActiveStories, repostStory, toggleStoryLike, type Story } from '@/
 import { useAuth } from '@/lib/auth';
 import { StoryComposerModal } from '@/components/StoryComposerModal';
 import { HighlightPicker } from '@/components/ProfileHighlights';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 interface Props { navigate?: (path: string) => void; }
 
@@ -11,6 +12,7 @@ export function StoriesRail({ navigate }: Props) {
   const { user } = useAuth();
   const [stories, setStories] = useState<Story[]>([]);
   const [active, setActive] = useState<Story | null>(null);
+  useOverlayHistory(active !== null, () => setActive(null));
   const [reposting, setReposting] = useState(false);
   const [storyComposerOpen, setStoryComposerOpen] = useState(false);
   const [highlightFor, setHighlightFor] = useState<string | null>(null);

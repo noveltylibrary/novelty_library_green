@@ -34,6 +34,8 @@ import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { LiveRankingsPage } from '@/pages/LiveRankingsPage';
 import { TasteMatchPage } from '@/pages/TasteMatchPage';
 import { AuthorPage } from '@/pages/AuthorPage';
+import { PeoplePage } from '@/pages/PeoplePage';
+import { ReviewerPage } from '@/pages/ReviewerPage';
 import { GenrePage } from '@/pages/GenrePage';
 import { SavedPage } from '@/pages/SavedPage';
 import { AdminFinancesPage } from '@/pages/AdminFinancesPage';
@@ -137,6 +139,9 @@ function AppContent() {
         {route.name === 'account' && <AccountPage navigate={navigate} />}
         {route.name === 'notifications' && <NotificationsPage navigate={navigate} />}
         {route.name === 'author' && <AuthorPage name={route.author} navigate={navigate} />}
+        {route.name === 'authors' && <PeoplePage tab="authors" navigate={navigate} />}
+        {route.name === 'reviewers' && <PeoplePage tab="reviewers" navigate={navigate} />}
+        {route.name === 'reviewer' && <ReviewerPage uid={route.uid} navigate={navigate} />}
         {route.name === 'saved' && <SavedPage navigate={navigate} />}
         {route.name === 'genre' && <GenrePage genre={route.genre} navigate={navigate} />}
       </main>

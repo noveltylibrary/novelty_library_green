@@ -231,11 +231,11 @@ export function TasteMatchPanel({ books, openBook }: CommonProps) {
   return (
     <section id="nl-taste" className="nl-find nl-taste" aria-labelledby="nl-taste-title">
       <header className="nl-find-head">
-        <span className="nl-find-icon nl-taste-icon"><TasteMatchIcon size={30} /></span>
+        <span className="nl-find-icon nl-taste-icon"><TasteMatchIcon size={30} animate /></span>
         <div>
           <span className="nl-live-kicker">TASTE MATCH SE · PERSONAL DISCOVERY</span>
           <h2 id="nl-taste-title">Find a read that matches your taste</h2>
-          <p>Describe the book you want, choose up to three moods, or add a book you loved. Our matching system ranks the published library using the evidence currently available.</p>
+          <p>Describe the book you want, choose up to three moods, or add a book you loved. Our matching reads the feel of every published review and brings the closest ones to you.</p>
         </div>
       </header>
 
@@ -308,7 +308,6 @@ export function TasteMatchPanel({ books, openBook }: CommonProps) {
                           <strong>{item.review.title}</strong>
                           <small>{item.review.author || 'Author unavailable'}</small>
                           <span className="nl-taste-why"><Sparkles size={13} aria-hidden="true" /> {m.score > 0 && <><b className="nl-find-pct">{Math.round(m.score)}% match</b> · </>}<b>{m.score > 0 ? 'Why it fits you:' : 'Why it is here:'}</b> {m.reasons.join(' · ')}</span>
-                          {m.metricMatches.length > 0 && <span className="nl-taste-metric-signals">Metric signals: {m.metricMatches.slice(0, 3).map((metric) => metric.label).join(' · ')}</span>}
                         </span>
                       </button>
                       <span className="nl-find-score"><b>{item.nlRating == null ? '—' : item.nlRating.toFixed(1)}</b><small>NL</small></span>

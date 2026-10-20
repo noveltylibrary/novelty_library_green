@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Check, ChevronLeft, ChevronRight, Clock3, ImagePlus, Plus, Trash2, X, Sparkles } from 'lucide-react';
 import { deleteHighlight, fetchArchive, fetchHighlights, MAX_HIGHLIGHTS, MAX_HIGHLIGHT_ITEMS, removeHighlightItem, saveToHighlight, STORY_RETENTION_NOTE, type ArchiveStory, type Highlight } from '@/lib/social';
 import { sanitizeUserText } from '@/lib/sanitize';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 const SLIDE_MS = 5000;
 const fmtDay = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); };
@@ -48,6 +49,7 @@ function HighlightViewer({ list, pos, setPos, isOwn, onChanged, onAdd }: { list:
   const h = list[pos.h];
   const item = h?.items[pos.i];
   const [busy, setBusy] = useState(false);
+  useOverlayHistory(true, () => setPos(null));
   const posRef = useRef(pos); posRef.current = pos;
 
   const next = useCallback(() => {
@@ -94,6 +96,7 @@ function HighlightViewer({ list, pos, setPos, isOwn, onChanged, onAdd }: { list:
 /** "From archive": the reader's stories from the last 30 days, to add to a new or existing highlight. */
 export function HighlightPicker({ userId, targetId, preselect, onClose, onSaved }: { userId: string; targetId?: string; preselect?: string[]; onClose: () => void; onSaved?: () => void }) {
   const [archive, setArchive] = useState<ArchiveStory[] | null>(null);
+  useOverlayHistory(true, onClose);
   const [mine, setMine] = useState<Highlight[]>([]);
   const [target, setTarget] = useState<string>(targetId || 'new');
   const [title, setTitle] = useState('');

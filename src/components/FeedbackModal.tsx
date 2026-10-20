@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Loader2, Star, X } from 'lucide-react';
 import type { FeedbackEntry, FeedbackInput } from '@/lib/engagement';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 interface FeedbackModalProps {
   open: boolean;
@@ -18,6 +19,7 @@ const MAX_TEXT = 1500;
 /** Simple popup with exactly three things: rating (1-10 stars), review, tags. */
 export function FeedbackModal({ open, reviewTitle, existing, onClose, onSubmit }: FeedbackModalProps) {
   const [rating, setRating] = useState<number | null>(null);
+  useOverlayHistory(open, onClose);
   const [hover, setHover] = useState<number | null>(null);
   const [text, setText] = useState('');
   const [tags, setTags] = useState<string[]>([]);

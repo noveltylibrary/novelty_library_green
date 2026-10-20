@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { submitReview, searchOpenLibrary, uploadCoverImage, saveDraft, loadDrafts, checkBookAvailability, createBookReservation, type OpenLibraryResult, type SavedReviewDraft } from '@/lib/reviews';
 import { getErrorMessage } from '@/lib/format';
 import type { Review } from '@/types/review';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 interface SubmitPageProps {
   navigate: (path: string) => void;
@@ -196,10 +197,13 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
   const [savedDrafts, setSavedDrafts] = useState<SavedReviewDraft[]>([]);
   const [selectedDraftId, setSelectedDraftId] = useState('');
   const [draftModalOpen, setDraftModalOpen] = useState(false);
+  useOverlayHistory(draftModalOpen, () => setDraftModalOpen(false));
   // Verdict vs R/W rating sanity check: shows a confirm dialog instead of silently submitting a mismatch.
   const [mismatch, setMismatch] = useState<{ message: string; mode: 'new' | 'edit' } | null>(null);
+  useOverlayHistory(mismatch !== null, () => setMismatch(null));
   const [draftName, setDraftName] = useState('');
   const [reservationModalOpen, setReservationModalOpen] = useState(false);
+  useOverlayHistory(reservationModalOpen, () => setReservationModalOpen(false));
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const openFromHash = () => {
@@ -214,6 +218,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
     return () => window.removeEventListener('hashchange', openFromHash);
   }, []);
   const [loadDraftModalOpen, setLoadDraftModalOpen] = useState(false);
+  useOverlayHistory(loadDraftModalOpen, () => setLoadDraftModalOpen(false));
   const [reservationBook, setReservationBook] = useState('');
   const [reservationAuthor, setReservationAuthor] = useState('');
   const [reservationSubmitting, setReservationSubmitting] = useState(false);

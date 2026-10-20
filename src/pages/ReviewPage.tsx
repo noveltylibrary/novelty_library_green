@@ -20,6 +20,7 @@ import { SaveForLater } from '@/components/SaveForLater';
 import { ReadNext } from '@/components/ReadNext';
 import { authorPath, readingMinutes } from '@/lib/readerTools';
 import { useAuth } from '@/lib/auth';
+import { reviewerPath, reviewNoOf, useReviewerIndex } from '@/lib/reviewers';
 import { computeNlRating, deleteFeedback, fetchFeedback, saveFeedback, useEngagement, type FeedbackEntry, type FeedbackInput } from '@/lib/engagement';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
 
@@ -34,6 +35,9 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
   const [error, setError] = useState<string | null>(null);
 
   const { user, profile } = useAuth();
+  const reviewerRows = useReviewerIndex();
+  const reviewerRow = review ? reviewerRows.find((r) => r.review_no === reviewNoOf(review) && r.reviewer_uid) : undefined;
+  const reviewerLink = reviewerRow?.reviewer_uid ? reviewerPath({ uid: reviewerRow.reviewer_uid, username: reviewerRow.novelty_username, hasAccount: reviewerRow.has_account }) : null;
   const engagement = useEngagement();
   const [feedback, setFeedback] = useState<FeedbackEntry[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
@@ -306,6 +310,12 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
                 <span className="flex items-center gap-1.5">
                   {sanitizeUserText(review.series_name, 120)}{review.series_number ? ` #${review.series_number}` : ''}
                 </span>
+              )}
+              {!review.novelty_username && reviewerLink && (
+                <button type="button" onClick={() => navigate(reviewerLink)} className="inline-flex items-center gap-1.5 font-semibold hover:underline" style={{ color: 'var(--color-teal-dark)' }}>
+                  <span className="nl-handle-box" aria-hidden="true">NL</span>
+                  {sanitizeUserText(review.reviewer_name || 'Reviewer', 60)}
+                </button>
               )}
               {(review.reviewer_handle || review.novelty_username) && (
                 <span className="flex items-center gap-2">

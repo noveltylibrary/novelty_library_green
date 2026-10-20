@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { X, FileText } from 'lucide-react';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 export const GUIDE_CSS = `
   :root {
@@ -376,6 +377,7 @@ interface ReviewGuidelinesModalProps {
 }
 
 export function ReviewGuidelinesModal({ open, onClose }: ReviewGuidelinesModalProps) {
+  useOverlayHistory(open, onClose);
   useEffect(() => {
     if (!open) return;
     const previous = document.body.style.overflow;

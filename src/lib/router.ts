@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { closeAllOverlays, overlayDepth } from '@/lib/overlayHistory';
 
 export type Route =
   | { name: 'home' }
@@ -29,6 +30,9 @@ export type Route =
   | { name: 'notifications' }
   | { name: 'genre'; genre: string }
   | { name: 'author'; author: string }
+  | { name: 'authors' }
+  | { name: 'reviewers' }
+  | { name: 'reviewer'; uid: string }
   | { name: 'saved' };
 
 function parseHash(): Route {
@@ -79,26 +83,73 @@ function parseHash(): Route {
   if (parts[0] === 'taste-match' || parts[0] === 'taste') return { name: 'taste-match' };
   if (parts[0] === 'live-rankings' || parts[0] === 'love-rankings' || parts[0] === 'rankings') return { name: 'live-rankings' };
   if (parts[0] === 'author' && parts[1]) return { name: 'author', author: decodeURIComponent(parts.slice(1).join('/')) };
+  if (parts[0] === 'authors') return { name: 'authors' };
+  if (parts[0] === 'reviewers') return { name: 'reviewers' };
+  if (parts[0] === 'reviewer' && parts[1]) return { name: 'reviewer', uid: decodeURIComponent(parts[1]) };
   if (parts[0] === 'saved') return { name: 'saved' };
   if (parts[0] === 'genres') return { name: 'genre', genre: '' };
   if (parts[0] === 'genre' && parts[1]) return { name: 'genre', genre: decodeURIComponent(parts[1]) };
   return { name: 'home' };
 }
 
+/* ---------- Scroll memory: Back / Forward return to where you were; a normal link opens at the top ---------- */
+const SCROLL_PREFIX = 'nl_scroll:';
+let scrollKey = typeof window === 'undefined' ? '' : window.location.hash;
+let pushedByNavigate = false;
+let manualScroll = false;
+
+const readScroll = (key: string): number | null => {
+  try { const v = sessionStorage.getItem(SCROLL_PREFIX + key); return v == null ? null : Number(v); } catch { return null; }
+};
+const writeScroll = (key: string, y: number) => { try { sessionStorage.setItem(SCROLL_PREFIX + key, String(Math.round(y))); } catch { /* storage blocked */ } };
+
+/** Put the page back at `y`, retrying while its content (reviews, profile data) is still loading in. */
+function restoreScrollTo(y: number) {
+  manualScroll = false;
+  const stop = () => { manualScroll = true; };
+  window.addEventListener('wheel', stop, { once: true, passive: true });
+  window.addEventListener('touchstart', stop, { once: true, passive: true });
+  const delays = [0, 60, 160, 320, 600, 1000, 1600];
+  delays.forEach((delay) => window.setTimeout(() => {
+    if (manualScroll) return;
+    if (Math.abs(window.scrollY - y) > 2 && document.documentElement.scrollHeight >= y + window.innerHeight * 0.5) window.scrollTo(0, y);
+  }, delay));
+}
+
 export function useRouter() {
   const [route, setRoute] = useState<Route>(parseHash());
 
   useEffect(() => {
-    const onChange = () => {
-      setRoute(parseHash());
-      window.scrollTo(0, 0);
+    try { if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'; } catch { /* ignore */ }
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(() => { ticking = false; writeScroll(scrollKey, window.scrollY); });
     };
+    const onChange = () => {
+      writeScroll(scrollKey, window.scrollY);
+      scrollKey = window.location.hash;
+      setRoute(parseHash());
+      const wasPush = pushedByNavigate;
+      pushedByNavigate = false;
+      const saved = wasPush ? null : readScroll(scrollKey);
+      if (saved != null && saved > 0) restoreScrollTo(saved); else window.scrollTo(0, 0);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('hashchange', onChange);
-    return () => window.removeEventListener('hashchange', onChange);
+    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('hashchange', onChange); };
   }, []);
 
   const navigate = useCallback((path: string) => {
-    window.location.hash = path;
+    const go = () => {
+      const target = path.startsWith('#') ? path : `#${path}`;
+      if (target === window.location.hash || (path === '/' && !window.location.hash)) return; // same page: no hashchange will follow
+      pushedByNavigate = true;
+      window.location.hash = path;
+    };
+    // A popup that is still open owns a history entry: settle it first so the new page is a clean step forward.
+    if (overlayDepth() > 0) void closeAllOverlays().then(go); else go();
   }, []);
 
   return { route, navigate };

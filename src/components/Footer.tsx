@@ -12,6 +12,8 @@ interface FooterProps {
 const LINKS: [string, string][] = [
   ['Home', '/'],
   ['Reviews', '/reviews'],
+  ['Authors', '/authors'],
+  ['Reviewers', '/reviewers'],
   ['Submit a Review', '/submit'],
   ['About Us', '/about'],
 ];

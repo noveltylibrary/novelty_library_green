@@ -4,6 +4,7 @@ import { Lock, UserCheck, Users, X } from 'lucide-react';
 import { fetchConnections, followUsername, unfollowUsername, type ConnectionProfile } from '@/lib/social';
 import { FollowButton } from '@/components/FollowButton';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 export type ConnKind = 'followers' | 'following';
 
@@ -43,6 +44,7 @@ export function ConnectionsModal({ open, onClose, onKind, username, counts, hidd
   const [mine, setMine] = useState<Set<string>>(new Set());   // ids the viewer follows
   const [busyId, setBusyId] = useState<string | null>(null);
   const closeRef = useRef(onClose); closeRef.current = onClose;
+  useOverlayHistory(open !== null, onClose);
 
   useEffect(() => {
     if (!open) return;

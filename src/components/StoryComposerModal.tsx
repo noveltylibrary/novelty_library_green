@@ -2,6 +2,7 @@ import { useEffect, useState, type ChangeEvent } from 'react';
 import { Clock3, ImagePlus, Sparkles, Upload, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { createStory, uploadStoryImage, STORY_RETENTION_NOTE } from '@/lib/social';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 interface StoryComposerModalProps {
   open: boolean;
@@ -26,6 +27,7 @@ export function StoryComposerModal({ open, onClose, onPublished }: StoryComposer
     if (uploading) return;
     resetDraft(); onClose();
   };
+  useOverlayHistory(open, closeComposer);
 
   useEffect(() => {
     if (!open) return;

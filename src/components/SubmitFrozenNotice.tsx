@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Lock, X } from 'lucide-react';
 import { sanitizeUserText } from '@/lib/sanitize';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 /** Banner at the top of the Submit page while it is frozen, and a popup with the admin's note (shown once per visit, reopenable). */
 export function SubmitFrozenNotice({ reason, note, adminBypass, forceOpen, onClosed }: { reason: string; note: string; adminBypass: boolean; forceOpen: number; onClosed?: () => void }) {
@@ -19,6 +20,7 @@ export function SubmitFrozenNotice({ reason, note, adminBypass, forceOpen, onClo
   }, [open]);
 
   const close = () => { setOpen(false); try { sessionStorage.setItem(KEY, '1'); } catch { /* ignore */ } onClosed?.(); };
+  useOverlayHistory(open, close);
   const title = reason || 'Submissions are paused';
 
   return (

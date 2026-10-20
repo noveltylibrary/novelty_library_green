@@ -19,6 +19,7 @@ import { ShelfEditor } from '@/components/ReadingShelves';
 import { isShelfQuestion, shelfKindOf, withShelfQuestions } from '@/lib/shelves';
 import { isCurrentlyReadingQuestion, moveCurrentlyReadingToBasic } from '@/lib/currentlyReading';
 import { fetchShelfCommunityInfo, averageNlRating, type ShelfCommunityInfo } from '@/lib/profileShelf';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 interface ProfilePageProps { navigate: (path: string) => void; }
 type SocialLink = { platform: string; url: string };
@@ -341,7 +342,7 @@ function SectionHub({items,title,description,onOpen}:{items:HubItem[];title:stri
 }
 function SectionSheet({item,onClose,onSubmit,footer,children}:{item:HubItem;onClose:()=>void;onSubmit:(e:FormEvent)=>void;footer:ReactNode;children:ReactNode}){
   const panelRef=useRef<HTMLDivElement>(null);
-  const closeRef=useRef(onClose); closeRef.current=onClose;
+  const closeRef=useRef(onClose); closeRef.current=onClose; useOverlayHistory(true,onClose);
   // Runs once per open: lock page scroll, focus the panel, close on Escape (never re-focuses while typing).
   useEffect(()=>{
     const prev=document.body.style.overflow; document.body.style.overflow='hidden';

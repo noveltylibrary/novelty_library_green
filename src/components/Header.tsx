@@ -5,12 +5,14 @@ import { useTheme } from '@/lib/theme';
 import logo from '@/assets/logo.png';
 import { usePwaInstall } from '@/lib/pwa';
 import { useUnreadNotifications } from '@/lib/notifications';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 interface HeaderProps { navigate: (path: string) => void; currentRoute: string; user: SupabaseUser | null; isAdmin: boolean; }
 
 export function Header({ navigate, currentRoute, user, isAdmin }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  useOverlayHistory(menuOpen, () => setMenuOpen(false));
   const { theme, toggleTheme } = useTheme();
   const { canInstall, install } = usePwaInstall();
   const { unreadCount } = useUnreadNotifications();

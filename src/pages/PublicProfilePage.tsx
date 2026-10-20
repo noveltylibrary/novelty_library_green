@@ -17,6 +17,7 @@ import { isCurrentlyReadingQuestion, readCurrentlyReading } from '@/lib/currentl
 import { fetchShelfCommunityInfo, averageNlRating, type ShelfCommunityInfo } from '@/lib/profileShelf';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
 import { isUserBlacklisted, reportUser, REPORT_REASONS, type ReportReason } from '@/lib/moderation';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 interface Props { username: string; navigate: (path: string) => void; }
 export function PublicProfilePage({ username, navigate }: Props) {
@@ -38,6 +39,7 @@ export function PublicProfilePage({ username, navigate }: Props) {
   useEffect(()=>{ let alive=true; if(!published.length){ setShelfInfo({}); return; } void fetchShelfCommunityInfo(published.map(r=>({reviewNo:r.review_no,title:r.book_title,author:r.author}))).then(m=>{ if(alive) setShelfInfo(m); }); return ()=>{alive=false;}; },[published]);
   const isOwn=!!user&&user.id===profile?.id;
   const [reportOpen,setReportOpen]=useState(false); const [reportReason,setReportReason]=useState<ReportReason>(REPORT_REASONS[0]); const [reportDetails,setReportDetails]=useState(''); const [reportBusy,setReportBusy]=useState(false); const [reportMessage,setReportMessage]=useState<string|null>(null); const [blacklisted,setBlacklisted]=useState(false);
+  useOverlayHistory(reportOpen,()=>{ if(!reportBusy) setReportOpen(false); });
   useEffect(()=>{ if(profile?.novelty_username) void isUserBlacklisted(profile.novelty_username).then(setBlacklisted).catch(()=>undefined); },[profile?.novelty_username]);
   const cardData:ProfileCardData|undefined=useMemo(()=>{
     if(!profile)return undefined;

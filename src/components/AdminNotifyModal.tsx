@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bell, Loader2, Send, X } from 'lucide-react';
 import { adminSendNotification } from '@/lib/notifications';
 import { getErrorMessage } from '@/lib/format';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 interface AdminNotifyModalProps {
   open: boolean;
@@ -24,6 +25,7 @@ export function AdminNotifyModal({ open, onClose, userId, recipientLabel, contex
   const [title, setTitle] = useState(defaultTitle);
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
+  useOverlayHistory(open, () => { if (!busy) onClose(); });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

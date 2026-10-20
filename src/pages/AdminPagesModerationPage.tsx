@@ -22,6 +22,7 @@ import {
 import { convertReadingJourneyToQuestions } from '@/lib/profileReadingMigration';
 import { CORE_FIELDS, coreActive, coreDefaultSection, coreFieldsInSection, coreSection, fetchCoreOverrides, saveCoreOverride, resetCoreOverride, fetchCoreFieldOrder, saveCoreFieldPlacement, type CoreFieldKey, type CoreOverrides, type CoreFieldOrder, type CoreSectionKey } from '@/lib/profileCoreFields';
 import { BUILT_IN_PROFILE_SECTIONS, fetchProfileSectionLayout, saveProfileSectionLayout, type ProfileSectionLayoutItem } from '@/lib/profileLayout';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 const PAGE_KEYS = ['review-guidelines', 'about', 'privacy', 'terms', 'cookies', 'cookie-banner'] as const;
 const QUESTION_TYPES: { value: ProfileQuestionType; label: string }[] = [
@@ -81,6 +82,7 @@ export function AdminPagesModerationPage({ navigate, view }: { navigate: (path: 
   const [alphabeticalSort, setAlphabeticalSort] = useState(false);
 
   const [sectionEditorOpen, setSectionEditorOpen] = useState(false);
+  useOverlayHistory(sectionEditorOpen, () => setSectionEditorOpen(false));
   const [editingSection, setEditingSection] = useState<ProfileQuestionSection | null>(null);
   const [sectionName, setSectionName] = useState('');
   const [sectionHeader, setSectionHeader] = useState('');

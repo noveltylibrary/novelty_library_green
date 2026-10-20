@@ -1,35 +1,50 @@
 import { useMemo } from 'react';
-import { ArrowLeft, BookOpen, UserRound } from 'lucide-react';
+import { ArrowLeft, BookOpen } from 'lucide-react';
 import { authorKey, reviewPath, usePublished } from '@/lib/readerTools';
 import { VerdictBanner } from '@/components/VerdictBanner';
 import { sanitizeUserText } from '@/lib/sanitize';
 import { FollowButton } from '@/components/FollowButton';
-import { useFollowedAuthors } from '@/lib/followAuthors';
+import { RoleRibbon } from '@/components/RoleTag';
+import { NameBlock } from '@/components/NameBlock';
+import { PeopleCard } from '@/components/PeopleCard';
+import { summarizeReviews, useAuthorFollow } from '@/lib/authors';
 
 export function AuthorPage({ name, navigate }: { name: string; navigate: (path: string) => void }) {
   const all = usePublished();
-  const followed = useFollowedAuthors();
   const key = authorKey(name);
+  const follow = useAuthorFollow(key, navigate);
   const books = useMemo(() => all.filter((r) => authorKey(r.author || '') === key).sort((a, b) => (b.rw_rating || 0) - (a.rw_rating || 0)), [all, key]);
-  const display = books[0]?.author || name;
-  const avg = books.length ? books.reduce((n, r) => n + (Number.isFinite(r.rw_rating) ? r.rw_rating : 0), 0) / books.length : 0;
-  const genres = useMemo(() => [...new Set(books.map((b) => (b.genre || '').trim()).filter(Boolean))].slice(0, 4), [books]);
+  const display = (books[0]?.author || name).trim();
+  const stats = useMemo(() => summarizeReviews(books), [books]);
+  const shareUrl = `${window.location.origin}/#/author/${encodeURIComponent(display)}`;
 
   return (
     <div className="pt-24 pb-20 container-prose animate-fade-in">
-      <button type="button" onClick={() => { if (window.history.length > 1) window.history.back(); else navigate('/reviews'); }} className="nl-qv-link inline-flex items-center gap-1.5 mb-6"><ArrowLeft className="w-4 h-4" aria-hidden="true" /> Back</button>
-      <header className="nl-author-head">
-        <span className="nl-author-icon"><UserRound aria-hidden="true" /></span>
-        <div>
-          <span className="nl-live-kicker">AUTHOR</span>
-          <h1 className="font-serif text-3xl md:text-4xl font-semibold" style={{ color: 'var(--color-text)' }}>{sanitizeUserText(display, 120)}</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-            {books.length ? `${books.length} review${books.length === 1 ? '' : 's'} on Novelty Library · average R/W ${avg.toFixed(1)}/10${genres.length ? ` · ${genres.join(', ')}` : ''}` : 'Loading reviews…'}
-          </p>
+      <button type="button" onClick={() => { if (window.history.length > 1) window.history.back(); else navigate('/reviews'); }} className="nl-qv-link inline-flex items-center gap-1.5 mb-4"><ArrowLeft className="w-4 h-4" aria-hidden="true" /> Back</button>
+      <RoleRibbon role="author" note="Author profile on Novelty Library" />
+      <header className="nl-author-head nl-author-head-v2">
+        <span className="nl-author-avatar" aria-hidden="true">{sanitizeUserText(display, 120).charAt(0).toUpperCase() || 'A'}</span>
+        <div className="nl-author-id">
+          <NameBlock name={display} size={44} color="var(--color-text)" restColor="var(--color-text-muted)" />
+          <div className="nl-author-pills">
+            {follow.followers != null && <span className="nl-author-pill"><b>{follow.followers.toLocaleString()}</b> {follow.followers === 1 ? 'follower' : 'followers'}</span>}
+            <span className="nl-author-pill"><b>{stats.count}</b> {stats.count === 1 ? 'review' : 'reviews'}</span>
+            {stats.avgRw != null && <span className="nl-author-pill">avg R/W <b>{stats.avgRw.toFixed(1)}</b>/10</span>}
+          </div>
+          {(stats.genres.length > 0 || stats.languages.length > 0) && <p className="nl-author-meta">{[...stats.genres.slice(0, 4), ...stats.languages.slice(0, 2)].join(' · ')}</p>}
+          {!all.length && <p className="nl-author-meta">Loading reviews…</p>}
         </div>
-        <div className="nl-author-follow"><FollowButton following={followed.isFollowing(key)} onClick={() => followed.toggle(key)} label={sanitizeUserText(display, 60)} /></div>
+        <div className="nl-author-follow"><FollowButton following={follow.following} busy={follow.busy} onClick={() => void follow.toggle()} label={sanitizeUserText(display, 60)} /></div>
       </header>
+
+      {books.length > 0 && (
+        <section className="nl-people-section" aria-label={`${display} profile card`}>
+          <PeopleCard variant="author" name={display} followers={follow.followers} stats={stats} fileSlug={key.replace(/\s+/g, '-')} shareUrl={shareUrl} />
+        </section>
+      )}
+
       {all.length > 0 && books.length === 0 && <p className="nl-find-hint">No published reviews of this author yet.</p>}
+      {books.length > 0 && <h2 className="nl-people-h2">Reviews of {sanitizeUserText(display, 80)}</h2>}
       <ul className="nl-find-list">
         {books.map((r) => {
           const cover = r.poster_url || r.cover_image_url;

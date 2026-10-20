@@ -15,11 +15,11 @@ interface AboutPageProps {
 function TasteMatchExplainer({ navigate }: { navigate: (path: string) => void }) {
   return (
     <section className="nl-about-taste-note" aria-labelledby="nl-about-taste-title">
-      <div className="nl-about-taste-mark"><TasteMatchIcon size={42} /></div>
+      <div className="nl-about-taste-mark"><TasteMatchIcon size={42} animate /></div>
       <div className="nl-about-taste-copy">
-        <span className="nl-about-taste-kicker">A more personal way to discover books</span>
+        <span className="nl-about-taste-kicker">A little taste of how we match</span>
         <h2 id="nl-about-taste-title">Meet Taste Match SE</h2>
-        <p>Taste Match SE is our personal book-discovery system: it looks for the overlap between what you ask for, what you have loved, and the story signals available across our review shelf. Instead of treating one genre or rating as the whole answer, it weighs several complementary clues and ranks the closest fits. The result is a living match score—not a promise or a popularity contest, but a starting point for your next read. We are keeping the exact recipe under wraps while we continue to refine it.</p>
+        <p>Taste Match SE reads the <em>feel</em> of a book, not just its genre or its stars. Tell it a mood, a few words, or a book you loved, and it brings you the shelves that echo it.</p>
         <button type="button" className="nl-about-taste-button" onClick={() => navigate('/taste-match')}>Explore Taste Match SE <ArrowRight aria-hidden="true" /></button>
       </div>
     </section>

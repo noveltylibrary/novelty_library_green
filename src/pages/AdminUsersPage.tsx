@@ -19,6 +19,7 @@ import { useAuth } from '@/lib/auth';
 import { adminBlacklistUser, adminUnblacklistUser, fetchBlacklistedUsers, type BlacklistedUser } from '@/lib/moderation';
 import { supabase } from '@/lib/supabase';
 import { getErrorMessage } from '@/lib/format';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 
 interface AdminUsersPageProps {
   navigate: (path: string) => void;
@@ -86,6 +87,7 @@ export function AdminUsersPage({ navigate }: AdminUsersPageProps) {
   const [blTarget, setBlTarget] = useState<AdminUser | null>(null);
   const [blReason, setBlReason] = useState('');
   const [blBusy, setBlBusy] = useState(false);
+  useOverlayHistory(blTarget !== null, () => { if (!blBusy) setBlTarget(null); });
   const [blError, setBlError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
