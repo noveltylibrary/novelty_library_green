@@ -35,6 +35,23 @@ export type Route =
   | { name: 'reviewer'; uid: string }
   | { name: 'saved' };
 
+/**
+ * Path-style links (e.g. https://site/profile/@name, /author/X, /review/slug) used to land on Home because the
+ * router only reads location.hash. Rewrite them into the equivalent hash route once, before the first parse.
+ */
+function normalizePathToHash() {
+  if (typeof window === 'undefined') return;
+  try {
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+    let path = window.location.pathname;
+    if (base && path.startsWith(base)) path = path.slice(base.length);
+    path = path.replace(/^\/+|\/+$/g, '');
+    if (!path || path === 'index.html' || window.location.hash.replace(/^#\/?/, '')) return;
+    window.history.replaceState(window.history.state, '', `${base || ''}/${window.location.search}#/${path}`);
+  } catch { /* ignore */ }
+}
+normalizePathToHash();
+
 function parseHash(): Route {
   const hash = window.location.hash.replace(/^#\/?/, '');
   if (!hash || hash === '') return { name: 'home' };

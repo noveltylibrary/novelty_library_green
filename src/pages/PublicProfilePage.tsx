@@ -84,7 +84,7 @@ export function PublicProfilePage({ username, navigate }: Props) {
   const [shared,setShared]=useState(false);
   const shareProfile=async()=>{
     const handle=profile?.novelty_username||username;
-    const url=`${window.location.origin}/profile/@${encodeURIComponent(handle)}`;
+    const url=`${window.location.origin}/#/profile/@${encodeURIComponent(handle)}`;
     try{
       if(navigator.share){ await navigator.share({title:`@${handle} on Novelty Library`,text:`Check out @${handle}'s reader profile on Novelty Library`,url}); return; }
     }catch(e){ if((e as Error)?.name==='AbortError') return; }

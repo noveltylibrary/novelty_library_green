@@ -1,5 +1,6 @@
-import { ArrowLeft, Menu, X, Shield, Moon, Sun, User, Download, Home, BookOpen, Send, Info, Settings, Bell } from 'lucide-react';
-import { useState, useEffect, type CSSProperties } from 'react';
+import { ArrowLeft, Menu, X, Shield, Moon, Sun, User, Download, Home, BookOpen, Send, Info, Settings, Bell, LogIn } from 'lucide-react';
+import { useState, useEffect, type CSSProperties, type ComponentType } from 'react';
+import { createPortal } from 'react-dom';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { useTheme } from '@/lib/theme';
 import logo from '@/assets/logo.png';
@@ -8,6 +9,14 @@ import { useUnreadNotifications } from '@/lib/notifications';
 import { useOverlayHistory } from '@/lib/overlayHistory';
 
 interface HeaderProps { navigate: (path: string) => void; currentRoute: string; user: SupabaseUser | null; isAdmin: boolean; }
+
+function NavIcon({ label, icon: Icon, active, onClick, badge, tone, edge }: { label: string; icon: ComponentType<{ className?: string }>; active?: boolean; onClick: () => void; badge?: number; tone?: 'accent'; edge?: boolean }) {
+  return <button type="button" onClick={onClick} aria-label={label} title={label} className={`nl-nv ${active ? 'is-active' : ''} ${tone === 'accent' ? 'is-accent' : ''}`}>
+    <Icon className="w-[18px] h-[18px]" />
+    {!!badge && badge > 0 && <span className="nl-nv-badge">{badge > 99 ? '99+' : badge}</span>}
+    <span className={`nl-nv-tip ${edge ? 'is-edge' : ''}`} aria-hidden="true">{label}</span>
+  </button>;
+}
 
 export function Header({ navigate, currentRoute, user, isAdmin }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
@@ -29,6 +38,27 @@ export function Header({ navigate, currentRoute, user, isAdmin }: HeaderProps) {
   ];
   const handleNav = (path: string) => { navigate(path); setMenuOpen(false); };
 
+const panelItems: { label: string; icon: ComponentType<{ className?: string }>; run: () => void; active?: boolean; badge?: number; accent?: boolean }[] = [
+    ...navItems.map((i) => ({ label: i.label, icon: i.icon, run: () => handleNav(i.path), active: currentRoute === i.route })),
+    ...(user ? [
+      { label: 'Profile', icon: User, run: () => handleNav('/profile'), active: currentRoute === 'profile' },
+      { label: 'Accounts', icon: Settings, run: () => handleNav('/account'), active: currentRoute === 'account' },
+      { label: 'Notifications', icon: Bell, run: () => handleNav('/notifications'), active: currentRoute === 'notifications', badge: unreadCount },
+    ] : [{ label: 'Sign In', icon: LogIn, run: () => handleNav('/auth'), accent: true }]),
+    ...(isAdmin ? [{ label: 'Admin Panel', icon: Shield, run: () => handleNav('/admin'), accent: true, active: currentRoute.startsWith('admin') }] : []),
+    ...(canInstall ? [{ label: 'Install Web App', icon: Download, run: () => { setMenuOpen(false); void install(); }, accent: true }] : []),
+  ];
+  const panel = typeof document !== 'undefined' ? createPortal(<div className={`nl-sp-root md:hidden ${menuOpen ? 'is-open' : ''}`} aria-hidden={!menuOpen}>
+    <div className="nl-sp-scrim" onClick={() => setMenuOpen(false)} />
+    <aside className="nl-sp-panel" role="dialog" aria-label="Menu">
+      <div className="nl-sp-head"><span className="nl-sp-title">Menu</span><button type="button" className="nl-sp-close" onClick={() => setMenuOpen(false)} aria-label="Close menu" tabIndex={menuOpen ? 0 : -1}><X className="w-5 h-5" /></button></div>
+      <nav className="nl-sp-list">
+        {panelItems.map((it, i) => <button key={it.label} type="button" tabIndex={menuOpen ? 0 : -1} onClick={it.run} className={`nl-sp-item ${it.active ? 'is-active' : ''} ${it.accent ? 'is-accent' : ''}`} style={{ '--i': i } as CSSProperties}><span className="nl-sp-ico"><it.icon className="w-[18px] h-[18px]" /></span><span className="nl-sp-label">{it.label}</span>{!!it.badge && it.badge > 0 && <span className="nl-sp-badge">{it.badge > 99 ? '99+' : it.badge}</span>}</button>)}
+      </nav>
+      <div className="nl-sp-foot">Novelty Library</div>
+    </aside>
+  </div>, document.body) : null;
+
   const goBack = () => { setMenuOpen(false); if (window.history.length > 1) window.history.back(); else navigate('/'); };
   const isInner = currentRoute !== 'home';
   return <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isInner ? 'nl-hdr-solid' : ''} ${scrolled ? 'backdrop-blur-md shadow-sm py-3' : 'bg-transparent py-5'}`} style={{ backgroundColor: scrolled ? 'var(--color-bg)' : 'transparent', opacity: scrolled ? 0.95 : 1 }}>
@@ -41,27 +71,21 @@ export function Header({ navigate, currentRoute, user, isAdmin }: HeaderProps) {
       </button>
       </div>
 
-      <nav className="hidden md:flex items-center gap-1">
-        {navItems.map((item) => <button key={item.path} onClick={() => handleNav(item.path)} className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-medium transition-all duration-300" style={{ color: currentRoute === item.route ? 'var(--color-text)' : 'var(--color-text-muted)', backgroundColor: currentRoute === item.route ? 'rgba(0, 151, 178, 0.08)' : 'transparent' }}><item.icon className="w-3.5 h-3.5" />{item.label}</button>)}
+      <nav className="hidden md:flex items-center gap-0.5" aria-label="Main">
+        {navItems.map((item) => <NavIcon key={item.path} label={item.label} icon={item.icon} active={currentRoute === item.route} onClick={() => handleNav(item.path)} />)}
         {user && <>
-          <button onClick={() => handleNav('/profile')} className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-medium transition-all" title="Profile" aria-label="Profile" style={{ color: currentRoute === 'profile' ? 'var(--color-text)' : 'var(--color-text-muted)', backgroundColor: currentRoute === 'profile' ? 'rgba(0, 151, 178, 0.08)' : 'transparent' }}><User className="w-3.5 h-3.5" /> Profile</button>
-          <button onClick={() => handleNav('/account')} className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-medium transition-all" style={{ color: currentRoute === 'account' ? 'var(--color-text)' : 'var(--color-text-muted)', backgroundColor: currentRoute === 'account' ? 'rgba(0, 151, 178, 0.08)' : 'transparent' }}><Settings className="w-3.5 h-3.5" /> Accounts</button>
-          <button onClick={() => handleNav('/notifications')} className="relative p-2 rounded-full transition-all" title="Notifications" aria-label="Notifications" style={{ color: currentRoute === 'notifications' ? 'var(--color-text)' : 'var(--color-text-muted)', backgroundColor: currentRoute === 'notifications' ? 'rgba(0, 151, 178, 0.08)' : 'transparent' }}><Bell className="w-4 h-4" />{unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 min-w-4 h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center" style={{ background: 'var(--color-teal-dark)', color: 'white' }}>{unreadCount > 99 ? '99+' : unreadCount}</span>}</button>
+          <NavIcon label="Profile" icon={User} active={currentRoute === 'profile'} onClick={() => handleNav('/profile')} />
+          <NavIcon label="Accounts" icon={Settings} active={currentRoute === 'account'} onClick={() => handleNav('/account')} />
+          <NavIcon label="Notifications" icon={Bell} active={currentRoute === 'notifications'} badge={unreadCount} onClick={() => handleNav('/notifications')} />
         </>}
-        {isAdmin && <button onClick={() => handleNav('/admin')} className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-medium transition-all" style={{ color: currentRoute.startsWith('admin') ? 'white' : 'var(--color-teal-dark)', backgroundColor: currentRoute.startsWith('admin') ? 'var(--color-teal-dark)' : 'rgba(0, 151, 178, 0.08)' }}><Shield className="w-3.5 h-3.5" /> Admin</button>}
-        {!user && <button onClick={() => handleNav('/auth')} className="px-3.5 py-2 rounded-full text-sm font-medium" style={{ color: 'var(--color-cyan-dark)' }}>Sign In</button>}
-        <button onClick={toggleTheme} className="p-2 rounded-full transition-colors" style={{ color: 'var(--color-text-muted)' }}>{theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}</button>
+        {isAdmin && <NavIcon label="Admin" icon={Shield} active={currentRoute.startsWith('admin')} tone="accent" onClick={() => handleNav('/admin')} />}
+        {!user && <NavIcon label="Sign In" icon={LogIn} active={currentRoute === 'auth'} tone="accent" onClick={() => handleNav('/auth')} />}
+        <NavIcon label={theme === 'light' ? 'Dark mode' : 'Light mode'} icon={theme === 'light' ? Moon : Sun} onClick={toggleTheme} edge />
       </nav>
 
       <div className="flex md:hidden items-center gap-2"><button onClick={toggleTheme} className="p-2 rounded-lg" style={{ color: 'var(--color-text-muted)' }}>{theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}</button><button className="p-2 rounded-lg" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} style={{ color: 'var(--color-text)' }}>{menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}</button></div>
     </div>
 
-    {menuOpen && <div className="md:hidden container-prose mt-3 animate-fade-in"><nav className="flex flex-col gap-1 surface-card p-3 shadow-lg">
-      {navItems.map((item) => <button key={item.path} onClick={() => handleNav(item.path)} className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-left" style={{ color: currentRoute === item.route ? 'var(--color-text)' : 'var(--color-text-muted)', backgroundColor: currentRoute === item.route ? 'rgba(0, 151, 178, 0.08)' : 'transparent' }}><item.icon className="w-4 h-4" />{item.label}</button>)}
-      {user && <><button onClick={() => handleNav('/profile')} className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm text-left" style={{ color: 'var(--color-text-muted)' }}><User className="w-4 h-4" /> Profile</button><button onClick={() => handleNav('/account')} className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm text-left" style={{ color: 'var(--color-text-muted)' }}><Settings className="w-4 h-4" /> Accounts</button><button onClick={() => handleNav('/notifications')} className="flex items-center justify-between px-4 py-3 rounded-xl text-sm text-left" style={{ color: 'var(--color-text-muted)' }}><span className="flex items-center gap-2"><Bell className="w-4 h-4" /> Notifications</span>{unreadCount > 0 && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: 'var(--color-teal-dark)', color: 'white' }}>{unreadCount > 99 ? '99+' : unreadCount}</span>}</button></>}
-      {isAdmin && <button onClick={() => handleNav('/admin')} className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm text-left" style={{ color: 'var(--color-teal-dark)' }}><Shield className="w-4 h-4" /> Admin Panel</button>}
-      {!user && <button onClick={() => handleNav('/auth')} className="px-4 py-3 rounded-xl text-sm text-left" style={{ color: 'var(--color-cyan-dark)' }}>Sign In</button>}
-      {canInstall && <button onClick={() => { setMenuOpen(false); void install(); }} className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm text-left" style={{ color: 'var(--color-teal-dark)' }}><Download className="w-4 h-4" /> Install Web App</button>}
-    </nav></div>}
+    {panel}
   </header>;
 }
