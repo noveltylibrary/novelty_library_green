@@ -1,0 +1,26 @@
+NOVELTY LIBRARY - SQL RUN ORDER (Supabase -> SQL Editor -> New query -> paste -> Run)
+
+STEP 1 - RUN NOW   NL_SQL_FIX3_FIX5_review_policies.sql
+  What: only signed-in users can submit reviews; users can read back their own pending reviews.
+  Safe for the frozen v1.116 site and for 2.12. Public reads are untouched.
+  Check: submit a test review while signed in - it should save and appear in your own list.
+
+STEP 2 - RUN NOW   NL_SQL_200_author_reviewer_profiles.sql
+  What: adds author follower counts + reviewer unique IDs (new tables/functions only).
+  Safe for v1.116 (it ignores them). Turns the features on for 2.12.
+
+STEP 2b - OPTIONAL NOW   NL_SQL_210_highlight_cover.sql
+  What: adds one nullable column so highlight covers (archive or gallery) can be saved. Additive, safe for v1.116.
+
+STEP 3 - DEPLOY 2.12 (NL_WA_2_14.zip) to production once AdSense has finished.
+  Open: home page, a review page, a public profile, the Authors page. Confirm all load.
+
+STEP 4 - RUN LATER  NL_SQL_LOCKDOWN_run_after_adsense.sql
+  What: hides reviewer emails / private columns from the public on community_reviews and reviews.
+  ONLY after steps 1-3 and AdSense is finished. Running it earlier breaks v1.116.
+  Check afterwards: the same 4 pages still load.
+  Undo: the ROLLBACK block at the bottom of that file.
+
+DO NOT RUN: 2_run_after_frontend_deploy.sql (older, replaced by Step 4).
+
+Already done live: is_admin() email-confirmed check; sheet-proxy admin-only.

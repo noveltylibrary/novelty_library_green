@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { CoverImg } from '@/components/CoverImg';
+import { go } from '@/lib/router';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { reviewPath, usePublished } from '@/lib/readerTools';
 import { VerdictBanner } from '@/components/VerdictBanner';
@@ -15,7 +17,7 @@ export function ReviewerPage({ uid, navigate }: { uid: string; navigate: (path: 
 
   // A reviewer who later made an account has one real profile: send everyone there.
   useEffect(() => {
-    if (profile?.hasAccount && profile.username) window.location.replace(`#${reviewerPath(profile)}`);
+    if (profile?.hasAccount && profile.username) go(reviewerPath(profile), true);
   }, [profile]);
 
   const back = <button type="button" onClick={() => { if (window.history.length > 1) window.history.back(); else navigate('/reviewers'); }} className="nl-qv-link inline-flex items-center gap-1.5 mb-4"><ArrowLeft className="w-4 h-4" aria-hidden="true" /> Back</button>;
@@ -29,7 +31,7 @@ export function ReviewerPage({ uid, navigate }: { uid: string; navigate: (path: 
     );
   }
 
-  const shareUrl = `${window.location.origin}/#/reviewer/${encodeURIComponent(profile.uid)}`;
+  const shareUrl = `${window.location.origin}/reviewer/${encodeURIComponent(profile.uid)}`;
   return (
     <div className="pt-24 pb-20 container-prose animate-fade-in">
       {back}
@@ -58,7 +60,7 @@ export function ReviewerPage({ uid, navigate }: { uid: string; navigate: (path: 
           return (
             <li key={r.id} className="nl-find-result">
               <button type="button" className="nl-find-result-main" onClick={() => navigate(reviewPath(r))} aria-label={`Open review of ${r.title}`}>
-                <span className="nl-find-cover">{cover ? <img src={cover} alt="" loading="lazy" /> : <BookOpen aria-hidden="true" />}</span>
+                <span className="nl-find-cover"><CoverImg src={cover} /></span>
                 <span className="nl-find-copy">
                   <strong>{sanitizeUserText(r.title, 120)}</strong>
                   <small>{sanitizeUserText(r.author, 80)}{r.genre ? ` · ${sanitizeUserText(r.genre, 40)}` : ''}</small>

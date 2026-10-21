@@ -47,7 +47,7 @@ export async function fetchShelfCommunityInfo(input: Array<ShelfReviewRef | stri
     // Public publication metadata is small (a few hundred records). Read only these
     // four fields, then normalize numbers locally so "001" and "1" stay equivalent.
     const { data, error } = await supabase
-      .from('community_reviews')
+      .from('public_community_reviews')
       .select('id,review_no,poster_url,reviewers_rating')
       .eq('is_published', true);
     if (error) throw error;

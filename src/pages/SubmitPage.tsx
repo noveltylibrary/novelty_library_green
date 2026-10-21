@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ArrowLeft, Send, Star, PenTool, Search, Upload,
   Save, Lock, Eye, Edit3, Download, AlertCircle, X,
-  Clock, BookOpen, Sparkles, Heart, Plus, Trash2, FileText, ChevronRight
+  Clock, BookOpen, ClipboardCheck, Heart, Plus, Trash2, FileText, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useSubmitFreeze } from '@/lib/submitFreeze';
@@ -1176,7 +1176,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
                     <p className="text-xs truncate" style={{ color: 'var(--color-text-muted)' }}>{r.author}{r.publishYear ? ` · ${r.publishYear}` : ''}{r.language ? ` · ${r.language}` : ''}</p>
                     {r.subjects.length > 0 && <p className="text-[10px] truncate mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{r.subjects.slice(0, 3).join(' · ')}</p>}
                   </div>
-                  <Sparkles className="w-4 h-4" style={{ color: 'var(--color-teal-dark)' }} />
+                  <ChevronRight className="w-4 h-4" style={{ color: 'var(--color-teal-dark)' }} />
                 </button>
               ))}
             </div>
@@ -1289,7 +1289,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
             <div className="quality-helper">
               <div className="flex items-center justify-between gap-3 mb-2">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" style={{ color: 'var(--color-teal-dark)' }} />
+                  <ClipboardCheck className="w-4 h-4" style={{ color: 'var(--color-teal-dark)' }} />
                   <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Review quality helper</span>
                 </div>
                 <span className="text-xs font-semibold" style={{ color: form.review_text.trim().length >= 100 ? 'var(--color-teal-dark)' : '#ef4444' }}>

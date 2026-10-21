@@ -54,7 +54,7 @@ return {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
         navigateFallback: `${base}index.html`,
         // ads.txt must be served as a plain file, never replaced by the app shell.
-        navigateFallbackDenylist: [/ads\.txt/],
+        navigateFallbackDenylist: [/ads\.txt/, /robots\.txt/, /sitemap.*\.xml/, /^\/assets\//, /^\/guide\//],
         globIgnores: ['**/ads.txt'],
         cleanupOutdatedCaches: true,
         clientsClaim: true,

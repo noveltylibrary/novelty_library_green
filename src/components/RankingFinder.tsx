@@ -1,9 +1,12 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { BookOpen, ChevronDown, Dices, Search, Sparkles, X } from 'lucide-react';
+import { CoverImg } from '@/components/CoverImg';
+import { BookOpen, ChevronDown, Dices, Fingerprint, Search, Target, X } from 'lucide-react';
 import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import type { Review } from '@/types/review';
 import { VERDICTS, normalizeVerdict, type Verdict } from '@/lib/verdict';
 import { rankTmai40 } from '@/lib/tmai40Engine';
+import { rememberedSearch } from '@/lib/rememberedSearch';
+import { useBookHints } from '@/lib/authorBio';
 import {
   FIELD_LABELS, FIELD_PLACEHOLDERS, MOODS, cleanTraits, norm, popularValues, didYouMean, nearestBooks, runSearch,
   type Match, type SearchBook, type SearchField,
@@ -45,7 +48,7 @@ function ResultCard({ match, byId, openBook, badge }: { match: Match; byId: Map<
   return (
     <li className="nl-find-result">
       <button type="button" className="nl-find-result-main" onClick={() => openBook(review)} aria-label={`Open review of ${review.title}`}>
-        <span className="nl-find-cover">{cover ? <img src={cover} alt="" loading="lazy" /> : <BookOpen aria-hidden="true" />}</span>
+        <span className="nl-find-cover"><CoverImg src={cover} /></span>
         <span className="nl-find-copy">
           <strong>{review.title}</strong>
           <small>{review.author || 'Author unavailable'}</small>
@@ -141,6 +144,20 @@ export function RankingSearch({ books, openBook }: CommonProps) {
         {active && <button type="button" className="nl-find-clear" onClick={clear}><X size={14} aria-hidden="true" /> Clear</button>}
       </div>
 
+      {active && picks.length > 0 && (
+        <aside className="nl-taste-dna" aria-label="Your match profile">
+          <span className="nl-taste-dna-kicker"><Fingerprint size={14} aria-hidden="true" /> YOUR MATCH PROFILE</span>
+          <h3>{profile.headline}</h3>
+          {(profile.genres.length > 0 || profile.traits.length > 0) && <p>Leaning towards {profile.genres.length ? profile.genres.join(' and ') : 'a mix of genres'}{profile.traits.length ? `, with ${profile.traits.slice(0, 3).join(', ')} running through it` : ''}.</p>}
+          <div className="nl-taste-dna-chips">
+            {profile.loved && <span>Because you loved {profile.loved.title}</span>}
+            {language && <span>{language}</span>}
+            {verdicts.map((v) => <span key={v}>{VERDICTS.find((x) => x.value === v)?.label ?? v}</span>)}
+            {profile.traits.map((t) => <span key={t}>{t}</span>)}
+          </div>
+        </aside>
+      )}
+
       <div className="nl-find-results" aria-live="polite">
         {!active && <p className="nl-find-hint">Start typing above. Results appear as you type, with the reason each book matched.</p>}
         {nothing && <p className="nl-find-hint">No exact match for that yet.</p>}
@@ -194,6 +211,8 @@ export function TasteMatchPanel({ books, openBook }: CommonProps) {
   const [lovedId, setLovedId] = useState('');
   const [language, setLanguage] = useState('');
   const [verdicts, setVerdicts] = useState<Verdict[]>([]);
+  const [remembered, setRemembered] = useState('');
+  const deferredRemembered = useDeferredValue(remembered);
 
   // Legacy #/live-rankings#taste links now route here; scroll past the page header to the matcher.
   useEffect(() => {
@@ -207,6 +226,27 @@ export function TasteMatchPanel({ books, openBook }: CommonProps) {
   const languages = useMemo(() => popularValues(searchBooks, 'language', 12), [searchBooks]);
   const titles = useMemo(() => [...searchBooks].sort((a, b) => a.title.localeCompare(b.title)), [searchBooks]);
   const picks = useMemo(() => rankTmai40(searchBooks, { description: deferredDescription, moods, lovedId, language, verdicts }, 3), [searchBooks, deferredDescription, moods, lovedId, language, verdicts]);
+  const rememberedHits = useMemo(() => rememberedSearch(searchBooks, deferredRemembered, 3), [searchBooks, deferredRemembered]);
+  // Nothing local? Ask the public web what was probably meant; if that spelling matches one of our reviews, show it.
+  const hints = useBookHints(deferredRemembered, !!norm(deferredRemembered) && rememberedHits.length === 0);
+  const hintHits = useMemo(() => {
+    const seen = new Set<string>(); const out: Match[] = [];
+    for (const h of hints) for (const m of rememberedSearch(searchBooks, `${h.title} ${h.author}`, 1)) {
+      if (m.score >= 60 && !seen.has(m.book.id)) { seen.add(m.book.id); out.push({ ...m, reasons: [`Looks like “${h.title}”${h.author ? ` by ${h.author}` : ''}`] }); }
+    }
+    return out.slice(0, 3);
+  }, [hints, searchBooks]);
+  const notReviewed = useMemo(() => hints.filter((h) => !hintHits.some((m) => norm(m.book.title) === norm(h.title))).slice(0, 2), [hints, hintHits]);
+  /** The reader's taste in plain words: their choices plus what the best matches have in common. */
+  const profile = useMemo(() => {
+    const chosen = moods.map((id) => MOODS.find((m) => m.id === id)?.label).filter((x): x is string => !!x);
+    const loved = searchBooks.find((b) => b.id === lovedId);
+    const count = (values: string[]) => { const m = new Map<string, number>(); values.forEach((v) => { const k = v.trim(); if (k) m.set(k, (m.get(k) ?? 0) + 1); }); return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => k); };
+    const genres = count(picks.map((p) => (p.book.genre || '').split(/[,/&]/)[0])).slice(0, 2);
+    const traits = count(picks.flatMap((p) => cleanTraits(p.book.traits).split(',').map((t) => t.trim().toLowerCase()))).slice(0, 4);
+    const headline = chosen.length ? chosen.join(' · ') : loved ? `Readers of ${loved.title}` : 'Your taste, in your words';
+    return { chosen, loved, genres, traits, headline };
+  }, [moods, lovedId, picks, searchBooks]);
   const active = !!description.trim() || moods.length > 0 || !!lovedId || !!language || verdicts.length > 0;
   const verdictCounts = useMemo(() => {
     const c: Record<Verdict, number> = { perfection: 0, go_for_it: 0, timepass: 0 };
@@ -238,6 +278,30 @@ export function TasteMatchPanel({ books, openBook }: CommonProps) {
           <p>Describe the book you want, choose up to three moods, or add a book you loved. Our matching reads the feel of every published review and brings the closest ones to you.</p>
         </div>
       </header>
+
+      <div className="nl-find-field nl-find-wide nl-taste-remember">
+        <label htmlFor="nl-taste-remember-input"><span>Can&rsquo;t spell it? Find it anyway <em>· half-remembered titles, typos, details</em></span></label>
+        <span className="nl-taste-remember-box"><Search size={16} aria-hidden="true" /><input id="nl-taste-remember-input" type="search" value={remembered} onChange={(e) => setRemembered(e.target.value)} maxLength={200} placeholder="e.g. harry poter, or “that book with the octopus”" autoComplete="off" spellCheck={false} /></span>
+        {norm(deferredRemembered) && (
+          (rememberedHits.length === 0 && hintHits.length === 0)
+            ? <p className="nl-find-hint">No review sounds like that yet.{notReviewed.length > 0 ? ` You may mean ${notReviewed.map((h) => `“${h.title}”${h.author ? ` by ${h.author}` : ''}${h.year ? ` (${h.year})` : ''}`).join(' or ')}, which hasn't been reviewed here yet.` : ' Try a different detail: a character, a place, the author, or a word from the title.'}</p>
+            : <ul className="nl-find-list">
+                {(rememberedHits.length ? rememberedHits : hintHits).map((m) => {
+                  const item = byId.get(m.book.id);
+                  if (!item) return null;
+                  return (
+                    <li key={m.book.id} className="nl-find-result">
+                      <button type="button" className="nl-find-result-main" onClick={() => openBook(item.review)} aria-label={`Open review of ${item.review.title}`}>
+                        <span className="nl-find-cover"><CoverImg src={item.review.poster_url || item.review.cover_image_url} /></span>
+                        <span className="nl-find-copy"><strong>{item.review.title}</strong><small>{item.review.author || 'Author unavailable'}</small><span className="nl-taste-why"><Search size={13} aria-hidden="true" /> {m.reasons.join(' · ')}</span></span>
+                      </button>
+                      <span className="nl-find-score"><b>{item.nlRating == null ? '—' : item.nlRating.toFixed(1)}</b><small>NL</small></span>
+                    </li>
+                  );
+                })}
+              </ul>
+        )}
+      </div>
 
       <label className="nl-find-field nl-find-wide nl-taste-description">
         <span>Describe your ideal read <em>· natural language</em></span>
@@ -303,11 +367,11 @@ export function TasteMatchPanel({ books, openBook }: CommonProps) {
                   return (
                     <>
                       <button type="button" className="nl-find-result-main" onClick={() => openBook(item.review)} aria-label={`Open review of ${item.review.title}`}>
-                        <span className="nl-find-cover">{cover ? <img src={cover} alt="" loading="lazy" /> : <BookOpen aria-hidden="true" />}</span>
+                        <span className="nl-find-cover"><CoverImg src={cover} /></span>
                         <span className="nl-find-copy">
                           <strong>{item.review.title}</strong>
                           <small>{item.review.author || 'Author unavailable'}</small>
-                          <span className="nl-taste-why"><Sparkles size={13} aria-hidden="true" /> {m.score > 0 && <><b className="nl-find-pct">{Math.round(m.score)}% match</b> · </>}<b>{m.score > 0 ? 'Why it fits you:' : 'Why it is here:'}</b> {m.reasons.join(' · ')}</span>
+                          <span className="nl-taste-why"><Target size={13} aria-hidden="true" /> {m.score > 0 && <><b className="nl-find-pct">{Math.round(m.score)}% match</b> · </>}<b>{m.score > 0 ? 'Why it fits you:' : 'Why it is here:'}</b> {m.reasons.join(' · ')}</span>
                         </span>
                       </button>
                       <span className="nl-find-score"><b>{item.nlRating == null ? '—' : item.nlRating.toFixed(1)}</b><small>NL</small></span>

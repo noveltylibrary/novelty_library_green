@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, X, Clock3, Heart, Repeat2, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, X, Clock3, Heart, Repeat2, BookmarkPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchActiveStories, repostStory, toggleStoryLike, type Story } from '@/lib/social';
 import { useAuth } from '@/lib/auth';
 import { StoryComposerModal } from '@/components/StoryComposerModal';
@@ -65,7 +65,7 @@ export function StoriesRail({ navigate }: Props) {
         <div className="nl-story-actions">
           <button type="button" className={`nl-story-action ${active.liked_by_me ? 'text-rose-300' : ''}`} onClick={() => void likeActive()}><Heart className="w-4 h-4" fill={active.liked_by_me ? 'currentColor' : 'none'} /> {active.like_count}</button>
           <button type="button" className="nl-story-action" disabled={reposting || active.reposted_by_me} onClick={() => void repost()}><Repeat2 className="w-4 h-4" /> {active.reposted_by_me ? 'Reposted' : 'Repost'}</button>
-          {active.user_id === user.id && <button type="button" className="nl-story-action" onClick={() => { setHighlightFor(active.id); setActive(null); }}><Sparkles className="w-4 h-4" /> Highlight</button>}
+          {active.user_id === user.id && <button type="button" className="nl-story-action" onClick={() => { setHighlightFor(active.id); setActive(null); }}><BookmarkPlus className="w-4 h-4" /> Highlight</button>}
         </div>
       </div>
     </div>}

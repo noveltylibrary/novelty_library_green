@@ -5,6 +5,7 @@ import {
   LayoutGrid, Database, RefreshCw, BookOpen, Star, User,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { go } from '@/lib/router';
 import { supabase } from '@/lib/supabase';
 import { VERDICTS, normalizeVerdict } from '@/lib/verdict';
 import { mirrorVerdictToPublished } from '@/lib/reviews';
@@ -1061,7 +1062,7 @@ function renderCellValue(value: string, col: ColumnKey): React.ReactNode {
 
   if (col === 'novelty_username' && value) {
     const handle = value.replace(/^@/, '');
-    return <button type="button" onClick={() => window.location.hash = `/profile/@${encodeURIComponent(handle)}`} className="text-xs hover:underline truncate block" style={{ color: 'var(--color-cyan-dark)' }}>@{handle}</button>;
+    return <button type="button" onClick={() => go(`/profile/@${encodeURIComponent(handle)}`)} className="text-xs hover:underline truncate block" style={{ color: 'var(--color-cyan-dark)' }}>@{handle}</button>;
   }
 
   if (col === 'instagram' && value) {

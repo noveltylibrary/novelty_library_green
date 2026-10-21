@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { go } from '@/lib/router';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { getCaptchaToken } from '@/lib/captcha';
@@ -98,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // A broken/expired email link lands on the home route; move to the sign-in page where the message is shown.
     if (authLinkError) {
-      try { window.history.replaceState(null, '', window.location.pathname); window.location.hash = '/auth'; } catch { /* ignore */ }
+      try { go('/auth', true); } catch { /* ignore */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -120,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'PASSWORD_RECOVERY') {
         // Arrived from the reset-password email: send the user to the set-new-password screen.
         setRecovering(true);
-        try { window.location.hash = '/auth'; } catch { /* ignore */ }
+        try { go('/auth'); } catch { /* ignore */ }
       }
       (async () => {
         const newUserId = newSession?.user?.id ?? null;

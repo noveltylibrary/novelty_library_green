@@ -1,10 +1,10 @@
 import { useState, type ComponentType } from 'react';
-import { BookOpen, Users, Heart, Sparkles, PenTool, ArrowRight, ChevronDown, Globe2, ShieldCheck, Languages, Sparkle, Library, Compass, Wand2, BarChart3, Trophy, FileText, Newspaper, Instagram } from 'lucide-react';
+import { BookOpen, Users, Heart, PenTool, ArrowRight, ChevronDown, Globe2, ShieldCheck, Languages, Star, Library, Compass, Feather, BarChart3, Trophy, FileText, Newspaper, Instagram } from 'lucide-react';
 import type { AboutSection } from '@/lib/aboutSections';
 import { BLOG_URL, INSTAGRAM_URL } from '@/lib/links';
 
 const ICONS: Record<string, ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
-  book: BookOpen, sparkles: Sparkle, heart: Heart, users: Users, globe: Globe2, languages: Languages, shield: ShieldCheck, library: Library, compass: Compass, wand: Wand2, pen: PenTool,
+  book: BookOpen, sparkles: Star, heart: Heart, users: Users, globe: Globe2, languages: Languages, shield: ShieldCheck, library: Library, compass: Compass, wand: Feather, pen: PenTool,
 };
 
 const paragraphs = (text: string) => text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
@@ -43,9 +43,9 @@ export function AboutSectionBlock({ section, email, navigate }: { section: About
     case 'hero':
       return <div className="nl-about-hero text-center mb-16">
         <div className="nl-about-orbit" aria-hidden="true" />
-        <div className="nl-about-floaters" aria-hidden="true"><span><Library className="w-4 h-4" /></span><span><Compass className="w-4 h-4" /></span><span><Wand2 className="w-4 h-4" /></span></div>
+        <div className="nl-about-floaters" aria-hidden="true"><span><Library className="w-4 h-4" /></span><span><Compass className="w-4 h-4" /></span><span><Feather className="w-4 h-4" /></span></div>
         {section.eyebrow && <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6" style={{ background: 'rgba(0, 151, 178, 0.1)' }}>
-          <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--color-teal-dark)' }} />
+          <Compass className="w-3.5 h-3.5" style={{ color: 'var(--color-teal-dark)' }} />
           <span className="text-xs font-medium tracking-wide" style={{ color: 'var(--color-teal-dark)' }}>{section.eyebrow}</span>
         </div>}
         <h1 className="font-serif text-4xl sm:text-5xl font-semibold leading-tight tracking-tight mb-6 text-balance" style={{ color: 'var(--color-text)' }}>{section.title}</h1>
@@ -72,7 +72,7 @@ export function AboutSectionBlock({ section, email, navigate }: { section: About
       return <div className="mb-16">
         <Heading title={section.title} subtitle={section.subtitle} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {section.items.map((it, i) => { const Icon = ICONS[it.icon || 'sparkles'] || Sparkles; return <div key={`${it.title}-${i}`} className="surface-card p-5 flex gap-3 nl-about-card">
+          {section.items.map((it, i) => { const Icon = ICONS[it.icon || 'sparkles'] || BookOpen; return <div key={`${it.title}-${i}`} className="surface-card p-5 flex gap-3 nl-about-card">
             <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-teal-dark)' }} />
             <div className="min-w-0"><h4 className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text)' }}>{it.title}</h4><p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{it.desc}</p></div>
           </div>; })}

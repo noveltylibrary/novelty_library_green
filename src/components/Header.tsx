@@ -1,4 +1,4 @@
-import { ArrowLeft, Menu, X, Shield, Moon, Sun, User, Download, Home, BookOpen, Send, Info, Settings, Bell, LogIn } from 'lucide-react';
+import { ArrowLeft, Menu, X, Shield, Moon, Sun, User, Download, Home, BookOpen, PenTool, Compass, Settings, Bell, LogIn } from 'lucide-react';
 import { useState, useEffect, type CSSProperties, type ComponentType } from 'react';
 import { createPortal } from 'react-dom';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -10,11 +10,10 @@ import { useOverlayHistory } from '@/lib/overlayHistory';
 
 interface HeaderProps { navigate: (path: string) => void; currentRoute: string; user: SupabaseUser | null; isAdmin: boolean; }
 
-function NavIcon({ label, icon: Icon, active, onClick, badge, tone, edge }: { label: string; icon: ComponentType<{ className?: string }>; active?: boolean; onClick: () => void; badge?: number; tone?: 'accent'; edge?: boolean }) {
+function NavIcon({ label, icon: Icon, active, onClick, badge, tone }: { label: string; icon: ComponentType<{ className?: string }>; active?: boolean; onClick: () => void; badge?: number; tone?: 'accent'; edge?: boolean }) {
   return <button type="button" onClick={onClick} aria-label={label} title={label} className={`nl-nv ${active ? 'is-active' : ''} ${tone === 'accent' ? 'is-accent' : ''}`}>
-    <Icon className="w-[18px] h-[18px]" />
-    {!!badge && badge > 0 && <span className="nl-nv-badge">{badge > 99 ? '99+' : badge}</span>}
-    <span className={`nl-nv-tip ${edge ? 'is-edge' : ''}`} aria-hidden="true">{label}</span>
+    <span className="nl-nv-label">{label}</span>
+    <span className="nl-nv-ico"><Icon className="w-[22px] h-[22px]" />{!!badge && badge > 0 && <span className="nl-nv-badge">{badge > 99 ? '99+' : badge}</span>}</span>
   </button>;
 }
 
@@ -33,8 +32,8 @@ export function Header({ navigate, currentRoute, user, isAdmin }: HeaderProps) {
   const navItems = [
     { label: 'Home', path: '/', route: 'home', icon: Home },
     { label: 'Reviews', path: '/reviews', route: 'reviews', icon: BookOpen },
-    { label: 'Submit', path: '/submit', route: 'submit', icon: Send },
-    { label: 'About', path: '/about', route: 'about', icon: Info },
+    { label: 'Submit', path: '/submit', route: 'submit', icon: PenTool },
+    { label: 'Explore', path: '/about', route: 'about', icon: Compass },
   ];
   const handleNav = (path: string) => { navigate(path); setMenuOpen(false); };
 
@@ -80,7 +79,7 @@ const panelItems: { label: string; icon: ComponentType<{ className?: string }>; 
         </>}
         {isAdmin && <NavIcon label="Admin" icon={Shield} active={currentRoute.startsWith('admin')} tone="accent" onClick={() => handleNav('/admin')} />}
         {!user && <NavIcon label="Sign In" icon={LogIn} active={currentRoute === 'auth'} tone="accent" onClick={() => handleNav('/auth')} />}
-        <NavIcon label={theme === 'light' ? 'Dark mode' : 'Light mode'} icon={theme === 'light' ? Moon : Sun} onClick={toggleTheme} edge />
+        <NavIcon label={theme === 'light' ? 'Dark mode' : 'Light mode'} icon={theme === 'light' ? Moon : Sun} onClick={toggleTheme} />
       </nav>
 
       <div className="flex md:hidden items-center gap-2"><button onClick={toggleTheme} className="p-2 rounded-lg" style={{ color: 'var(--color-text-muted)' }}>{theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}</button><button className="p-2 rounded-lg" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} style={{ color: 'var(--color-text)' }}>{menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}</button></div>

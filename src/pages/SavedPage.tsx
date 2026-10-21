@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { CoverImg } from '@/components/CoverImg';
 import { ArrowLeft, BookOpen, Bookmark, Trash2 } from 'lucide-react';
 import { reviewPath, usePublished, useSavedReviews } from '@/lib/readerTools';
 import { sanitizeUserText } from '@/lib/sanitize';
@@ -26,7 +27,7 @@ export function SavedPage({ navigate }: { navigate: (path: string) => void }) {
           return (
             <li key={r.id} className="nl-find-result">
               <button type="button" className="nl-find-result-main" onClick={() => navigate(reviewPath(r))} aria-label={`Open review of ${r.title}`}>
-                <span className="nl-find-cover">{cover ? <img src={cover} alt="" loading="lazy" /> : <BookOpen aria-hidden="true" />}</span>
+                <span className="nl-find-cover"><CoverImg src={cover} /></span>
                 <span className="nl-find-copy"><strong>{sanitizeUserText(r.title, 120)}</strong><small>{sanitizeUserText(r.author, 80)}</small></span>
               </button>
               <button type="button" className="nl-shelf-x" onClick={() => toggle(r.id)} aria-label={`Remove ${r.title} from my list`}><Trash2 className="w-4 h-4" /></button>

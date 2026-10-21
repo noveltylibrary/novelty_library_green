@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ChevronLeft, ChevronRight, Clock3, ImagePlus, Plus, Trash2, X, Sparkles } from 'lucide-react';
-import { deleteHighlight, fetchArchive, fetchHighlights, MAX_HIGHLIGHTS, MAX_HIGHLIGHT_ITEMS, removeHighlightItem, saveToHighlight, STORY_RETENTION_NOTE, type ArchiveStory, type Highlight } from '@/lib/social';
+import { Check, ChevronLeft, ChevronRight, Clock3, ImagePlus, Plus, Trash2, X, Camera, Archive } from 'lucide-react';
+import { deleteHighlight, fetchArchive, fetchHighlights, MAX_HIGHLIGHTS, MAX_HIGHLIGHT_ITEMS, removeHighlightItem, saveToHighlight, setHighlightCover, STORY_RETENTION_NOTE, type ArchiveStory, type Highlight } from '@/lib/social';
 import { sanitizeUserText } from '@/lib/sanitize';
 import { useOverlayHistory } from '@/lib/overlayHistory';
 
@@ -13,6 +13,7 @@ export function ProfileHighlights({ userId, isOwn }: { userId: string; isOwn: bo
   const [list, setList] = useState<Highlight[] | null>(null);
   const [viewer, setViewer] = useState<{ h: number; i: number } | null>(null);
   const [picker, setPicker] = useState<{ target?: string } | null>(null);
+  const [coverFor, setCoverFor] = useState<string | null>(null);
 
   const load = useCallback(() => { fetchHighlights(userId).then(setList).catch(() => setList([])); }, [userId]);
   useEffect(() => { load(); }, [load]);
@@ -23,11 +24,11 @@ export function ProfileHighlights({ userId, isOwn }: { userId: string; isOwn: bo
 
   return (
     <section className="nl-hl" aria-label="Story highlights">
-      <div className="nl-hl-head"><div><span className="nl-hl-eyebrow"><Sparkles aria-hidden="true" /> STORIES</span><h2>Highlights</h2></div>{list.length > 4 && <span className="nl-hl-scroll-hint">Swipe to see more</span>}</div>
+      <div className="nl-hl-head"><div><span className="nl-hl-eyebrow"><Camera aria-hidden="true" /> STORIES</span><h2>Highlights</h2></div>{list.length > 4 && <span className="nl-hl-scroll-hint">Swipe to see more</span>}</div>
       <div className="nl-hl-row">
         {list.map((h, idx) => (
           <button key={h.id} type="button" className="nl-hl-item" onClick={() => h.items.length ? setViewer({ h: idx, i: 0 }) : isOwn && setPicker({ target: h.id })} aria-label={`Open highlight ${h.title}`}>
-            <span className="nl-hl-ring"><span className="nl-hl-cover">{h.items[0] ? <img src={h.items[0].image_url} alt="" loading="lazy" /> : <ImagePlus aria-hidden="true" />}</span></span>
+            <span className="nl-hl-ring"><span className="nl-hl-cover">{(h.cover_url || h.items[0]) ? <img src={h.cover_url || h.items[0].image_url} alt="" loading="lazy" /> : <ImagePlus aria-hidden="true" />}</span></span>
             <span className="nl-hl-title">{sanitizeUserText(h.title, 24)}</span>
           </button>
         ))}
@@ -39,13 +40,14 @@ export function ProfileHighlights({ userId, isOwn }: { userId: string; isOwn: bo
         )}
       </div>
       {isOwn && <p className="nl-hl-note"><Clock3 aria-hidden="true" /> {STORY_RETENTION_NOTE}</p>}
-      {viewer && list[viewer.h] && <HighlightViewer list={list} pos={viewer} setPos={setViewer} isOwn={isOwn} onChanged={load} onAdd={(id) => { setViewer(null); setPicker({ target: id }); }} />}
+      {viewer && list[viewer.h] && <HighlightViewer list={list} pos={viewer} setPos={setViewer} isOwn={isOwn} onChanged={load} onAdd={(id) => { setViewer(null); setPicker({ target: id }); }} onCover={(id) => { setViewer(null); setCoverFor(id); }} />}
+      {coverFor && list.find((x) => x.id === coverFor) && <CoverPicker userId={userId} highlight={list.find((x) => x.id === coverFor)!} onClose={() => setCoverFor(null)} onSaved={load} />}
       {picker && <HighlightPicker userId={userId} targetId={picker.target} onClose={() => setPicker(null)} onSaved={load} />}
     </section>
   );
 }
 
-function HighlightViewer({ list, pos, setPos, isOwn, onChanged, onAdd }: { list: Highlight[]; pos: { h: number; i: number }; setPos: (p: { h: number; i: number } | null) => void; isOwn: boolean; onChanged: () => void; onAdd: (highlightId: string) => void }) {
+function HighlightViewer({ list, pos, setPos, isOwn, onChanged, onAdd, onCover }: { list: Highlight[]; pos: { h: number; i: number }; setPos: (p: { h: number; i: number } | null) => void; isOwn: boolean; onChanged: () => void; onAdd: (highlightId: string) => void; onCover: (highlightId: string) => void }) {
   const h = list[pos.h];
   const item = h?.items[pos.i];
   const [busy, setBusy] = useState(false);
@@ -83,6 +85,7 @@ function HighlightViewer({ list, pos, setPos, isOwn, onChanged, onAdd }: { list:
         {isOwn && (
           <div className="nl-story-actions">
             <button type="button" className="nl-story-action" disabled={busy || h.items.length >= MAX_HIGHLIGHT_ITEMS} onClick={() => onAdd(h.id)}><Plus className="w-4 h-4" /> Add</button>
+            <button type="button" className="nl-story-action" disabled={busy} onClick={() => onCover(h.id)}><ImagePlus className="w-4 h-4" /> Cover</button>
             <button type="button" className="nl-story-action" disabled={busy} onClick={() => void run(async () => { await removeHighlightItem(item); setPos(null); })}><Trash2 className="w-4 h-4" /> Remove photo</button>
             <button type="button" className="nl-story-action" disabled={busy} onClick={() => { if (window.confirm(`Delete the highlight "${h.title}" and its photos?`)) void run(async () => { await deleteHighlight(h); setPos(null); }); }}><Trash2 className="w-4 h-4" /> Delete</button>
           </div>
@@ -135,7 +138,7 @@ export function HighlightPicker({ userId, targetId, preselect, onClose, onSaved 
   return createPortal(
     <div className="nl-conn-backdrop" onClick={() => !busy && onClose()}>
       <div className="nl-conn-modal nl-hlp" role="dialog" aria-modal="true" aria-label="Add to highlight" onClick={(e) => e.stopPropagation()}>
-        <div className="nl-conn-top"><h2 className="nl-hlp-h"><Sparkles aria-hidden="true" /> From archive</h2><button type="button" className="nl-conn-x" onClick={onClose} disabled={busy} aria-label="Close"><X aria-hidden="true" /></button></div>
+        <div className="nl-conn-top"><h2 className="nl-hlp-h"><Archive aria-hidden="true" /> From archive</h2><button type="button" className="nl-conn-x" onClick={onClose} disabled={busy} aria-label="Close"><X aria-hidden="true" /></button></div>
         <div className="nl-hlp-body">
           <p className="nl-hl-note"><Clock3 aria-hidden="true" /> {STORY_RETENTION_NOTE}</p>
           <div className="nl-hlp-target">
@@ -167,6 +170,50 @@ export function HighlightPicker({ userId, targetId, preselect, onClose, onSaved 
         <div className="nl-hlp-foot">
           <span>{chosen.length} selected{room < MAX_HIGHLIGHT_ITEMS ? ` · room for ${room}` : ''}</span>
           <button type="button" className="nl-follow-btn" disabled={busy || !chosen.length || (target === 'new' && !title.trim())} onClick={() => void save()}>{busy ? 'Saving…' : 'Add to highlight'}</button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+
+/** Choose a highlight's cover from the 30-day archive or from the device gallery. */
+function CoverPicker({ userId, highlight, onClose, onSaved }: { userId: string; highlight: Highlight; onClose: () => void; onSaved: () => void }) {
+  const [archive, setArchive] = useState<ArchiveStory[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  useOverlayHistory(true, onClose);
+  useEffect(() => {
+    let alive = true;
+    fetchArchive(userId).then((a) => { if (alive) setArchive(a); }).catch(() => { if (alive) { setArchive([]); setError('Could not load your archive.'); } });
+    return () => { alive = false; };
+  }, [userId]);
+  const apply = async (source: { story: ArchiveStory } | { file: File }) => {
+    if (busy) return; setBusy(true); setError(null);
+    try { await setHighlightCover(userId, highlight, source); onSaved(); onClose(); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not set the cover.'); } finally { setBusy(false); }
+  };
+  return createPortal(
+    <div className="nl-conn-backdrop" onClick={() => !busy && onClose()}>
+      <div className="nl-conn-modal nl-hlp" role="dialog" aria-modal="true" aria-label="Choose highlight cover" onClick={(e) => e.stopPropagation()}>
+        <div className="nl-conn-top"><h2 className="nl-hlp-h"><ImagePlus aria-hidden="true" /> Cover for {sanitizeUserText(highlight.title, 24)}</h2><button type="button" className="nl-conn-x" onClick={onClose} disabled={busy} aria-label="Close"><X aria-hidden="true" /></button></div>
+        <div className="nl-hlp-body">
+          <div className="nl-hlp-target">
+            <label>From gallery</label>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void apply({ file: f }); }} />
+            <button type="button" className="nl-hlp-upload" disabled={busy} onClick={() => fileRef.current?.click()}><ImagePlus aria-hidden="true" /> Choose a photo from your gallery</button>
+          </div>
+          <div className="nl-hlp-target"><label>From archive</label></div>
+          {archive === null ? <p className="nl-conn-empty">Loading…</p> : archive.length === 0 ? <p className="nl-conn-empty">No stories in the last 30 days.</p> : (
+            <ul className="nl-hlp-grid">
+              {archive.map((s) => (
+                <li key={s.id}><button type="button" className="nl-hlp-cell" disabled={busy} onClick={() => void apply({ story: s })} aria-label={`Use story from ${fmtDay(s.created_at)} as cover`}>{s.image_url ? <img src={s.image_url} alt="" loading="lazy" /> : <ImagePlus aria-hidden="true" />}<span className="nl-hlp-date">{fmtDay(s.created_at)}</span></button></li>
+              ))}
+            </ul>
+          )}
+          {error && <p className="nl-story-modal-error" role="alert">{error}</p>}
         </div>
       </div>
     </div>,

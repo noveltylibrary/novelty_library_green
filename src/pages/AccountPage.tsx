@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
-import { AlertTriangle, ArrowLeft, CheckCircle, KeyRound, LogOut, Lock, Mail, Save, Settings, Trash2, MessageSquareWarning } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle, KeyRound, LogOut, Lock, Mail, Save, Settings, Trash2, MessageSquareWarning, Archive, ChevronRight } from 'lucide-react';
+import { ArchivesModal } from '@/components/ArchivesModal';
 import { useAuth } from '@/lib/auth';
 import { updateProfile } from '@/lib/reviews';
 import { deleteCurrentAccount } from '@/lib/account';
@@ -38,6 +39,7 @@ export function AccountPage({ navigate }: AccountPageProps) {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteEmail, setDeleteEmail] = useState('');
+  const [archivesOpen, setArchivesOpen] = useState(false);
 
   useEffect(() => { if (profile?.novelty_username) setUsername(profile.novelty_username); }, [profile?.novelty_username]);
   useEffect(() => { if (user) void fetchMyGrievances().then(setGrievances).catch(() => undefined); }, [user?.id]);
@@ -120,6 +122,12 @@ export function AccountPage({ navigate }: AccountPageProps) {
         <div className="flex items-start gap-3"><LogOut className="w-5 h-5 mt-0.5" style={{ color: 'var(--color-teal-dark)' }} /><div><h2 className="font-serif text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Log out</h2><p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>Sign out of this device. Your account, reviews and data are kept — just sign back in any time.</p></div></div>
         <button type="button" onClick={() => void logOut()} disabled={signingOut} className="btn-ghost shrink-0"><LogOut className="w-4 h-4" /> {signingOut ? 'Logging out…' : 'Log out'}</button>
       </div>
+
+      <button type="button" onClick={() => setArchivesOpen(true)} aria-haspopup="dialog" className="surface-card p-6 w-full flex items-center justify-between gap-4 text-left transition hover:-translate-y-0.5">
+        <span className="flex items-start gap-3"><Archive className="w-5 h-5 mt-0.5" style={{ color: 'var(--color-teal-dark)' }} /><span><span className="block font-serif text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Archives</span><span className="block text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>Your highlight archive (stories from the last 30 days) and your saved list of reviews.</span></span></span>
+        <ChevronRight className="w-5 h-5 shrink-0" style={{ color: 'var(--color-teal-dark)' }} />
+      </button>
+      {archivesOpen && <ArchivesModal userId={user.id} navigate={navigate} onClose={() => setArchivesOpen(false)} />}
 
       <form onSubmit={saveUsername} className="surface-card p-6 space-y-4">
         <div><h2 className="font-serif text-xl font-semibold" style={{ color: 'var(--color-text)' }}>Novelty username</h2><p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>New accounts are assigned one automatically from email. You can change it later if the new ID is available.</p></div>

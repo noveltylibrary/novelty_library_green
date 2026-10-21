@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Activity, BarChart3, BookOpen, ChevronLeft, ChevronRight, LoaderCircle, Sparkles, TrendingUp, Trophy } from 'lucide-react';
+import { CoverImg } from '@/components/CoverImg';
+import { ArrowLeft, ArrowRight, Activity, BarChart3, BookOpen, ChevronLeft, ChevronRight, LoaderCircle, TrendingUp, Trophy } from 'lucide-react';
 import { AdSenseAdSlot } from '@/components/AdSenseAdSlot';
 import type { Review } from '@/types/review';
 import { fetchReviews } from '@/lib/reviews';
@@ -72,7 +73,7 @@ function BookRankingRow({ item, rank, metric, navigate }: {
       <span className={`nl-live-rank${rank <= 3 ? ` is-top-${rank}` : ''}`} aria-label={`Rank ${rank}`}>{rank}</span>
       <button type="button" className="nl-live-book" onClick={() => navigate(`/review/${encodeURIComponent(bookSlug(review))}`)} aria-label={`Open review of ${review.title}`}>
         <span className="nl-live-cover">
-          {cover ? <img src={cover} alt="" loading="lazy" /> : <BookOpen aria-hidden="true" />}
+          <CoverImg src={cover} />
         </span>
         <span className="nl-live-book-copy">
           <strong>{review.title}</strong>
@@ -147,7 +148,7 @@ function RankingSection({
   icon: 'trending' | 'trophy' | 'sparkles';
 }) {
   const [page, setPage] = useState(0);
-  const Icon = icon === 'trending' ? TrendingUp : icon === 'trophy' ? Trophy : Sparkles;
+  const Icon = icon === 'trending' ? TrendingUp : icon === 'trophy' ? Trophy : BookOpen;
   const filteredBooks = books;
   const pageCount = Math.max(1, Math.ceil(filteredBooks.length / 5));
   const currentPage = Math.min(page, pageCount - 1);
@@ -256,7 +257,7 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
             <p className="nl-live-hero-note">A reader-powered snapshot of the books the Novelty Library community rates highest.</p>
             <div className="nl-live-hero-actions">
               <button type="button" className="nl-taste-launch" onClick={() => navigate('/taste-match')}><TasteMatchIcon size={25} /><span><strong>Open Taste Match SE</strong><small>Find a book that fits your mind</small></span><ArrowRight size={17} aria-hidden="true" /></button>
-              <button type="button" className="nl-live-analytics-quick-link" onClick={() => navigate('/analytics')}><BarChart3 size={17} aria-hidden="true" /><span>Analytics</span></button>
+              <button type="button" className="nl-taste-launch" onClick={() => navigate('/analytics')}><BarChart3 size={25} aria-hidden="true" /><span><strong>Open Analytics</strong><small>See the numbers behind the shelves</small></span><ArrowRight size={17} aria-hidden="true" /></button>
             </div>
           </div>
         </header>

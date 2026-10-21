@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
-import { ChevronLeft, ChevronRight, Search, Sparkles, Trophy } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Megaphone, Trophy } from 'lucide-react';
 import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import { BUILTIN_KEYS, fetchAnnouncements, isBuiltinActive, isPosterLive, peekAnnouncements, type AnnouncementsConfig, type BuiltinKey, type Poster } from '@/lib/announcements';
 
@@ -80,7 +80,7 @@ export function FeaturedPosters({ navigate, config }: FeaturedPostersProps) {
       onTouchEnd={() => window.setTimeout(() => setPaused(false), 4000)}
     >
       <div className="nl-feat-head">
-        <span className="nl-feat-eyebrow"><Sparkles className="w-3.5 h-3.5" aria-hidden="true" /> {cfg.heading || 'Featured'}</span>
+        <span className="nl-feat-eyebrow"><Megaphone className="w-3.5 h-3.5" aria-hidden="true" /> {cfg.heading || 'Featured'}</span>
         <span className="nl-feat-rule" aria-hidden="true" />
       </div>
 
@@ -130,7 +130,7 @@ export function FeaturedPosters({ navigate, config }: FeaturedPostersProps) {
             );
             const cls = `nl-feat-card${i === active ? ' is-active' : ''}`;
             return p.link
-              ? <a key={p.id} href={p.link.startsWith('/') ? `#${p.link}` : p.link} target={/^https?:/i.test(p.link) ? '_blank' : undefined} rel="noopener noreferrer" className={cls} onClick={(e) => open(e, p)} aria-label={p.title || 'Open featured poster'}>{body}</a>
+              ? <a key={p.id} href={p.link} target={/^https?:/i.test(p.link) ? '_blank' : undefined} rel="noopener noreferrer" className={cls} onClick={(e) => open(e, p)} aria-label={p.title || 'Open featured poster'}>{body}</a>
               : <div key={p.id} className={cls}>{body}</div>;
           })}
         </div>

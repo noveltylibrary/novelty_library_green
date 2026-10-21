@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { APP_VERSION } from '@/lib/version';
-import { ArrowUpRight, Download, ExternalLink, Instagram, Mail, Share, Smartphone, Sparkles, Zap } from 'lucide-react';
+import { ArrowUpRight, Download, ExternalLink, Instagram, Mail, Share, Smartphone, Clock, Zap } from 'lucide-react';
 import { useSupportEmail } from '@/lib/siteSettings';
 import { usePwaInstall } from '@/lib/pwa';
 import { BLOG_URL, INSTAGRAM_URL } from '@/lib/links';
@@ -15,7 +15,7 @@ const LINKS: [string, string][] = [
   ['Authors', '/authors'],
   ['Reviewers', '/reviewers'],
   ['Submit a Review', '/submit'],
-  ['About Us', '/about'],
+  ['Explore', '/about'],
 ];
 
 export function Footer({ navigate }: FooterProps) {
@@ -32,13 +32,13 @@ export function Footer({ navigate }: FooterProps) {
             <span className="nl-footer-orb nl-footer-orb-a" aria-hidden="true" />
             <span className="nl-footer-orb nl-footer-orb-b" aria-hidden="true" />
             <div className="nl-footer-cta-copy">
-              <span className="nl-footer-kicker"><Sparkles className="w-3.5 h-3.5" /> Free · No app store needed</span>
+              <span className="nl-footer-kicker"><Smartphone className="w-3.5 h-3.5" /> Free · No app store needed</span>
               <h3 className="font-serif">Keep Novelty Library one tap away</h3>
               <p>Install the app to your home screen. It opens full-screen like a real app, so your next review is always a tap away.</p>
               <ul className="nl-footer-perks">
                 <li><Zap className="w-3.5 h-3.5" /> Opens instantly</li>
                 <li><Smartphone className="w-3.5 h-3.5" /> Full-screen, no browser bar</li>
-                <li><Sparkles className="w-3.5 h-3.5" /> Takes 5 seconds</li>
+                <li><Clock className="w-3.5 h-3.5" /> Takes 5 seconds</li>
               </ul>
             </div>
             <div className="nl-footer-cta-action">

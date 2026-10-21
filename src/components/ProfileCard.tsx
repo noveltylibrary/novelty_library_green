@@ -414,7 +414,7 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
         </div>}
         {onPublicFormatChange && <div className="nl-pc-tile-wrap" style={{ '--i': 3 } as CSSProperties}>
           <div className={`nl-pc-tile nl-ico-globe nl-pc-tile-select ${publicSaved ? 'is-saved' : ''}`}>
-            <span className="nl-pc-tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{publicSaved ? <path className="nl-ico-check" d="M5 13l4 4L19 7" /> : <><circle cx="12" cy="12" r="9" /><path className="nl-ico-meridian" d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" /></>}</svg></span>
+            <span className="nl-pc-tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{publicSaved ? <path className="nl-ico-check" d="M5 13l4 4L19 7" /> : <><path className="nl-ico-meridian" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>}</svg></span>
             <span className="nl-pc-tile-txt"><strong>{publicSaved ? 'Saved' : 'Public view'}</strong><small>Shown as {publicFormat || PREVIEW_FORMAT}</small></span>
             <ChevronDown className="nl-pc-tile-chev" aria-hidden="true" />
             <select value={publicFormat || PREVIEW_FORMAT} onChange={async (e) => { await onPublicFormatChange(e.target.value as FormatKey); setPublicSaved(true); window.setTimeout(() => setPublicSaved(false), 2200); }} aria-label="Card format other readers see on your public profile">{FORMATS.map((f) => <option key={f.key} value={f.key}>{f.key}</option>)}</select>
@@ -563,8 +563,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
   const listValue = (terms: string[]) => questionValues(terms).flatMap((value) => value.split(/[,;|]/).map((v) => v.trim()).filter(Boolean));
 
 
-  const bio = questionValue(['bio', 'about me', 'about', 'reader bio']);
-  const cappedBio = typeof bio === 'string' ? bio.slice(0, 140) : bio;
+  // The reader's About text is no longer printed on the card: it is shown as an intro on the profile page instead.
   const city = questionValue(['city', 'town', 'location', 'residence']);
   const state = questionValue(['state', 'province']);
   const country = questionValue(['country']);
@@ -613,8 +612,8 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
     { value: data.booksThisMonth == null ? '—' : String(data.booksThisMonth), label: 'read this month', icon: <BookOpen width={s(14)} height={s(14)} aria-hidden="true" /> },
     { value: data.totalBooksRead == null ? '—' : String(data.totalBooksRead), label: 'books read', icon: <BookOpen width={s(14)} height={s(14)} aria-hidden="true" /> },
     { value: String(data.publishedBooks), label: 'published reviews', icon: <BookOpen width={s(14)} height={s(14)} aria-hidden="true" /> },
-    // Profile summaries use the community NL rating, never a relabelled reviewer R/W score.
-    { value: data.avgNlRating == null ? '—' : Number(data.avgNlRating).toFixed(1), label: 'average NL rating', icon: <StarIcon size={s(18)} />, rating: 'nl' },
+    // Profile summaries use the reader's own R/W rating (the rating they gave in their reviews), not the community NL rating.
+    { value: data.avgRating == null ? '—' : Number(data.avgRating).toFixed(1), label: 'average RW rating', icon: <StarIcon size={s(18)} />, rating: 'nl' },
   ];
 
   const statCues = stats.map(() => cue(0.08));
@@ -626,7 +625,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
       const bigNum = s(isTall ? 32 : isFourFive ? 25 : 38);
       if (st.rating) return <div key={st.label} className={m.className} role="img" aria-label={`${st.label} ${st.value}`} title={st.label} style={{ ...tileStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: s(5), background: st.rating === 'nl' ? 'linear-gradient(145deg,rgba(92,225,230,.20),rgba(255,255,255,.07))' : tileStyle.background, borderColor: st.rating === 'nl' ? 'rgba(92,225,230,.48)' : C.line }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(6) }}><p className="font-serif" style={{ fontSize: bigNum, fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p><StarIcon size={bigNum * 0.82} /></div>
-        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(4), fontSize: s(8), lineHeight: 1.15, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 900, color: C.mint, textAlign: 'center' }}><BookOpen width={s(11)} height={s(11)} aria-hidden="true" />Avg NL Rating</span>
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(4), fontSize: s(8), lineHeight: 1.15, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 900, color: C.mint, textAlign: 'center' }}><BookOpen width={s(11)} height={s(11)} aria-hidden="true" />Avg RW Rating</span>
       </div>;
       return <div key={st.label} className={m.className} style={tileStyle}>
         <p className="font-serif" style={{ fontSize: bigNum, fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p>
@@ -656,7 +655,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
 
   const shelf = reviews.length > 0 ? <div style={{ borderRadius: s(22), padding: s(isTall ? 13 : 17), background: 'linear-gradient(150deg,rgba(255,255,255,.15),rgba(255,255,255,.07))', border: `1px solid ${C.line}`, boxShadow: '0 14px 32px rgba(0,25,35,.24)' }}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: s(10), marginBottom: s(11) }}>
-      <div><p style={{ fontSize: s(11), letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Published shelf</p><p className="font-serif" style={{ fontSize: s(isTall ? 18 : 22), fontWeight: 700, lineHeight: 1.1, color: C.ink, marginTop: s(2) }}>Reviews on Novelty Library</p></div>
+      <div><p style={{ fontSize: s(11), letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 800, color: C.mint }}>Published shelf</p><p className="font-serif" style={{ fontSize: s(isTall ? 18 : 22), fontWeight: 700, lineHeight: 1.1, color: C.ink, marginTop: s(2) }}>Reviews given</p></div>
       <span className="font-serif" style={{ fontSize: s(17), fontWeight: 700, minWidth: s(36), textAlign: 'center', borderRadius: 999, padding: `${s(3)}px ${s(8)}px`, background: 'rgba(255,255,255,.16)', border: `1px solid ${C.line}`, color: C.ink }}>{data.publishedReviews.length}</span>
     </div>
     <div style={{ display: 'grid', gridTemplateColumns: isTall ? '1fr' : reviews.length > 1 ? 'repeat(2,minmax(0,1fr))' : '1fr', gap: s(8) }}>
@@ -725,7 +724,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
       {stats.map((st, i) => { const m = mv('pop', statCues[i]); const sbTile: CSSProperties = { ...m.style, minWidth: 0, textAlign: 'center', borderRadius: s(14), padding: `${s(7)}px ${s(3)}px`, background: st.rating === 'nl' ? 'rgba(92,225,230,.18)' : 'rgba(1,43,54,.30)', border: `1px solid ${st.rating === 'nl' ? 'rgba(92,225,230,.48)' : C.line}` };
         if (st.rating) return <div key={st.label} className={m.className} role="img" aria-label={`${st.label} ${st.value}`} title={st.label} style={{ ...sbTile, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: s(3) }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(3) }}><p className="font-serif" style={{ fontSize: s(24), fontWeight: 700, lineHeight: 1, color: C.ink }}><CountUp value={st.value} play={play} still={still} delay={statCues[i]} /></p><StarIcon size={s(20)} /></div>
-          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(3), fontSize: s(6.5), letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 900, color: C.mint, lineHeight: 1.15 }}><BookOpen width={s(9)} height={s(9)} aria-hidden="true" />Avg NL</span>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: s(3), fontSize: s(6.5), letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 900, color: C.mint, lineHeight: 1.15 }}><BookOpen width={s(9)} height={s(9)} aria-hidden="true" />Avg RW</span>
         </div>;
 
         return <div key={st.label} className={m.className} style={sbTile}>
@@ -760,7 +759,6 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
 
       <div data-fit style={{ position: 'absolute', left: 45, width: 579, top: 240, height: 530, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(11) }}>
         {details}
-        {bio && <div style={{ width: '100%', boxSizing: 'border-box', borderRadius: 10, padding: '6px 10px', background: 'rgba(255,255,255,.07)', border: `1px solid rgba(255,255,255,.14)`, color: C.soft, fontSize: 10, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><b style={{ color: C.mint }}>Bio:</b> {sanitizeUserText(String(bio), 180)}</div>}
         {sbStats}
         {journey}
         {shelf}
@@ -794,7 +792,6 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
     <div style={{ position: 'absolute', left: pad, right: pad, top: Math.max(bannerH - avatar * .45, s(26)), bottom: pad * .7, display: 'flex', flexDirection: 'column', gap: s(isTall ? 11 : 15) }}>
       {/* Hero identity: same semantic order everywhere, composition changes with ratio. */}
       {(() => {
-      const bioLine = cappedBio ? <div style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', borderRadius: s(10), padding: `${s(6)}px ${s(10)}px`, background: 'rgba(255,255,255,.07)', border: `1px solid rgba(255,255,255,.14)`, color: C.soft, fontSize: s(10), lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: isWide ? 'right' : 'left' }}><b style={{ color: C.mint }}>Bio:</b> {sanitizeUserText(String(cappedBio), 140)}</div> : null;
       const hero = <div className={heroMv.className} style={{ ...heroMv.style, display: isTall ? 'block' : 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,.82fr)', gap: s(18), alignItems: 'center', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: s(18), minWidth: 0 }}>
           <div className={avatarMv.className} style={{ ...avatarMv.style, position: 'relative', width: avatar, height: avatar, flexShrink: 0 }}>
@@ -806,17 +803,15 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
             <p style={{ fontSize: s(10), letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: s(5) }}>Novelty Library · Reader</p>
             <NameBlock name={data.name || 'Novelty Reader'} size={s(isWide ? 54 : 48)} color={C.ink} restColor={C.soft} shadow="0 4px 22px rgba(0,25,35,.5)" />
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: s(6), marginTop: s(6) }}><p style={{ display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: s(17), fontWeight: 700, padding: `${s(4)}px ${s(11)}px`, borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader',80)}</p><FollowerPill count={data.followerCount} fontSize={s(14)} padX={s(10)} padY={s(4)} onClick={still ? undefined : onFollowersClick} /></div>
-            {bio && isTall && <p style={{ marginTop: s(7), color: C.soft, fontSize: s(11), lineHeight: 1.3 }}>{sanitizeUserText(String(cappedBio), 140)}</p>}
           </div>
         </div>
-        {isWide ? <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', gap: s(7) }}>{bioLine}{details}</div> : details}
+        {isWide ? <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', gap: s(7) }}>{details}</div> : details}
       </div>;
 
           const body = isWide ? <div data-fit style={{ position: 'relative', minHeight: 0, minWidth: 0, overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gridTemplateRows: 'auto minmax(0,1fr)', alignContent: 'start', gap: s(8), flex: 1, paddingBottom: s(3) }}>
         <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: s(8) }}>{metrics}{journey}</div>
         <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: s(12) }}>{shelf}{fourFiveQuestions}</div>
       </div> : <div data-fit style={{ position: 'relative', minHeight: 0, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(isTall ? 10 : 13), flex: 1 }}>
-        {!isWide && bioLine}
         {metrics}
         {journey}
         {shelf}

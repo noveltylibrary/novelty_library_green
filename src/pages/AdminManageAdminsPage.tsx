@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
-import { ArrowLeft, UserCog, Trash2, AlertCircle, Shield, ListChecks, Bell, Wand2 } from 'lucide-react';
+import { useState, useEffect, type ComponentType } from 'react';
+import { ArrowLeft, UserCog, Trash2, AlertCircle, Shield, ListChecks, Bell } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import { supabase } from '@/lib/supabase';
 import { AdminNotifyPanel } from '@/components/AdminNotifyPanel';
 import { AdminTasteMatchPanel } from '@/components/AdminTasteMatchPanel';
 import { fetchSupportEmail, updateSupportEmail } from '@/lib/siteSettings';
 
 type AdminTab = 'control' | 'notifications' | 'taste';
-const TABS: { key: AdminTab; label: string; path: string; Icon: typeof Shield }[] = [
+const TABS: { key: AdminTab; label: string; path: string; Icon: ComponentType<{ className?: string }> }[] = [
   { key: 'control', label: 'Control', path: '/admin/admins', Icon: ListChecks },
   { key: 'notifications', label: 'Notifications', path: '/admin/notifications', Icon: Bell },
-  { key: 'taste', label: 'Taste Match', path: '/admin/taste', Icon: Wand2 },
+  { key: 'taste', label: 'Taste Match', path: '/admin/taste', Icon: TasteMatchIcon },
 ];
 
 interface AdminManageAdminsPageProps {

@@ -33,39 +33,53 @@ export type Route =
   | { name: 'authors' }
   | { name: 'reviewers' }
   | { name: 'reviewer'; uid: string }
-  | { name: 'saved' };
+  | { name: 'saved' }
+  | { name: 'not-found' };
+
+const BASE = ((import.meta.env.BASE_URL as string) || '/').replace(/\/+$/, ''); // '' on a root deploy
+
+/** The app path of a location: pathname without the deploy base, e.g. "/genre/Thriller". */
+function currentPath(): string {
+  let path = window.location.pathname;
+  if (BASE && path.startsWith(BASE)) path = path.slice(BASE.length) || '/';
+  return path || '/';
+}
 
 /**
- * Path-style links (e.g. https://site/profile/@name, /author/X, /review/slug) used to land on Home because the
- * router only reads location.hash. Rewrite them into the equivalent hash route once, before the first parse.
+ * Old shared links used hash routes (`/#/reviews`, `/#/review/123`, `/#/submit#reserve`). Convert them once, before the
+ * first render, to the clean path (`/reviews`, `/review/123`, `/submit#reserve`) with replaceState: the old link keeps
+ * working, the address bar shows the clean URL, and no extra history entry is added. Auth callbacks such as
+ * `#access_token=…` or `#error=…` do not start with `#/`, so they are left alone for Supabase to read.
  */
-function normalizePathToHash() {
+function upgradeLegacyHashUrl() {
   if (typeof window === 'undefined') return;
   try {
-    const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
-    let path = window.location.pathname;
-    if (base && path.startsWith(base)) path = path.slice(base.length);
-    path = path.replace(/^\/+|\/+$/g, '');
-    if (!path || path === 'index.html' || window.location.hash.replace(/^#\/?/, '')) return;
-    window.history.replaceState(window.history.state, '', `${base || ''}/${window.location.search}#/${path}`);
+    const hash = window.location.hash;
+    if (!hash.startsWith('#/')) return;
+    const rest = hash.slice(1); // "/review/123#reserve"
+    const cut = rest.indexOf('#');
+    const pathPart = cut === -1 ? rest : rest.slice(0, cut);
+    const fragment = cut === -1 ? '' : rest.slice(cut);
+    window.history.replaceState(window.history.state, '', `${BASE}${pathPart}${window.location.search}${fragment}`);
   } catch { /* ignore */ }
 }
-normalizePathToHash();
+upgradeLegacyHashUrl();
 
-function parseHash(): Route {
-  const hash = window.location.hash.replace(/^#\/?/, '');
-  if (!hash || hash === '') return { name: 'home' };
-  // Support nested action fragments such as #/submit#reserve. The first hash
-  // selects the app route; the trailing fragment is an action handled by the page.
-  const routeHash = hash.split('#')[0];
-  const parts = routeHash.split('/');
-  // Backwards compatibility for the former embedded Taste Match anchor.
-  if (parts[0] === 'live-rankings' && hash.includes('#taste')) return { name: 'taste-match' };
+function parsePath(): Route {
+  try { return parsePathUnsafe(); } catch { return { name: 'not-found' }; }
+}
+
+function parsePathUnsafe(): Route {
+  const hash = currentPath().replace(/^\/+|\/+$/g, '');
+  if (!hash || hash === 'index.html') return { name: 'home' };
+  const parts = hash.split('/');
+  // Backwards compatibility for the former embedded Taste Match anchor (/live-rankings#taste).
+  if (parts[0] === 'live-rankings' && window.location.hash === '#taste') return { name: 'taste-match' };
   if (parts[0] === 'review' && parts[1]) return { name: 'review', slug: decodeURIComponent(parts[1]) };
   if (parts[0] === 'blog-review' && parts[1]) return { name: 'blog-review', id: decodeURIComponent(parts.slice(1).join('/')) };
   if (parts[0] === 'submit') return { name: 'submit' };
   if (parts[0] === 'review-guidelines') return { name: 'review-guidelines' };
-  if (parts[0] === 'about') return { name: 'about' };
+  if (parts[0] === 'about' || parts[0] === 'explore') return { name: 'about' };
   if (parts[0] === 'privacy') return { name: 'privacy' };
   if (parts[0] === 'terms') return { name: 'terms' };
   if (parts[0] === 'cookies') return { name: 'cookies' };
@@ -106,12 +120,13 @@ function parseHash(): Route {
   if (parts[0] === 'saved') return { name: 'saved' };
   if (parts[0] === 'genres') return { name: 'genre', genre: '' };
   if (parts[0] === 'genre' && parts[1]) return { name: 'genre', genre: decodeURIComponent(parts[1]) };
-  return { name: 'home' };
+  return { name: 'not-found' };
 }
 
 /* ---------- Scroll memory: Back / Forward return to where you were; a normal link opens at the top ---------- */
 const SCROLL_PREFIX = 'nl_scroll:';
-let scrollKey = typeof window === 'undefined' ? '' : window.location.hash;
+const locationKey = () => `${window.location.pathname}${window.location.search}`;
+let scrollKey = typeof window === 'undefined' ? '' : locationKey();
 let pushedByNavigate = false;
 let manualScroll = false;
 
@@ -133,8 +148,31 @@ function restoreScrollTo(y: number) {
   }, delay));
 }
 
+const ROUTE_EVENT = 'nl:route';
+const STATIC_EXT = /\.(?:txt|xml|pdf|png|jpe?g|gif|webp|svg|ico|json|js|css|zip|webmanifest|mp4|mp3)$/i;
+
+/**
+ * Go to an app path ("/reviews", "/genre/Thriller", "/submit#reserve") with the History API. Usable anywhere (not only
+ * inside components). `replace` swaps the current history entry instead of adding one.
+ */
+export function go(path: string, replace = false) {
+  const clean = path.startsWith('#') ? path.slice(1) : path;
+  const target = `${BASE}${clean.startsWith('/') ? clean : `/${clean}`}`;
+  const now = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (target === now || (clean === '/' && now === `${BASE}/`)) return; // same page: nothing to do
+  const run = () => {
+    const samePage = target.split('#')[0] === `${window.location.pathname}${window.location.search}`;
+    if (!replace && !samePage) pushedByNavigate = true;
+    if (replace) window.history.replaceState(null, '', target); else window.history.pushState(null, '', target);
+    window.dispatchEvent(new Event(ROUTE_EVENT));
+    if (samePage) window.dispatchEvent(new HashChangeEvent('hashchange')); // e.g. /submit -> /submit#reserve
+  };
+  // A popup that is still open owns a history entry: settle it first so the new page is a clean step forward.
+  if (overlayDepth() > 0) void closeAllOverlays().then(run); else run();
+}
+
 export function useRouter() {
-  const [route, setRoute] = useState<Route>(parseHash());
+  const [route, setRoute] = useState<Route>(parsePath());
 
   useEffect(() => {
     try { if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'; } catch { /* ignore */ }
@@ -145,29 +183,36 @@ export function useRouter() {
       window.requestAnimationFrame(() => { ticking = false; writeScroll(scrollKey, window.scrollY); });
     };
     const onChange = () => {
+      const key = locationKey();
+      if (key === scrollKey) { setRoute(parsePath()); return; } // popup entries / #fragment only: same page, keep scroll
       writeScroll(scrollKey, window.scrollY);
-      scrollKey = window.location.hash;
-      setRoute(parseHash());
+      scrollKey = key;
+      setRoute(parsePath());
       const wasPush = pushedByNavigate;
       pushedByNavigate = false;
       const saved = wasPush ? null : readScroll(scrollKey);
       if (saved != null && saved > 0) restoreScrollTo(saved); else window.scrollTo(0, 0);
     };
+    // Plain <a href="/path"> links anywhere in the app (announcement posters, guide buttons, …) navigate without a reload.
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target instanceof Element ? e.target.closest('a[href]') : null) as HTMLAnchorElement | null;
+      if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return;
+      let url: URL;
+      try { url = new URL(a.href, window.location.href); } catch { return; }
+      if (url.origin !== window.location.origin || STATIC_EXT.test(url.pathname)) return;
+      if (url.pathname === window.location.pathname && url.search === window.location.search) return; // in-page #fragment: browser default
+      e.preventDefault();
+      go(`${url.pathname.slice(BASE.length) || '/'}${url.search}${url.hash}`);
+    };
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('hashchange', onChange);
-    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('hashchange', onChange); };
+    window.addEventListener('popstate', onChange);
+    window.addEventListener(ROUTE_EVENT, onChange);
+    document.addEventListener('click', onClick);
+    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('popstate', onChange); window.removeEventListener(ROUTE_EVENT, onChange); document.removeEventListener('click', onClick); };
   }, []);
 
-  const navigate = useCallback((path: string) => {
-    const go = () => {
-      const target = path.startsWith('#') ? path : `#${path}`;
-      if (target === window.location.hash || (path === '/' && !window.location.hash)) return; // same page: no hashchange will follow
-      pushedByNavigate = true;
-      window.location.hash = path;
-    };
-    // A popup that is still open owns a history entry: settle it first so the new page is a clean step forward.
-    if (overlayDepth() > 0) void closeAllOverlays().then(go); else go();
-  }, []);
+  const navigate = useCallback((path: string) => go(path), []);
 
   return { route, navigate };
 }

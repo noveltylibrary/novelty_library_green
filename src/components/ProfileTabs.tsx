@@ -23,9 +23,8 @@ export function ProfileTabs({ panes, initial = 'reading' }: { panes: Record<Prof
     <section className="nl-ptabs" aria-label="Profile">
       <div className="nl-ptabs-bar" role="tablist" onKeyDown={onKey}>
         {defs.map(({ key, label, Icon }) => (
-          <button key={key} type="button" role="tab" id={`nl-ptab-${key}`} aria-selected={tab === key} aria-controls={`nl-ppane-${key}`} tabIndex={tab === key ? 0 : -1} className={`nl-ptab ${tab === key ? 'is-on' : ''}`} onClick={() => setTab(key)}>
+          <button key={key} type="button" role="tab" id={`nl-ptab-${key}`} aria-selected={tab === key} aria-controls={`nl-ppane-${key}`} tabIndex={tab === key ? 0 : -1} aria-label={label} title={label} className={`nl-ptab ${tab === key ? 'is-on' : ''}`} onClick={() => setTab(key)}>
             <span className="nl-ptab-ic"><Icon aria-hidden="true" /></span>
-            <span className="nl-ptab-label">{label}</span>
           </button>
         ))}
       </div>

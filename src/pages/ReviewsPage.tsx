@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect, useMemo } from 'react';
-import { Search, ArrowUp, Sparkles, FileText, Trophy, PenTool } from 'lucide-react';
+import { Search, ArrowUp, Users, Trophy, PenTool, BarChart3 } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import { loadReviewCached, fetchReviews } from '@/lib/reviews';
@@ -135,15 +135,15 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
     <div className="pt-24 pb-20 container-prose container-wide animate-fade-in">
       <header className="mb-8">
         <div className="nl-reviews-actions" role="group" aria-label="Review shortcuts">
-          <button type="button" className="nl-action-btn" onClick={() => navigate('/review-guidelines')}><FileText aria-hidden="true" /><span>Review Guide</span></button>
-          <button type="button" className="nl-action-btn" onClick={() => navigate('/live-rankings')}><Trophy aria-hidden="true" /><span>Rankings</span></button>
           <button type="button" className="nl-action-btn" onClick={() => navigate('/submit')}><PenTool aria-hidden="true" /><span>Submit</span></button>
-          <button type="button" className="nl-action-btn" onClick={() => navigate('/taste-match')}><TasteMatchIcon className="w-5 h-5" aria-hidden="true" /><span>Taste Match</span></button>
+          <button type="button" className="nl-action-btn" onClick={() => navigate('/live-rankings')}><Trophy aria-hidden="true" /><span>Rankings</span></button>
+          <button type="button" className="nl-action-btn" onClick={() => navigate('/analytics')}><BarChart3 aria-hidden="true" /><span>Analytics</span></button>
+          <button type="button" className="nl-action-btn" onClick={() => navigate('/taste-match')}><TasteMatchIcon className="w-5 h-5" aria-hidden="true" /><span>Taste Match SE</span></button>
         </div>
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
           <div>
             <div className="inline-flex items-center gap-2 mb-3 text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-teal-dark)' }}>
-              <Sparkles className="w-3.5 h-3.5" />
+              <Users className="w-3.5 h-3.5" />
               Community Reviews
             </div>
             <h1 className="font-serif text-4xl md:text-5xl font-semibold" style={{ color: 'var(--color-text)' }}>

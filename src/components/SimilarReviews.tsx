@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { CoverImg } from '@/components/CoverImg';
 import { BookOpen } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { usePublished, reviewSlug as slugOf } from '@/lib/readerTools';
@@ -67,7 +68,7 @@ export function SimilarReviews({ current, navigate }: { current: Review; navigat
           return (
             <li key={review.id} className="nl-find-result">
               <button type="button" className="nl-find-result-main" onClick={() => navigate(`/review/${encodeURIComponent(slugOf(review))}`)} aria-label={`Open review of ${review.title}`}>
-                <span className="nl-find-cover">{cover ? <img src={cover} alt="" loading="lazy" /> : <BookOpen aria-hidden="true" />}</span>
+                <span className="nl-find-cover"><CoverImg src={cover} /></span>
                 <span className="nl-find-copy">
                   <strong>{review.title}</strong>
                   <small>{review.author || 'Author unavailable'}</small>

@@ -1,5 +1,6 @@
 import { VerdictBanner } from '@/components/VerdictBanner';
 import { useState, useEffect } from 'react';
+import { setPageMeta } from '@/lib/seo';
 import { ArrowLeft, ExternalLink, Instagram, Calendar, Globe, Tag, Star, Newspaper, Clock } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { loadReviewCached, peekReview, storeReviewInCache } from '@/lib/reviews';
@@ -76,6 +77,16 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
 
   const loadFeedback = (reviewId: string) => { fetchFeedback(reviewId).then(setFeedback).catch(() => setFeedback([])); };
   useEffect(() => { if (review?.id) loadFeedback(review.id); }, [review?.id]);
+  // Real title / description for search results and share previews once the review has loaded.
+  useEffect(() => {
+    if (!review) return;
+    const t = window.setTimeout(() => setPageMeta({
+      title: `${sanitizeUserText(review.title, 120)}${review.author ? ` by ${sanitizeUserText(review.author, 80)}` : ''} — Book Review | Novelty Library`,
+      description: sanitizeUserText(review.review_text || '', 300) || undefined,
+      image: safeImageUrl(review.poster_url || review.cover_image_url) || undefined,
+    }), 0);
+    return () => window.clearTimeout(t);
+  }, [review?.id, review?.title]);
 
   const requireAuth = (): boolean => {
     if (user) return true;

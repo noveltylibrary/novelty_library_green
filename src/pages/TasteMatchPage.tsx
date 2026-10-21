@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Home, LoaderCircle } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, BarChart3, BookOpen, Home, LoaderCircle, Trophy } from 'lucide-react';
 import { TasteMatchPanel, type FinderBook } from '@/components/RankingFinder';
 import { TasteMatchEmblem } from '@/components/TasteMatchIcon';
 import { fetchReviews } from '@/lib/reviews';
@@ -50,6 +50,16 @@ export function TasteMatchPage({ navigate }: { navigate: (path: string) => void 
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
+  const facts = useMemo(() => {
+    const uniq = (values: string[]) => new Set(values.map((v) => v.trim().toLowerCase()).filter(Boolean)).size;
+    return {
+      books: books.length,
+      authors: uniq(books.map((b) => b.review.author || '')),
+      languages: uniq(books.map((b) => b.review.language || '')),
+      genres: uniq(books.map((b) => (b.review.genre || '').split(/[,/&]/)[0] || '')),
+    };
+  }, [books]);
+
   useEffect(() => {
     let alive = true;
     loadTasteMatchBooks()
@@ -72,8 +82,27 @@ export function TasteMatchPage({ navigate }: { navigate: (path: string) => void 
             <span className="nl-live-kicker">NOVELTY LIBRARY · PERSONAL DISCOVERY</span>
             <h1>Taste Match SE</h1>
             <p>Not just what is highly rated — find what fits <em>your</em> taste. Describe the read you crave, choose a mood, or start from a book you loved.</p>
+            <div className="nl-reviews-actions nl-taste-hero-actions" role="group" aria-label="Library shortcuts">
+              <button type="button" className="nl-action-btn" onClick={() => navigate('/reviews')}><BookOpen aria-hidden="true" /><span>Reviews</span></button>
+              <button type="button" className="nl-action-btn" onClick={() => navigate('/analytics')}><BarChart3 aria-hidden="true" /><span>Analytics</span></button>
+              <button type="button" className="nl-action-btn" onClick={() => navigate('/live-rankings')}><Trophy aria-hidden="true" /><span>Rankings</span></button>
+            </div>
           </div>
         </header>
+        <section className="nl-taste-about" aria-labelledby="nl-taste-what">
+          <h2 id="nl-taste-what">What is Taste Match SE?</h2>
+          <p className="nl-taste-about-lede">Meet your literary matchmaker.</p>
+          <p>Finding your next great read shouldn&rsquo;t feel like searching for a needle in a digital haystack.</p>
+          <p>Most recommendation engines lean on generic charts, sponsored lists and whatever the crowd happens to be buying. Taste Match SE is built differently. It looks past the hype and listens for the rhythm, tone and depth of the books you actually love &mdash; drawing only on reviews written by real readers of Novelty Library.</p>
+          <p>Whether you&rsquo;re hunting for a mind-bending indie sci-fi novel, a gripping contemporary critique or a quiet literary gem, tell it the mood you&rsquo;re in or a book you loved, and it cuts through the noise to stories that fit your wavelength.</p>
+          <p className="nl-taste-about-close">No sponsored lists. No ad-driven picks. Just pure discovery.</p>
+          {facts.books > 0 && <ul className="nl-taste-about-facts" aria-label="What Taste Match SE searches">
+            <li><b>{facts.books}</b> reviewed books</li>
+            {facts.authors > 0 && <li><b>{facts.authors}</b> authors</li>}
+            {facts.genres > 0 && <li><b>{facts.genres}</b> genres</li>}
+            {facts.languages > 0 && <li><b>{facts.languages}</b> {facts.languages === 1 ? 'language' : 'languages'}</li>}
+          </ul>}
+        </section>
         {loading && <div className="nl-live-loading"><LoaderCircle size={20} className="nl-live-spin" /> Finding the published library…</div>}
         {!loading && failed && <div className="nl-live-state"><strong>Taste Match couldn't load the library.</strong><span>Please try again in a moment.</span><button type="button" onClick={() => window.location.reload()}>Retry</button></div>}
         {!loading && !failed && books.length === 0 && <div className="nl-live-state"><strong>No published reviews are available yet.</strong><span>Taste Match will recommend books as reviews enter the public library.</span></div>}

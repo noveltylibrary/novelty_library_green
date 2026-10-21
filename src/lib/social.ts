@@ -79,19 +79,23 @@ export const MAX_HIGHLIGHT_ITEMS = 30;
 export const STORY_RETENTION_NOTE = 'Stories are deleted from Novelty Library after 30 days. Add a story to a Highlight to keep it on your profile.';
 
 export interface HighlightItem { id: string; highlight_id: string; image_url: string; image_path: string; caption: string | null; source_story_id: string | null; story_created_at: string | null; }
-export interface Highlight { id: string; user_id: string; title: string; sort_order: number; created_at: string; items: HighlightItem[]; }
+export interface Highlight { id: string; user_id: string; title: string; sort_order: number; created_at: string; cover_path?: string | null; cover_url?: string | null; items: HighlightItem[]; }
 export interface ArchiveStory { id: string; path: string; image_url: string; caption: string | null; created_at: string; live: boolean; }
 
 const storyPath = (v: string) => (v.includes('/storage/v1/object/public/stories/') ? v.split('/storage/v1/object/public/stories/')[1].split('?')[0] : v);
 const highlightUrl = (path: string) => supabase.storage.from('highlights').getPublicUrl(path).data.publicUrl;
 
 export async function fetchHighlights(userId: string): Promise<Highlight[]> {
-  const { data: hs, error } = await supabase.from('story_highlights').select('id,user_id,title,sort_order,created_at').eq('user_id', userId).order('sort_order', { ascending: true }).order('created_at', { ascending: true }).limit(MAX_HIGHLIGHTS);
+  const base = () => supabase.from('story_highlights');
+  // cover_path is added by sql/NL_SQL_210_highlight_cover.sql; read without it until that has been run.
+  let res = await base().select('id,user_id,title,sort_order,created_at,cover_path').eq('user_id', userId).order('sort_order', { ascending: true }).order('created_at', { ascending: true }).limit(MAX_HIGHLIGHTS);
+  if (res.error && /cover_path/.test(res.error.message || '')) res = await base().select('id,user_id,title,sort_order,created_at').eq('user_id', userId).order('sort_order', { ascending: true }).order('created_at', { ascending: true }).limit(MAX_HIGHLIGHTS) as unknown as typeof res;
+  const { data: hs, error } = res;
   if (error) throw error;
   if (!hs?.length) return [];
   const { data: its, error: e2 } = await supabase.from('story_highlight_items').select('id,highlight_id,image_path,caption,source_story_id,story_created_at,created_at').in('highlight_id', hs.map((h) => h.id)).order('created_at', { ascending: true });
   if (e2) throw e2;
-  return hs.map((h) => ({ ...h, items: (its ?? []).filter((i) => i.highlight_id === h.id).map((i) => ({ id: i.id, highlight_id: i.highlight_id, image_path: i.image_path, image_url: highlightUrl(i.image_path), caption: i.caption, source_story_id: i.source_story_id, story_created_at: i.story_created_at })) }));
+  return hs.map((h) => ({ ...h, cover_url: (h as { cover_path?: string | null }).cover_path ? highlightUrl((h as { cover_path: string }).cover_path) : null, items: (its ?? []).filter((i) => i.highlight_id === h.id).map((i) => ({ id: i.id, highlight_id: i.highlight_id, image_path: i.image_path, image_url: highlightUrl(i.image_path), caption: i.caption, source_story_id: i.source_story_id, story_created_at: i.story_created_at })) }));
 }
 
 /** The reader's own stories from the last 30 days (live ones included). */
@@ -139,10 +143,33 @@ export async function removeHighlightItem(item: HighlightItem): Promise<void> {
 export async function deleteHighlight(h: Highlight): Promise<void> {
   const { error } = await supabase.from('story_highlights').delete().eq('id', h.id);
   if (error) throw error;
-  if (h.items.length) await supabase.storage.from('highlights').remove(h.items.map((i) => i.image_path));
+  const files = [...h.items.map((i) => i.image_path), ...(h.cover_path ? [h.cover_path] : [])];
+  if (files.length) await supabase.storage.from('highlights').remove(files);
 }
 export async function renameHighlight(id: string, title: string): Promise<void> {
   const t = title.trim().slice(0, 24); if (!t) throw new Error('Give the highlight a name.');
   const { error } = await supabase.from('story_highlights').update({ title: t }).eq('id', id);
   if (error) throw error;
+}
+
+/** Highlight cover: pick one of your last-30-day stories, or upload a photo from your gallery. */
+export async function setHighlightCover(userId: string, highlight: Highlight, source: { story: ArchiveStory } | { file: File }): Promise<void> {
+  let dest: string;
+  if ('story' in source) {
+    const ext = (source.story.path.split('.').pop() || 'jpg').toLowerCase();
+    dest = `${userId}/cover-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage.from('stories').copy(source.story.path, dest, { destinationBucket: 'highlights' });
+    if (error) throw error;
+  } else {
+    const f = source.file;
+    if (!/^image\/(jpeg|png|webp)$/i.test(f.type)) throw new Error('Choose a JPG, PNG or WebP image.');
+    if (f.size > 8 * 1024 * 1024) throw new Error('Image must be 8 MB or smaller.');
+    const ext = f.type === 'image/png' ? 'png' : f.type === 'image/webp' ? 'webp' : 'jpg';
+    dest = `${userId}/cover-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage.from('highlights').upload(dest, f, { contentType: f.type, cacheControl: '86400' });
+    if (error) throw error;
+  }
+  const { error: uErr } = await supabase.from('story_highlights').update({ cover_path: dest }).eq('id', highlight.id);
+  if (uErr) { await supabase.storage.from('highlights').remove([dest]); throw new Error(/cover_path/.test(uErr.message || '') ? 'Highlight covers need the NL_SQL_210 database update first.' : uErr.message); }
+  if (highlight.cover_path) await supabase.storage.from('highlights').remove([highlight.cover_path]);
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Calendar, ExternalLink, Globe, Tag, Sparkles } from 'lucide-react';
+import { ArrowLeft, Calendar, ExternalLink, Globe, Tag, Library } from 'lucide-react';
 import { fetchBlogPosts, peekBlogPosts, blogPostDate, reviewParagraphs, upscaleBloggerImage, type BlogPost } from '@/lib/blog';
 
 interface BlogReviewPageProps {
@@ -93,7 +93,7 @@ export function BlogReviewPage({ id, navigate }: BlogReviewPageProps) {
 
             <article>
               <div className="flex flex-wrap gap-2 mb-5">
-                <span className="tag"><Sparkles className="w-3 h-3 mr-1" /> Novelty Library archive</span>
+                <span className="tag"><Library className="w-3 h-3 mr-1" /> Novelty Library archive</span>
                 {post.categories.slice(0, 5).map((category) => (
                   <span key={category} className="px-3 py-1 rounded-full text-xs font-medium" style={{ background: 'rgba(0,151,178,0.06)', color: 'var(--color-text-muted)' }}>
                     {category}

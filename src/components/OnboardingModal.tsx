@@ -17,7 +17,8 @@ import {
   LogIn,
   Mail,
   PenLine,
-  Sparkles,
+  BookOpenCheck,
+  Fingerprint,
   UserPlus,
   X,
 } from 'lucide-react';
@@ -458,7 +459,7 @@ export function OnboardingModal({ splashComplete, navigate, suppressOnPublicRout
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-teal-800 dark:text-teal-200">
-                    <Sparkles className="h-3.5 w-3.5" /> {step === 1 ? 'Before you sign up' : 'Your Novelty setup'}
+                    <BookOpenCheck className="h-3.5 w-3.5" /> {step === 1 ? 'Before you sign up' : 'Your Novelty setup'}
                   </div>
                   <h2 id="nl-onboarding-title" className="font-serif text-2xl font-bold text-slate-950 dark:text-white sm:text-3xl">{headerTitle}</h2>
                   <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">{headerSubtitle}</p>
@@ -666,7 +667,7 @@ export function OnboardingModal({ splashComplete, navigate, suppressOnPublicRout
                     </div>
 
                     <div className="flex flex-col gap-3 border-t border-slate-900/10 pt-5 dark:border-white/10">
-                      <button type="button" onClick={() => finishTo('/profile')} className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 px-6 py-3.5 text-sm font-bold text-slate-950 shadow-[0_0_28px_rgba(20,184,166,.25)] transition hover:-translate-y-0.5 hover:shadow-[0_0_36px_rgba(20,184,166,.38)]"><Sparkles className="h-4 w-4 transition group-hover:rotate-12" /> View My Profile Card <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></button>
+                      <button type="button" onClick={() => finishTo('/profile')} className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 px-6 py-3.5 text-sm font-bold text-slate-950 shadow-[0_0_28px_rgba(20,184,166,.25)] transition hover:-translate-y-0.5 hover:shadow-[0_0_36px_rgba(20,184,166,.38)]"><Fingerprint className="h-4 w-4 transition group-hover:rotate-12" /> View My Profile Card <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></button>
                       <button type="button" onClick={() => finishTo('/submit')} className="btn-primary w-full"><PenLine className="h-4 w-4" /> Write Your First Review</button>
                       <button type="button" onClick={() => finishTo()} className="btn-ghost w-full">Explore Library</button>
                     </div>

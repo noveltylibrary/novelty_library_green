@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useState, Component, type ReactNode } from 'react';
 import { useRouter } from '@/lib/router';
+import { useSeo } from '@/lib/seo';
 import { warmBlogPosts } from '@/lib/blog';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { ThemeProvider } from '@/lib/theme';
@@ -57,6 +58,7 @@ class OnboardingErrorBoundary extends Component<{ children: ReactNode }, { faile
 function AppContent() {
   const { route, navigate } = useRouter();
   const { user, isAdmin } = useAuth();
+  useSeo(route);
   const [splashComplete, setSplashComplete] = useState(false);
 
   // Load the Blogger archive in the background so "View in Blog" is ready before a review is opened.
@@ -144,6 +146,7 @@ function AppContent() {
         {route.name === 'reviewer' && <ReviewerPage uid={route.uid} navigate={navigate} />}
         {route.name === 'saved' && <SavedPage navigate={navigate} />}
         {route.name === 'genre' && <GenrePage genre={route.genre} navigate={navigate} />}
+        {route.name === 'not-found' && <div className="pt-32 pb-24 container-prose text-center"><h1 className="font-serif text-4xl font-semibold mb-3">Page not found</h1><p className="mb-6" style={{ color: 'var(--color-text-muted)' }}>That page doesn’t exist or has moved.</p><button type="button" className="btn-primary !w-auto" onClick={() => navigate('/')}>Back to Home</button><p className="mt-4"><a href="/reviews" className="underline">Browse all reviews</a></p></div>}
       </main>
       <Footer navigate={navigate} />
       <InstallPrompt />

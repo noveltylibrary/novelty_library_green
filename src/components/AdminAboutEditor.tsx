@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, Eye, EyeOff, FileText, Plus, Save, Trash2, Wand2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Eye, EyeOff, FileText, Plus, Save, Trash2, LayoutTemplate } from 'lucide-react';
 import { ABOUT_ICONS, ABOUT_LAYOUTS, DEFAULT_ABOUT_SECTIONS, deleteAboutSection, fetchAboutSections, saveAboutSection, seedDefaultAboutSections, type AboutItem, type AboutLayout, type AboutSection } from '@/lib/aboutSections';
 import { AboutSectionBlock } from '@/components/AboutSectionsView';
 import { useSupportEmail } from '@/lib/siteSettings';
@@ -86,7 +86,7 @@ export function AdminAboutEditor() {
         <p className="text-sm mt-2 max-w-3xl" style={{ color: 'var(--color-text-muted)' }}>Every block on the public About page is a section here: opening, feature cards, benefits, steps, FAQ and the closing banner. Edit, reorder, hide or add your own.</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        {usingDefaults && <button type="button" className="btn-primary !w-auto" disabled={busy} onClick={() => void seed()}><Wand2 className="w-4 h-4" /> Load default sections</button>}
+        {usingDefaults && <button type="button" className="btn-primary !w-auto" disabled={busy} onClick={() => void seed()}><LayoutTemplate className="w-4 h-4" /> Load default sections</button>}
         <button type="button" className="btn-ghost !w-auto" onClick={addSection}><Plus className="w-4 h-4" /> Add section</button>
       </div>
     </div>

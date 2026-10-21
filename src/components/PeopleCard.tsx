@@ -1,9 +1,11 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Check, Download, Share2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import { NameBlock } from '@/components/NameBlock';
+import { NameBlock, nameInitial } from '@/components/NameBlock';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
 import type { PeopleStats } from '@/lib/authors';
+import { useAuth } from '@/lib/auth';
+import { normalizePosterUrl } from '@/lib/posterUrl';
 
 /**
  * Shareable 4:5 card (1080 x 1350) for an author (purple + gold) or a reviewer (teal). Same export
@@ -47,9 +49,19 @@ export interface PeopleCardProps {
   shareUrl?: string;
 }
 
-const cover = (r: PeopleStats['top'][number]) => safeExternalUrl(r.poster_url || r.cover_image_url || '') || null;
+const cover = (r: PeopleStats['top'][number]) => safeExternalUrl(normalizePosterUrl(r.poster_url || r.cover_image_url || '')) || null;
+
+/** Poster on the card: loads with CORS first (so the PNG export can include it), then without CORS so it is never a blank box. */
+function CardCover({ src }: { src: string }) {
+  const [cors, setCors] = useState(true);
+  const [dead, setDead] = useState(false);
+  if (dead) return null;
+  return <img key={cors ? 'cors' : 'plain'} src={src} alt="" referrerPolicy="no-referrer" {...(cors ? { crossOrigin: 'anonymous' as const } : {})} onError={() => (cors ? setCors(false) : setDead(true))} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />;
+}
 
 export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, shareUrl }: PeopleCardProps) {
+  // Readers can share the page; the PNG export is an admin tool.
+  const { isAdmin } = useAuth();
   const pal = PALETTE[variant];
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -90,7 +102,7 @@ export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, 
     try { await navigator.clipboard.writeText(url); setShared(true); window.setTimeout(() => setShared(false), 2200); } catch { /* clipboard blocked */ }
   };
 
-  const initial = sanitizeUserText(name, 120).trim().charAt(0).toUpperCase() || (variant === 'author' ? 'A' : 'R');
+  const initial = nameInitial(name, variant === 'author' ? 'A' : 'R', variant === 'author' ? 'last' : 'first');
   const tiles: [string, string][] = [
     [variant === 'author' ? 'Reviews' : 'Reviews written', String(stats.count)],
     ['Avg R/W', stats.avgRw != null ? stats.avgRw.toFixed(1) : '—'],
@@ -122,7 +134,7 @@ export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, 
 
           <div style={{ position: 'absolute', left: 335, top: 222, width: 675 }}>
             <p style={{ fontSize: 23, letterSpacing: '.2em', textTransform: 'uppercase', fontWeight: 800, color: pal.accent, marginBottom: 12 }}>{pal.kicker}</p>
-            <NameBlock name={name || (variant === 'author' ? 'Author' : 'Novelty Reader')} size={96} color={pal.text} restColor={pal.accentSoft} shadow="0 4px 22px rgba(0,0,0,.4)" />
+            <NameBlock major={variant === 'author' ? 'last' : 'first'} name={name || (variant === 'author' ? 'Author' : 'Novelty Reader')} size={96} color={pal.text} restColor={pal.accentSoft} shadow="0 4px 22px rgba(0,0,0,.4)" />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 18 }}>
               {followers != null && <span style={pill}><b style={{ color: pal.accent }}>{followers.toLocaleString()}</b> {followers === 1 ? 'follower' : 'followers'}</span>}
               {handle && <span style={{ ...pill, color: pal.accentSoft, maxWidth: 520, overflow: 'hidden', textOverflow: 'ellipsis' }}>@{sanitizeUserText(handle.replace(/^@/, ''), 60)}</span>}
@@ -152,7 +164,7 @@ export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, 
                   return (
                     <div key={r.id} style={{ minWidth: 0 }}>
                       <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', borderRadius: 22, overflow: 'hidden', background: pal.glass, border: `2px solid ${pal.line}`, boxShadow: '0 14px 30px rgba(0,0,0,.35)' }}>
-                        {src && <img src={src} alt="" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+                        {src && <CardCover src={src} />}
                         <span style={{ position: 'absolute', right: 10, bottom: 10, padding: '4px 14px', borderRadius: 999, fontSize: 26, fontWeight: 900, color: '#1a0836', background: pal.accent }}>{Number.isFinite(r.rw_rating) ? r.rw_rating.toFixed(1) : '—'}</span>
                       </div>
                       <p className="font-serif" style={{ marginTop: 12, fontSize: 24, fontWeight: 700, lineHeight: 1.16, color: '#fff', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sanitizeUserText(r.title, 90)}</p>
@@ -170,7 +182,7 @@ export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, 
         </div>
       </div>
       <div className="nl-people-card-actions">
-        <button type="button" onClick={() => void download()} disabled={busy} className="nl-people-btn is-primary"><Download aria-hidden="true" />{busy ? 'Preparing…' : 'Download card (PNG)'}</button>
+        {isAdmin && <button type="button" onClick={() => void download()} disabled={busy} className="nl-people-btn is-primary"><Download aria-hidden="true" />{busy ? 'Preparing…' : 'Download card (PNG)'}</button>}
         <button type="button" onClick={() => void share()} className="nl-people-btn">{shared ? <Check aria-hidden="true" /> : <Share2 aria-hidden="true" />}{shared ? 'Link copied' : 'Share page'}</button>
       </div>
     </div>

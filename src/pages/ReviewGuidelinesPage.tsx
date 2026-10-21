@@ -260,7 +260,7 @@ export function ReviewGuidelinesPage({ navigate }: ReviewGuidelinesPageProps) {
                 <img src={ASSET('guide-header')} width={1600} height={840} alt="Novelty Library review guidelines: free, unlimited, no deadline" fetchPriority="high" decoding="async" />
                 <span className="ng-sheen" aria-hidden="true" />
                 <span className="ng-sparkles" aria-hidden="true">{SPARKLES.map((p, i) => <span key={i} style={{ ['--x' as string]: p.x, ['--y' as string]: p.y, ['--z' as string]: p.z, ['--d' as string]: p.d, ['--dl' as string]: p.dl }} />)}</span>
-                <a className="ng-submit-cta" href="#/submit" aria-label="Submit now: open the Submit Reviews page" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); navigate('/submit'); }}><span className="ng-sr-only">Submit now</span></a>
+                <a className="ng-submit-cta" href="/submit" aria-label="Submit now: open the Submit Reviews page" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); navigate('/submit'); }}><span className="ng-sr-only">Submit now</span></a>
               </div>
             </Tilt>
           </header>
