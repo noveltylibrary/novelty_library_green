@@ -11,9 +11,9 @@ import { useOverlayHistory } from '@/lib/overlayHistory';
 const fmtDay = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); };
 
 /** Account → Archives: your story archive (last 30 days, ready to add to a Highlight) and your saved list ("My list"). */
-export function ArchivesModal({ userId, navigate, onClose }: { userId: string; navigate: (path: string) => void; onClose: () => void }) {
+export function ArchivesModal({ userId, navigate, onClose, initialTab = 'stories' }: { userId: string; navigate: (path: string) => void; onClose: () => void; initialTab?: 'stories' | 'saved' }) {
   useOverlayHistory(true, onClose);
-  const [tab, setTab] = useState<'stories' | 'saved'>('stories');
+  const [tab, setTab] = useState<'stories' | 'saved'>(initialTab);
   const [archive, setArchive] = useState<ArchiveStory[] | null>(null);
   const [pick, setPick] = useState<string | null>(null);
   const all = usePublished();
@@ -35,11 +35,11 @@ export function ArchivesModal({ userId, navigate, onClose }: { userId: string; n
   return createPortal(
     <>
     <div className="nl-conn-backdrop" onClick={onClose}>
-      <div className="nl-conn-modal nl-hlp nl-arch" role="dialog" aria-modal="true" aria-label="Archives" onClick={(e) => e.stopPropagation()}>
-        <div className="nl-conn-top"><h2 className="nl-hlp-h"><Archive aria-hidden="true" /> Archives</h2><button type="button" className="nl-conn-x" onClick={onClose} aria-label="Close"><X aria-hidden="true" /></button></div>
+      <div className="nl-conn-modal nl-hlp nl-arch" role="dialog" aria-modal="true" aria-label={tab === 'saved' ? 'My Reviews' : 'Archives'} onClick={(e) => e.stopPropagation()}>
+        <div className="nl-conn-top"><h2 className="nl-hlp-h">{tab === 'saved' ? <Bookmark aria-hidden="true" /> : <Archive aria-hidden="true" />} {tab === 'saved' ? 'My Reviews' : 'Archives'}</h2><button type="button" className="nl-conn-x" onClick={onClose} aria-label="Close"><X aria-hidden="true" /></button></div>
         <div className="nl-arch-tabs" role="tablist">
           <button type="button" role="tab" aria-selected={tab === 'stories'} className={tab === 'stories' ? 'is-on' : ''} onClick={() => setTab('stories')}><Camera aria-hidden="true" /> Highlight archive</button>
-          <button type="button" role="tab" aria-selected={tab === 'saved'} className={tab === 'saved' ? 'is-on' : ''} onClick={() => setTab('saved')}><Bookmark aria-hidden="true" /> My list{ids.length ? ` (${ids.length})` : ''}</button>
+          <button type="button" role="tab" aria-selected={tab === 'saved'} className={tab === 'saved' ? 'is-on' : ''} onClick={() => setTab('saved')}><Bookmark aria-hidden="true" /> My Reviews{ids.length ? ` (${ids.length})` : ''}</button>
         </div>
         <div className="nl-hlp-body">
           {tab === 'stories' ? <>
@@ -56,7 +56,7 @@ export function ArchivesModal({ userId, navigate, onClose }: { userId: string; n
             )}
             {archive && archive.length > 0 && <p className="nl-hl-note">Tap a story to add it to a Highlight.</p>}
           </> : <>
-            <p className="nl-hl-note"><Bookmark aria-hidden="true" /> Reviews you saved with the bookmark. Kept on this device only.</p>
+            <p className="nl-hl-note"><Bookmark aria-hidden="true" /> Reviews you saved with the bookmark (your My Reviews list). Kept on this device only.</p>
             {saved.length === 0 ? <p className="nl-conn-empty">Nothing saved yet.</p> : (
               <ul className="nl-find-list">
                 {saved.map((r) => { const cover = r.poster_url || r.cover_image_url; return (

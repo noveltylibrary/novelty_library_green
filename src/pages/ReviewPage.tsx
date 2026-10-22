@@ -15,9 +15,8 @@ import { FeedbackModal } from '@/components/FeedbackModal';
 import { FeedbackList } from '@/components/FeedbackList';
 import { ReviewComments } from '@/components/ReviewComments';
 import { SimilarReviews } from '@/components/SimilarReviews';
-import { ReviewShareButton } from '@/components/ReviewShareCard';
+import { PostShareBar } from '@/components/PostShareBar';
 import { genrePath } from '@/pages/GenrePage';
-import { SaveForLater } from '@/components/SaveForLater';
 import { ReadNext } from '@/components/ReadNext';
 import { authorPath, readingMinutes } from '@/lib/readerTools';
 import { useAuth } from '@/lib/auth';
@@ -248,21 +247,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
               </a>
             )}
 
-            <ReviewShareButton review={review} nl={computeNlRating(review.rw_rating, engagement.statsFor(review.id))} />
-            <SaveForLater reviewId={review.id} navigate={navigate} />
-
-            {safeExternalUrl(review.blog_url) && (
-              <a
-                href={safeExternalUrl(review.blog_url) || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                onMouseEnter={prefetchBlog}
-                onFocus={prefetchBlog}
-                className="nl-view-blog w-full mt-3"
-              >
-                <Newspaper className="w-4 h-4" aria-hidden="true" /> View in Blog <ArrowLeft className="w-4 h-4 rotate-180 nl-view-blog-arrow" aria-hidden="true" />
-              </a>
-            )}
+            <PostShareBar review={review} nl={computeNlRating(review.rw_rating, engagement.statsFor(review.id))} onPrefetchBlog={prefetchBlog} />
           </div>
 
           {/* Content */}
@@ -380,12 +365,16 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
 
             <AdSenseAdSlot className="mt-8 mb-8" />
 
-            {/* Disclaimer */}
-            <div className="mt-8 p-4 rounded-xl" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
+            {/* Rating definitions */}
+            <section className="mt-8 p-4 rounded-xl" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }} aria-labelledby="nl-rating-defs-h">
+              <div className="flex items-center gap-2 mb-2">
+                <Star className="w-4 h-4" style={{ color: 'var(--color-teal-dark)' }} aria-hidden="true" />
+                <h2 id="nl-rating-defs-h" className="text-[11px] font-extrabold uppercase tracking-[.16em]" style={{ color: 'var(--color-teal-dark)' }}>How ratings work</h2>
+              </div>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
                 The R/W Rating reflects the specific reviewer's opinion. The NL Rating is the cumulative average of all ratings submitted by Novelty Library readers on this community review post. A book's impression varies from reader to reader. For a broader platform perspective, refer to the Goodreads rating.
               </p>
-            </div>
+            </section>
 
             {/* Rate & review, then the readers' comments (kept together, right after the note about ratings) */}
             <section className="mt-10 pt-6" style={{ borderTop: '1px solid var(--color-border)' }}>

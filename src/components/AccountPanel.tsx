@@ -84,6 +84,7 @@ export function AccountPanel({ navigate, view: viewProp, onView }: { navigate: (
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteEmail, setDeleteEmail] = useState('');
   const [archivesOpen, setArchivesOpen] = useState(false);
+  const [archivesTab, setArchivesTab] = useState<'stories' | 'saved'>('stories');
   const { theme, toggleTheme } = useTheme();
   const consent = useCookieConsent();
   const userPrefs = useUserPrefs();
@@ -268,8 +269,8 @@ export function AccountPanel({ navigate, view: viewProp, onView }: { navigate: (
     <p className="nl-acc-who">Signed in as <strong>{user.email}</strong>{usesGoogle ? ' · via Google' : ''}</p>
     <Shelf label="Account">
       <Row icon={<AtSign />} label="Username" value={profile?.novelty_username ? `@${profile.novelty_username}` : undefined} active={view === 'username'} onClick={() => setView('username')} />
-      <Row icon={<Bookmark />} label="My Reviews List" value="Saved" onClick={() => navigate('/saved')} />
-      <Row icon={<Archive />} label="Archives" onClick={() => setArchivesOpen(true)} />
+      <Row icon={<Bookmark />} label="My Reviews" value="Saved" onClick={() => { setArchivesTab('saved'); setArchivesOpen(true); }} />
+      <Row icon={<Archive />} label="Archives" onClick={() => { setArchivesTab('stories'); setArchivesOpen(true); }} />
       <Row icon={theme === 'dark' ? <Moon /> : <Sun />} label="Appearance" value={theme === 'dark' ? 'Dark' : 'Light'} active={view === 'appearance'} onClick={() => setView('appearance')} />
     </Shelf>
     <Shelf label="Settings">
@@ -294,7 +295,7 @@ export function AccountPanel({ navigate, view: viewProp, onView }: { navigate: (
   return <div className={`nl-acc-layout ${pane ? 'is-detail' : 'is-list'}`}>
     <div className="nl-acc-nav">{nav}</div>
     {pane && <div className="nl-acc-detail">{pane}</div>}
-    {archivesOpen && <ArchivesModal userId={user.id} navigate={navigate} onClose={() => setArchivesOpen(false)} />}
+    {archivesOpen && <ArchivesModal initialTab={archivesTab} userId={user.id} navigate={navigate} onClose={() => setArchivesOpen(false)} />}
   </div>;
 }
 

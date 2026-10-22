@@ -119,7 +119,7 @@ function CardFace({ review, nl, cover }: { review: Review; nl: number | null; co
 }
 
 /** Review page: "Share as card" builds a rounded 4:5 PNG (transparent corners) the same way the profile card is exported. */
-export function ReviewShareButton({ review, nl }: { review: Review; nl: number | null }) {
+export function useReviewShareCard(review: Review, nl: number | null) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   useOverlayHistory(open, () => setOpen(false));
@@ -220,10 +220,16 @@ export function ReviewShareButton({ review, nl }: { review: Review; nl: number |
     </div>
   ) : null;
 
+  return { start: () => void build(), popup: popup ? createPortal(popup, document.body) : null };
+}
+
+/** Stand-alone "Share as card" button (kept for other pages). The review page opens the same card from its Share sheet. */
+export function ReviewShareButton({ review, nl }: { review: Review; nl: number | null }) {
+  const card = useReviewShareCard(review, nl);
   return (
     <>
-      <button type="button" className="nl-share-btn w-full mt-3" onClick={() => void build()}><Share2 className="w-4 h-4" aria-hidden="true" /> Share as card</button>
-      {popup && createPortal(popup, document.body)}
+      <button type="button" className="nl-share-btn w-full mt-3" onClick={card.start}><Share2 className="w-4 h-4" aria-hidden="true" /> Share as card</button>
+      {card.popup}
     </>
   );
 }

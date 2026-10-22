@@ -143,7 +143,6 @@ export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, 
             <p style={{ fontSize: 23, letterSpacing: '.2em', textTransform: 'uppercase', fontWeight: 800, color: pal.accent, marginBottom: 12 }}>{pal.kicker}</p>
             <NameBlock stacked={variant === 'author'} major={variant === 'author' ? 'last' : 'first'} name={name || (variant === 'author' ? 'Author' : 'Novelty Reader')} size={96} color={pal.text} restColor={pal.accentSoft} shadow="0 4px 22px rgba(0,0,0,.4)" />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 18 }}>
-              {followers != null && <span style={pill}><b style={{ color: pal.accent }}>{followers.toLocaleString()}</b> {followers === 1 ? 'follower' : 'followers'}</span>}
               {handle && <span style={{ ...pill, color: pal.accentSoft, maxWidth: 520, overflow: 'hidden', textOverflow: 'ellipsis' }}>@{sanitizeUserText(handle.replace(/^@/, ''), 60)}</span>}
             </div>
           </div>

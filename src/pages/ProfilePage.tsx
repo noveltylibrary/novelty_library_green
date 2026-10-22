@@ -10,7 +10,7 @@ import { ProfileTabs, PublishedPanel } from '@/components/ProfileTabs';
 import { buildReadingPane, buildQuestionsPane } from '@/components/ProfilePanes';
 import { StoryComposerModal } from '@/components/StoryComposerModal';
 import { fetchProfileQuestions, fetchProfileSections, isLegacyProfileFieldKey, LEGACY_PROFILE_FIELD_KEYS, type LegacyProfileFieldKey, type ProfileQuestion, type ProfileQuestionSection } from '@/lib/profileQuestions';
-import { findAboutQuestion } from '@/components/ProfileIntro';
+import { findAboutQuestion, ProfileIntro } from '@/components/ProfileIntro';
 import { ProfileCard, cleanInstagram, asFormatKey, type FormatKey, type ProfileCardData } from '@/components/ProfileCard';
 import { useCoreOverrides, coreLabel, corePlaceholder, coreActive, coreFieldsInSection, CORE_FIELDS, fetchCoreFieldOrder, type CoreFieldOrder, type CoreFieldKey } from '@/lib/profileCoreFields';
 import { fetchProfileSectionLayout, BUILT_IN_PROFILE_SECTIONS, type ProfileSectionLayoutItem } from '@/lib/profileLayout';
@@ -304,6 +304,8 @@ export function ProfilePage({ navigate }: ProfilePageProps) {
 
     {!openSection&&statusMsgs}
     {activeItem&&<SectionSheet key={activeItem.key} item={activeItem} onClose={()=>setOpenSection(null)} onSubmit={save} footer={activeItem.saveKey?<div className="nl-sheet-foot"><div className="min-w-0 flex-1">{statusMsgs}</div><button type="button" onClick={()=>void saveSection(activeItem.saveKey as string)} disabled={saving} className="btn-primary !w-auto !px-5 text-sm shrink-0"><Save className="w-4 h-4"/>{saving?'Saving…':'Save section'}</button></div>:<div className="nl-sheet-foot"><div className="min-w-0 flex-1">{statusMsgs}</div></div>}>{activeItem.body}</SectionSheet>}
+
+    <ProfileIntro questions={questions} answers={answers} visibility={visibility}/>
 
     <ProfileTabs panes={{
       reading:buildReadingPane({questions,rawAnswers:answers,vis:visibility,publishedCount:published.length}),

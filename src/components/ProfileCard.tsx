@@ -478,14 +478,6 @@ function StarIcon({ size, style }: { size: number; style?: CSSProperties }) {
   </svg>;
 }
 
-/** "N followers" pill shown next to @username on the card. Clickable only when a handler is given (never in exports). */
-function FollowerPill({ count, fontSize, padX, padY, onClick }: { count?: number | null; fontSize: number; padX: number; padY: number; onClick?: () => void }) {
-  if (count == null) return null;
-  const style: CSSProperties = { flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', fontSize, fontWeight: 700, padding: `${padY}px ${padX}px`, borderRadius: 999, background: 'rgba(255,255,255,.14)', border: `1px solid ${C.line}`, color: C.ink, cursor: onClick ? 'pointer' : 'default' };
-  const label = <><b style={{ color: C.mint }}>{count.toLocaleString()}</b> {count === 1 ? 'follower' : 'followers'}</>;
-  return onClick ? <button type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} style={style} aria-label={`${count} followers — view list`}>{label}</button> : <span style={style}>{label}</span>;
-}
-
 function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, scale, play, still, onAvatarUpload, onHeaderUpload, onSuperBlitzBannerUpload, onFollowersClick }: { onFollowersClick?: () => void; canvasRef: RefObject<HTMLDivElement>; data: ProfileCardData; width: number; height: number; superBlitz?: boolean; scale: number; play: boolean; still: boolean; onAvatarUpload?: () => void; onHeaderUpload?: () => void; onSuperBlitzBannerUpload?: () => void }) {
   /*
    * One information architecture, responsive composition.
@@ -751,7 +743,6 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
       <div className={heroMv.className} style={{ ...heroMv.style, position: 'absolute', left: 45, width: 579, top: 178, display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
         <NameBlock name={data.name || 'Novelty Reader'} size={40} color={C.ink} restColor={C.soft} style={{ flex: '1 1 auto', maxHeight: 84, overflow: 'hidden' }} />
         <p style={{ flexShrink: 0, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 15, fontWeight: 700, padding: '3px 11px', borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader', 80)}</p>
-        <FollowerPill count={data.followerCount} fontSize={13} padX={10} padY={3} onClick={still ? undefined : onFollowersClick} />
       </div>
 
       <div data-fit style={{ position: 'absolute', left: 45, width: 579, top: 240, height: 530, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(11) }}>
@@ -799,7 +790,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ fontSize: s(10), letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: s(5) }}>Novelty Library · Reader</p>
             <NameBlock name={data.name || 'Novelty Reader'} size={s(isWide ? 54 : 48)} color={C.ink} restColor={C.soft} shadow="0 4px 22px rgba(0,25,35,.5)" />
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: s(6), marginTop: s(6) }}><p style={{ display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: s(17), fontWeight: 700, padding: `${s(4)}px ${s(11)}px`, borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader',80)}</p><FollowerPill count={data.followerCount} fontSize={s(14)} padX={s(10)} padY={s(4)} onClick={still ? undefined : onFollowersClick} /></div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: s(6), marginTop: s(6) }}><p style={{ display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: s(17), fontWeight: 700, padding: `${s(4)}px ${s(11)}px`, borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader',80)}</p></div>
           </div>
         </div>
         {isWide ? <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', gap: s(7) }}>{details}</div> : details}
