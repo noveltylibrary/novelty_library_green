@@ -24,3 +24,8 @@ STEP 4 - RUN LATER  NL_SQL_LOCKDOWN_run_after_adsense.sql
 DO NOT RUN: 2_run_after_frontend_deploy.sql (older, replaced by Step 4).
 
 Already done live: is_admin() email-confirmed check; sheet-proxy admin-only.
+
+STEP 2c - OPTIONAL NOW   NL_SQL_220_saved_reviews.sql
+  What: new private table user_saved_reviews (user_id + review_no) so "My Reviews" follows the reader to every device.
+  Additive, safe for older versions. Until it is run, the app keeps using the browser-only list (nothing breaks).
+  Check: sign in, save a review, open the site on another device signed in to the same account - it appears under Accounts -> My Reviews.

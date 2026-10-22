@@ -56,7 +56,7 @@ export function ArchivesModal({ userId, navigate, onClose, initialTab = 'stories
             )}
             {archive && archive.length > 0 && <p className="nl-hl-note">Tap a story to add it to a Highlight.</p>}
           </> : <>
-            <p className="nl-hl-note"><Bookmark aria-hidden="true" /> Reviews you saved with the bookmark (your My Reviews list). Kept on this device only.</p>
+            <p className="nl-hl-note"><Bookmark aria-hidden="true" /> Reviews you saved with the bookmark (your My Reviews list). Synced to your account when you're signed in.</p>
             {saved.length === 0 ? <p className="nl-conn-empty">Nothing saved yet.</p> : (
               <ul className="nl-find-list">
                 {saved.map((r) => { const cover = r.poster_url || r.cover_image_url; return (
