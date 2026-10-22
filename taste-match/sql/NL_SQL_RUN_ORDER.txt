@@ -1,0 +1,41 @@
+NOVELTY LIBRARY - SQL RUN ORDER (Supabase -> SQL Editor -> New query -> paste -> Run)
+
+STEP 1 - RUN NOW   NL_SQL_FIX3_FIX5_review_policies.sql
+  What: only signed-in users can submit reviews; users can read back their own pending reviews.
+  Safe for the frozen v1.116 site and for 2.12. Public reads are untouched.
+  Check: submit a test review while signed in - it should save and appear in your own list.
+
+STEP 2 - RUN NOW   NL_SQL_200_author_reviewer_profiles.sql
+  What: adds author follower counts + reviewer unique IDs (new tables/functions only).
+  Safe for v1.116 (it ignores them). Turns the features on for 2.12.
+
+STEP 2b - OPTIONAL NOW   NL_SQL_210_highlight_cover.sql
+  What: adds one nullable column so highlight covers (archive or gallery) can be saved. Additive, safe for v1.116.
+
+STEP 3 - DEPLOY 2.12 (NL_WA_2_14.zip) to production once AdSense has finished.
+  Open: home page, a review page, a public profile, the Authors page. Confirm all load.
+
+STEP 4 - RUN LATER  NL_SQL_LOCKDOWN_run_after_adsense.sql
+  What: hides reviewer emails / private columns from the public on community_reviews and reviews.
+  ONLY after steps 1-3 and AdSense is finished. Running it earlier breaks v1.116.
+  Check afterwards: the same 4 pages still load.
+  Undo: the ROLLBACK block at the bottom of that file.
+
+DO NOT RUN: 2_run_after_frontend_deploy.sql (older, replaced by Step 4).
+
+Already done live: is_admin() email-confirmed check; sheet-proxy admin-only.
+
+STEP 2c - OPTIONAL NOW   NL_SQL_220_saved_reviews.sql
+  What: new private table user_saved_reviews (user_id + review_no) so "My Reviews" follows the reader to every device.
+  Additive, safe for older versions. Until it is run, the app keeps using the browser-only list (nothing breaks).
+  Check: sign in, save a review, open the site on another device signed in to the same account - it appears under Accounts -> My Reviews.
+
+STEP 2d - OPTIONAL NOW   NL_SQL_230_notifications_settings_devices.sql   (run AFTER NL_SQL_220)
+  What: (1) notifications for likes / comments / replies / ratings on a reader's review, story likes and shares;
+        (2) settings stored in the database and enforced server-side (a category a reader switched off is never created),
+            plus Content preferences saved per account; (3) one-time alerts for a NEW device and a NEW country (possible VPN).
+  Adds 4 new tables + 5 nullable columns and a settings-gate trigger on notifications. Every trigger swallows its own errors,
+  so likes/comments/ratings/stories can never fail because of it. Older versions (1.116) ignore all of it.
+  Optional switch (default OFF): notify every reader about each new published review:
+     update public.nl_notification_switches set enabled = true where key = 'broadcast_new_reviews';
+  Check: like another reader's review from a second account -> the reviewer gets a bell notification; sign in on a new browser -> "New sign-in on a new device".

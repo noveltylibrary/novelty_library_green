@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100" width="240" height="200">
+<style>
+:root{--a:#0097b2;--b:#045a6b;--p:#fff;--p2:#f0fdff;--l:#35d3d9;--s:#013a46;--c:#5ce1e6}
+@media (prefers-color-scheme:dark){:root{--a:#5ce1e6;--b:#0097b2;--p:#0b3339;--p2:#08282d;--l:#5ce1e6;--s:#021517;--c:#5ce1e6}}
+#bk{transform-origin:60px 70px;animation:pop .9s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes pop{0%{opacity:0;transform:translateY(24px) scale(.3) rotate(-8deg)}60%{opacity:1;transform:translateY(-4px) scale(1.08)}100%{opacity:1;transform:none}}
+#fl{transform-origin:60px 55px;animation:fl 3.2s ease-in-out .9s infinite}
+@keyframes fl{0%{transform:scaleX(1);opacity:1}38%{transform:scaleX(-1);opacity:1}44%,100%{transform:scaleX(-1);opacity:0}}
+.sp{opacity:0;transform-box:fill-box;transform-origin:center;animation:tw 2.4s ease-in-out infinite}
+.sp:nth-of-type(2){animation-delay:.8s}.sp:nth-of-type(3){animation-delay:1.6s}
+@keyframes tw{0%,100%{opacity:0;transform:scale(.3)}50%{opacity:1;transform:scale(1) rotate(45deg)}}
+</style>
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--a)"/><stop offset="1" stop-color="var(--b)"/></linearGradient></defs>
+<g id="bk">
+<path d="M8 30 Q34 22 60 32 Q86 22 112 30 L112 80 Q86 72 60 82 Q34 72 8 80 Z" fill="url(#g)"/>
+<path d="M14 32 Q36 26 60 35 L60 80 Q36 72 14 78 Z" fill="var(--p)"/>
+<path d="M106 32 Q84 26 60 35 L60 80 Q84 72 106 78 Z" fill="var(--p2)"/>
+<g stroke="var(--l)" stroke-width="1.6" stroke-linecap="round" opacity=".8" fill="none"><path d="M22 44 Q38 40 53 46"/><path d="M22 52 Q38 48 53 54"/><path d="M22 60 Q38 56 53 62"/><path d="M67 46 Q82 40 98 44"/><path d="M67 54 Q82 48 98 52"/><path d="M67 62 Q82 56 98 60"/></g>
+<g id="fl"><path d="M60 35 Q84 26 106 32 L106 78 Q84 72 60 80 Z" fill="var(--p)" stroke="var(--l)" stroke-width=".6" stroke-opacity=".5"/><path d="M67 46 Q82 40 98 44M67 54 Q82 48 98 52" stroke="var(--l)" stroke-width="1.6" stroke-linecap="round" opacity=".7" fill="none"/></g>
+<path d="M60 33 L60 82" stroke="var(--s)" stroke-width="1.8"/>
+<path d="M72 33 L72 55 L77 50 L82 55 L82 31 Z" fill="var(--c)"/>
+</g>
+<g fill="var(--c)"><path class="sp" d="M22 14 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z"/><path class="sp" d="M96 8 l1.6 4 4 1.6 -4 1.6 -1.6 4 -1.6 -4 -4 -1.6 4 -1.6z"/><path class="sp" d="M60 6 l1.3 3.2 3.2 1.3 -3.2 1.3 -1.3 3.2 -1.3 -3.2 -3.2 -1.3 3.2 -1.3z"/></g>
+</svg>
