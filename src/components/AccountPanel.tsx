@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
-import { AlertTriangle, ArrowLeft, Archive, AtSign, Bookmark, ChevronRight, KeyRound, LogOut, Lock, Mail, MessageSquareWarning, Save, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Archive, AtSign, Bell, Bookmark, ChevronRight, Cookie, FileText, KeyRound, LogOut, Lock, Mail, MessageSquareWarning, Moon, Save, ShieldCheck, SlidersHorizontal, Sun, Trash2 } from 'lucide-react';
 import { ArchivesModal } from '@/components/ArchivesModal';
 import { useAuth } from '@/lib/auth';
 import { updateProfile } from '@/lib/reviews';
@@ -8,8 +8,11 @@ import { deleteCurrentAccount } from '@/lib/account';
 import { supabase } from '@/lib/supabase';
 import { getCaptchaToken } from '@/lib/captcha';
 import { createGrievance, fetchMyGrievances, type GrievanceRecord } from '@/lib/moderation';
+import { useTheme } from '@/lib/theme';
+import { useCookieConsent } from '@/lib/cookieConsent';
+import { NOTIF_CATEGORIES, fetchContentTraits, useUserPrefs, type ContentTrait } from '@/lib/userPrefs';
 
-type View = 'root' | 'username' | 'password' | 'grievances' | 'delete';
+type View = 'root' | 'username' | 'appearance' | 'notifications' | 'content' | 'cookies' | 'password' | 'grievances' | 'delete';
 const VIEW_KEY = 'nl_account_view';
 
 /** A glassy shelf of rows. Rows are split by a hairline that fades out towards both edges. */
@@ -59,6 +62,11 @@ export function AccountPanel({ navigate }: { navigate: (path: string) => void })
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteEmail, setDeleteEmail] = useState('');
   const [archivesOpen, setArchivesOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const consent = useCookieConsent();
+  const userPrefs = useUserPrefs();
+  const [traits, setTraits] = useState<ContentTrait[] | null>(null);
+  useEffect(() => { if (view === 'content' && traits === null) void fetchContentTraits().then(setTraits); }, [view, traits]);
 
   useEffect(() => { if (profile?.novelty_username) setUsername(profile.novelty_username); }, [profile?.novelty_username]);
   useEffect(() => { if (user) void fetchMyGrievances().then(setGrievances).catch(() => undefined); }, [user?.id]);
@@ -153,6 +161,39 @@ export function AccountPanel({ navigate }: { navigate: (path: string) => void })
     </form>
   </div>;
 
+  if (view === 'appearance') return <div className="nl-acc-pane">
+    <Back title="Appearance" />
+    <div className="nl-acc-seg" role="radiogroup" aria-label="Colour mode">
+      {([['light', 'Light', Sun], ['dark', 'Dark', Moon]] as const).map(([k, label, Icon]) => <button key={k} type="button" role="radio" aria-checked={theme === k} className={theme === k ? 'is-on' : ''} onClick={() => { if (theme !== k) toggleTheme(); }}><Icon className="w-4 h-4" aria-hidden="true" /> {label}</button>)}
+    </div>
+    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Saved on this device.</p>
+  </div>;
+
+  if (view === 'notifications') return <div className="nl-acc-pane">
+    <Back title="Notification settings" />
+    <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Choose which notifications you see. Account and security messages are always shown.</p>
+    <div className="nl-acc-shelf">{NOTIF_CATEGORIES.map((c) => <label key={c.key} className="nl-acc-row nl-acc-toggle">
+      <span className="nl-acc-name"><span className="block">{c.label}</span><small className="block text-xs font-normal" style={{ color: 'var(--color-text-muted)' }}>{c.hint}</small></span>
+      <input type="checkbox" role="switch" className="nl-switch" checked={userPrefs.notifOn(c.key)} onChange={(e) => void userPrefs.setNotif(c.key, e.target.checked)} aria-label={c.label} />
+    </label>)}</div>
+    {userPrefs.error && <p className="text-sm" style={{ color: '#dc2626' }}>{userPrefs.error}</p>}
+  </div>;
+
+  if (view === 'content') return <div className="nl-acc-pane">
+    <Back title="Content preferences" />
+    <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Pick the traits you are comfortable dealing with in the books you read. Only you can see your choices.</p>
+    {traits === null ? <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading…</p> : traits.length === 0 ? <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>No traits are available yet. Check back soon.</p> :
+      <div className="nl-acc-chips">{traits.map((t) => { const on = userPrefs.prefs.content.includes(t.id); return <button key={t.id} type="button" aria-pressed={on} className={on ? 'is-on' : ''} onClick={() => void userPrefs.setContent(on ? userPrefs.prefs.content.filter((x) => x !== t.id) : [...userPrefs.prefs.content, t.id])}>{t.label}</button>; })}</div>}
+    {userPrefs.error && <p className="text-sm" style={{ color: '#dc2626' }}>{userPrefs.error}</p>}
+  </div>;
+
+  if (view === 'cookies') return <div className="nl-acc-pane">
+    <Back title="Cookie settings" />
+    <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Current choice: <strong>{consent === 'all' ? 'All cookies accepted' : consent === 'essential' ? 'Essential cookies only' : 'Not chosen yet'}</strong></p>
+    <button type="button" className="btn-primary" onClick={() => window.dispatchEvent(new Event('nl-open-cookie-settings'))}><Cookie className="w-4 h-4" /> Change cookie choice</button>
+    <button type="button" className="btn-ghost text-sm" onClick={() => navigate('/cookies')}>Read the Cookie Policy</button>
+  </div>;
+
   if (view === 'password') return <div className="nl-acc-pane">
     <Back title={hasPassword ? 'Change password' : 'Set a password'} />
     <form onSubmit={changePassword} className="space-y-3">
@@ -203,6 +244,17 @@ export function AccountPanel({ navigate }: { navigate: (path: string) => void })
       <Row icon={<AtSign />} label="Username" value={profile?.novelty_username ? `@${profile.novelty_username}` : undefined} onClick={() => setView('username')} />
       <Row icon={<Bookmark />} label="My Reviews List" value="Saved" onClick={() => navigate('/saved')} />
       <Row icon={<Archive />} label="Archives" onClick={() => setArchivesOpen(true)} />
+      <Row icon={theme === 'dark' ? <Moon /> : <Sun />} label="Appearance" value={theme === 'dark' ? 'Dark' : 'Light'} onClick={() => setView('appearance')} />
+    </Shelf>
+    <Shelf label="Settings">
+      <Row icon={<Bell />} label="Notification settings" onClick={() => setView('notifications')} />
+      <Row icon={<SlidersHorizontal />} label="Content preferences" value={userPrefs.prefs.content.length ? String(userPrefs.prefs.content.length) : undefined} onClick={() => setView('content')} />
+      <Row icon={<Cookie />} label="Cookie settings" onClick={() => setView('cookies')} />
+    </Shelf>
+    <Shelf label="Documentation">
+      <Row icon={<FileText />} label="Terms" onClick={() => navigate('/terms')} />
+      <Row icon={<ShieldCheck />} label="Privacy" onClick={() => navigate('/privacy')} />
+      <Row icon={<Cookie />} label="Cookie policy" onClick={() => navigate('/cookies')} />
     </Shelf>
     <Shelf label="Security">
       <Row icon={<KeyRound />} label="Change password" onClick={() => setView('password')} />

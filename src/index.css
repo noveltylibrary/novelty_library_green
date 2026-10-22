@@ -3554,3 +3554,18 @@ header.fixed { max-width: 100vw; z-index: 60; }
 .nl-standalone-card p { margin-top: .6rem; font-size: .92rem; line-height: 1.6; color: var(--color-text); }
 .nl-standalone-ico { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #013a46, #0097b2); }
 .nl-standalone-ico svg { width: 22px; height: 22px; }
+
+/* ===== Accounts & Settings: appearance, switches, trait chips ===== */
+.nl-acc-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 16px; background: var(--color-paper); border: 1px solid var(--color-border); }
+.nl-acc-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px; border-radius: 12px; font-size: .86rem; font-weight: 700; color: var(--color-text-muted); }
+.nl-acc-seg button.is-on { color: #fff; background: linear-gradient(135deg, #013a46, #0097b2); box-shadow: 0 6px 14px rgba(0,120,140,.28); }
+.nl-acc-toggle { cursor: pointer; }
+.nl-switch { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 42px; height: 24px; border-radius: 999px; background: rgba(100,116,139,.35); cursor: pointer; transition: background .2s ease; }
+.nl-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); transition: transform .2s ease; }
+.nl-switch:checked { background: linear-gradient(135deg, #0097b2, #20becb); }
+.nl-switch:checked::after { transform: translateX(18px); }
+.nl-switch:focus-visible { outline: 2px solid var(--color-cyan-dark); outline-offset: 2px; }
+.nl-acc-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.nl-acc-chips button { padding: 8px 14px; border-radius: 999px; font-size: .84rem; font-weight: 650; color: var(--color-text); background: var(--color-paper); border: 1px solid var(--color-border); transition: background .18s ease, border-color .18s ease; }
+.nl-acc-chips button:hover { border-color: rgba(0,151,178,.5); }
+.nl-acc-chips button.is-on { color: #fff; background: linear-gradient(135deg, #013a46, #0097b2); border-color: transparent; }

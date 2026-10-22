@@ -24,7 +24,7 @@ export type Route =
   | { name: 'admin-admins'; tab?: 'control' | 'notifications' | 'taste' }
   | { name: 'admin-users' }
   | { name: 'admin-finances' }
-  | { name: 'admin-pages'; view?: 'editor' | 'guide' | 'about' | 'profile' | 'announcements' | 'roadmap' | 'submit' }
+  | { name: 'admin-pages'; view?: 'editor' | 'guide' | 'about' | 'profile' | 'announcements' | 'roadmap' | 'submit' | 'content' }
   | { name: 'profile'; username?: string }
   | { name: 'account' }
   | { name: 'notifications' }
@@ -96,7 +96,7 @@ function parsePathUnsafe(): Route {
     if (parts[1] === 'taste' || parts[1] === 'taste-match') return { name: 'admin-admins', tab: 'taste' };
     if (parts[1] === 'users') return { name: 'admin-users' };
     if (parts[1] === 'finances') return { name: 'admin-finances' };
-    if (parts[1] === 'pages') return { name: 'admin-pages', view: (['editor', 'guide', 'about', 'profile', 'announcements', 'roadmap', 'submit'] as const).find((v) => v === parts[2]) };
+    if (parts[1] === 'pages') return { name: 'admin-pages', view: (['editor', 'guide', 'about', 'profile', 'announcements', 'roadmap', 'submit', 'content'] as const).find((v) => v === parts[2]) };
     if (parts[1] === 'book-reviews') {
       const validTabs = ['submitted', 'accepted', 'published', 'reserved', 'posters', 'community'] as const;
       const requested = parts[2] as (typeof validTabs)[number] | undefined;

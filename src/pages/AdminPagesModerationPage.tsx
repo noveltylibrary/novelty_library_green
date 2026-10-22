@@ -7,6 +7,7 @@ import { AdminAboutEditor } from '@/components/AdminAboutEditor';
 import { AdminAnnouncementsPanel } from '@/components/AdminAnnouncementsPanel';
 import { AdminRoadmapPanel } from '@/components/AdminRoadmapPanel';
 import { AdminSubmitFreezePanel } from '@/components/AdminSubmitFreezePanel';
+import { AdminContentPrefsPanel } from '@/components/AdminContentPrefsPanel';
 import {
   fetchProfileQuestions,
   fetchProfileSections,
@@ -36,10 +37,10 @@ const QUESTION_TYPES: { value: ProfileQuestionType; label: string }[] = [
   { value: 'image_upload', label: 'Image upload' },
 ];
 
-export function AdminPagesModerationPage({ navigate, view }: { navigate: (path: string) => void; view?: 'editor' | 'guide' | 'about' | 'profile' | 'announcements' | 'roadmap' | 'submit' }) {
+export function AdminPagesModerationPage({ navigate, view }: { navigate: (path: string) => void; view?: 'editor' | 'guide' | 'about' | 'profile' | 'announcements' | 'roadmap' | 'submit' | 'content' }) {
   const { user, isAdmin, loading } = useAuth();
   const [active, setActive] = useState<typeof PAGE_KEYS[number]>('privacy');
-  const [adminView, setAdminView] = useState<'editor' | 'guide' | 'about' | 'profile' | 'announcements' | 'roadmap' | 'submit'>(view ?? 'editor');
+  const [adminView, setAdminView] = useState<'editor' | 'guide' | 'about' | 'profile' | 'announcements' | 'roadmap' | 'submit' | 'content'>(view ?? 'editor');
   useEffect(() => { if (view) setAdminView(view); }, [view]);
   const [profilePreview, setProfilePreview] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -606,6 +607,9 @@ export function AdminPagesModerationPage({ navigate, view }: { navigate: (path: 
           <button type="button" onClick={() => { setAdminView('submit'); setMsg(''); }} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition" style={{ background: adminView === 'submit' ? 'linear-gradient(135deg,#013a46,#0097b2)' : 'transparent', color: adminView === 'submit' ? 'white' : 'var(--color-text)' }}>
             <Lock className="w-4 h-4" /> Submit Freeze
           </button>
+          <button type="button" onClick={() => { setAdminView('content'); setMsg(''); }} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition" style={{ background: adminView === 'content' ? 'linear-gradient(135deg,#013a46,#0097b2)' : 'transparent', color: adminView === 'content' ? 'white' : 'var(--color-text)' }}>
+            <ListChecks className="w-4 h-4" /> Content Preferences
+          </button>
         </div>
       </header>
 
@@ -639,6 +643,7 @@ export function AdminPagesModerationPage({ navigate, view }: { navigate: (path: 
       {adminView === 'announcements' && <AdminAnnouncementsPanel />}
       {adminView === 'roadmap' && <AdminRoadmapPanel />}
       {adminView === 'submit' && <AdminSubmitFreezePanel />}
+      {adminView === 'content' && <AdminContentPrefsPanel />}
 
       {adminView === 'profile' && (
         <>
