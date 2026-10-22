@@ -3481,3 +3481,76 @@ header.fixed { max-width: 100vw; z-index: 60; }
 .nl-an-ml-poster { flex: 0 0 auto; width: 56px; height: 78px; margin-left: auto; border-radius: 9px; overflow: hidden; display: grid; place-items: center; background: var(--an-track, rgba(0,151,178,.1)); border: 1.5px solid var(--an-border); box-shadow: 0 6px 14px rgba(0,60,80,.18); color: var(--an-soft); }
 .nl-an-ml-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .nl-an-ml-poster svg { width: 22px; height: 22px; }
+
+
+/* ===== Profile card dock: one line - Download | public profile | replay | public view (eye + format) ===== */
+.nl-pc-tiles.nl-pc-tiles-line { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 8px; }
+.nl-pc-tiles-line .nl-pc-tile-wrap { flex: 0 0 auto; }
+.nl-pc-tiles-line .nl-pc-wrap-grow { flex: 1 1 auto; min-width: 0; }
+.nl-pc-tiles-line .nl-pc-tile { min-height: 58px; height: 100%; }
+.nl-pc-tile-compact { width: auto; justify-content: center; padding: 8px 10px; gap: 6px; }
+.nl-pc-tile-compact .nl-pc-tile-ico { width: 34px; height: 34px; }
+.nl-pc-tile-select.nl-pc-tile-compact { padding-right: 12px; }
+.nl-pc-fmt strong { font-size: .86rem; letter-spacing: .02em; }
+@media (max-width: 360px) { .nl-pc-tile-compact { padding: 6px; } .nl-pc-tile-compact .nl-pc-tile-ico { width: 30px; height: 30px; } }
+
+/* ===== Profile side column: buttons stack, tall content scrolls instead of being cut off ===== */
+@media (min-width: 1024px) { .nl-profile-story-col { max-height: calc(100vh - 112px); overflow-y: auto; scrollbar-width: thin; padding-bottom: 4px; } }
+
+/* ===== Accounts & Settings: glass shelves, rows split by a hairline that fades toward the corners ===== */
+.nl-acc-root { display: grid; gap: 18px; }
+.nl-acc-who { font-size: .75rem; color: var(--color-text-muted); overflow-wrap: anywhere; }
+.nl-acc-section { display: grid; gap: 7px; }
+.nl-acc-label { padding-left: 6px; font-size: .64rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--color-teal-dark); }
+.nl-acc-shelf { border-radius: 20px; overflow: hidden; background: linear-gradient(160deg, rgba(255,255,255,.55), rgba(92,225,230,.10)); border: 1px solid rgba(0,151,178,.24); box-shadow: 0 10px 26px rgba(0,80,95,.10), inset 0 1px 0 rgba(255,255,255,.6); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3); }
+.dark .nl-acc-shelf { background: linear-gradient(160deg, rgba(255,255,255,.07), rgba(92,225,230,.05)); border-color: rgba(92,225,230,.22); box-shadow: 0 10px 26px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08); }
+.nl-acc-row { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 54px; padding: 10px 14px; text-align: left; background: transparent; border: 0; color: var(--color-text); cursor: pointer; transition: background .18s ease; }
+.nl-acc-row + .nl-acc-row::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(0,151,178,.38) 22%, rgba(0,151,178,.38) 78%, transparent 100%); }
+.dark .nl-acc-row + .nl-acc-row::before { background: linear-gradient(90deg, transparent 0%, rgba(92,225,230,.34) 22%, rgba(92,225,230,.34) 78%, transparent 100%); }
+.nl-acc-row:hover, .nl-acc-row:focus-visible { background: rgba(92,225,230,.14); outline: none; }
+.nl-acc-row:disabled { opacity: .6; cursor: wait; }
+.nl-acc-ico { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; color: var(--color-teal-dark); background: rgba(0,151,178,.10); }
+.nl-acc-ico svg { width: 17px; height: 17px; }
+.nl-acc-name { flex: 1; min-width: 0; font-size: .92rem; font-weight: 650; }
+.nl-acc-val { max-width: 45%; font-size: .78rem; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Right arrow: head only, no tail. */
+.nl-acc-arrow { flex: none; width: 18px; height: 18px; color: var(--color-teal-dark); transition: transform .2s ease; }
+.nl-acc-row:hover .nl-acc-arrow { transform: translateX(3px); }
+.nl-acc-row.is-danger { color: #dc2626; }
+.nl-acc-row.is-danger .nl-acc-ico { color: #dc2626; background: rgba(239,68,68,.10); }
+.nl-acc-row.is-danger .nl-acc-arrow { color: #dc2626; }
+.nl-acc-row.is-danger:hover, .nl-acc-row.is-danger:focus-visible { background: rgba(239,68,68,.08); }
+.nl-acc-pane { display: grid; gap: 14px; }
+.nl-acc-back { display: grid; gap: 6px; }
+.nl-acc-back button { justify-self: start; display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 700; color: var(--color-teal-dark); }
+.nl-acc-back h3 { font-family: var(--font-serif, Georgia, serif); font-size: 1.2rem; font-weight: 600; }
+.nl-acc-sep-top { position: relative; margin-top: 4px; }
+.nl-acc-sep-top::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(0,151,178,.38) 22%, rgba(0,151,178,.38) 78%, transparent); }
+
+/* ===== Taste Match: "What is Taste Match SE?" opens as a popup from a field tab ===== */
+.nl-taste-field { display: flex; align-items: center; gap: 12px; width: 100%; margin: 1.4rem 0 1.6rem; padding: 14px 16px; text-align: left; border-radius: 18px; color: var(--color-text); background: linear-gradient(135deg, rgba(92,225,230,.14), rgba(0,151,178,.05)); border: 1px solid rgba(0,151,178,.24); cursor: pointer; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.nl-taste-field:hover, .nl-taste-field:focus-visible { transform: translateY(-2px); border-color: rgba(0,151,178,.5); box-shadow: 0 12px 26px rgba(0,80,95,.14); outline: none; }
+.nl-taste-field-ico { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; color: var(--color-teal-dark); background: rgba(0,151,178,.12); }
+.nl-taste-field-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.nl-taste-field-txt strong { font-family: var(--font-serif, Georgia, serif); font-size: 1.05rem; }
+.nl-taste-field-txt small { font-size: .74rem; color: var(--color-text-muted); }
+.nl-taste-field-arrow { flex: none; width: 20px; height: 20px; color: var(--color-teal-dark); transition: transform .2s ease; }
+.nl-taste-field:hover .nl-taste-field-arrow { transform: translateX(3px); }
+.nl-taste-pop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; background: rgba(0,20,28,.62); -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px); }
+.nl-taste-pop-card { position: relative; width: 100%; max-width: 560px; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; border-radius: 24px; box-shadow: 0 30px 70px rgba(0,30,40,.45); background: var(--color-surface); }
+.nl-taste-pop-card .nl-taste-about { margin: 0; border-radius: 24px; }
+.nl-taste-pop-x { position: absolute; top: 10px; right: 10px; z-index: 2; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: var(--color-text); background: var(--color-paper); border: 1px solid var(--color-border); cursor: pointer; }
+.nl-taste-pop-card .nl-taste-about h2 { padding-right: 36px; }
+
+/* Author page: single followers tab */
+.nl-conn-bar.nl-conn-bar-single { grid-template-columns: 1fr; }
+.nl-conn-bar-single .nl-conn-cell:disabled { color: #fff; opacity: 1; cursor: default; }
+
+/* ===== "Standalone sufficed" tag + popup ===== */
+.nl-standalone-tag { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 999px; font-size: .72rem; font-weight: 800; letter-spacing: .02em; color: var(--color-teal-dark); background: rgba(0,151,178,.12); border: 1px solid rgba(0,151,178,.38); cursor: pointer; transition: background .18s ease, box-shadow .18s ease; }
+.nl-standalone-tag:hover, .nl-standalone-tag:focus-visible { background: rgba(92,225,230,.28); box-shadow: 0 0 0 3px rgba(0,151,178,.14); outline: none; }
+.nl-standalone-card { max-width: 420px; padding: 26px 24px 24px; background: var(--color-surface); border: 1px solid rgba(0,151,178,.3); }
+.nl-standalone-card h2 { font-family: var(--font-serif, Georgia, serif); font-size: 1.45rem; font-weight: 700; color: var(--color-teal-dark); margin: 10px 0 8px; padding-right: 30px; }
+.nl-standalone-card p { margin-top: .6rem; font-size: .92rem; line-height: 1.6; color: var(--color-text); }
+.nl-standalone-ico { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #013a46, #0097b2); }
+.nl-standalone-ico svg { width: 22px; height: 22px; }

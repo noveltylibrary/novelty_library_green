@@ -1,19 +1,21 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { BookOpen, CheckCircle, Clock, Languages, Layers, MessageCircleQuestion, Star, BookMarked } from 'lucide-react';
+import { BookOpen, CheckCircle, Clock, Languages, Layers, Library, MessageCircleQuestion, Star, BookMarked } from 'lucide-react';
 import type { AcceptedReviewCard } from '@/lib/reviews';
 import { readingMinutes } from '@/lib/readerTools';
 import { sanitizeUserText } from '@/lib/sanitize';
 
-export type ProfileTabKey = 'reading' | 'questions' | 'published';
+export type ProfileTabKey = 'reading' | 'questions' | 'published' | 'accepted';
 
-/** Instagram-style three-tab strip. The panes are rendered by the caller. */
-export function ProfileTabs({ panes, initial = 'reading' }: { panes: Record<ProfileTabKey, ReactNode>; initial?: ProfileTabKey }) {
+/** Instagram-style tab strip. The panes are rendered by the caller; a tab only appears when its pane is given
+ *  (the public profile has three, the owner's own profile adds an Accepted tab). */
+export function ProfileTabs({ panes, initial = 'reading' }: { panes: Partial<Record<ProfileTabKey, ReactNode>>; initial?: ProfileTabKey }) {
   const [tab, setTab] = useState<ProfileTabKey>(initial);
-  const defs: { key: ProfileTabKey; label: string; Icon: typeof BookOpen }[] = [
+  const defs = ([
     { key: 'reading', label: 'Reading', Icon: BookMarked },
     { key: 'questions', label: 'Questions', Icon: MessageCircleQuestion },
     { key: 'published', label: 'Reviews', Icon: CheckCircle },
-  ];
+    { key: 'accepted', label: 'Accepted reviews', Icon: Library },
+  ] as { key: ProfileTabKey; label: string; Icon: typeof BookOpen }[]).filter((d) => panes[d.key] !== undefined);
   const onKey = (e: React.KeyboardEvent) => {
     const i = defs.findIndex((d) => d.key === tab);
     if (e.key === 'ArrowRight') setTab(defs[(i + 1) % defs.length].key);
@@ -21,7 +23,7 @@ export function ProfileTabs({ panes, initial = 'reading' }: { panes: Record<Prof
   };
   return (
     <section className="nl-ptabs" aria-label="Profile">
-      <div className="nl-ptabs-bar" role="tablist" onKeyDown={onKey}>
+      <div className="nl-ptabs-bar" role="tablist" onKeyDown={onKey} style={{ gridTemplateColumns: `repeat(${defs.length}, 1fr)` }}>
         {defs.map(({ key, label, Icon }) => (
           <button key={key} type="button" role="tab" id={`nl-ptab-${key}`} aria-selected={tab === key} aria-controls={`nl-ppane-${key}`} tabIndex={tab === key ? 0 : -1} aria-label={label} title={label} className={`nl-ptab ${tab === key ? 'is-on' : ''}`} onClick={() => setTab(key)}>
             <span className="nl-ptab-ic"><Icon aria-hidden="true" /></span>

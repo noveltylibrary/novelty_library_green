@@ -24,7 +24,7 @@ const PALETTE = {
     accent: '#f5c542', accentSoft: '#ffe9a8', text: '#ffffff', soft: 'rgba(255,255,255,.76)',
     glass: 'rgba(255,255,255,.10)', line: 'rgba(245,197,66,.45)', tagBg: 'linear-gradient(135deg,#3b0764,#6d28d9)', tagText: '#f5c542',
     ring: 'conic-gradient(from 210deg,#f5c542,#fff3c4,#8b5cf6,#ffe9a8,#f5c542)', avatarBg: 'linear-gradient(135deg,#5b21b6,#a78bfa)',
-    kicker: 'Novelty Library · Author', footer: "Authors' page · branding tool", boxBg: 'linear-gradient(135deg,rgba(255,255,255,.94),rgba(255,240,196,.82))', boxInk: '#3b0764', boxAccent: '#a16207',
+    kicker: 'Novelty Library · Author', footer: 'Author profile card', boxBg: 'linear-gradient(135deg,rgba(255,255,255,.94),rgba(255,240,196,.82))', boxInk: '#3b0764', boxAccent: '#a16207',
   },
   reviewer: {
     bg: 'linear-gradient(150deg,#012b36 0%,#013a46 26%,#00687f 52%,#0097b2 76%,#3fd3d9 100%)',
@@ -49,6 +49,8 @@ export interface PeopleCardProps {
   shareUrl?: string;
   /** Optional action row shown above the card (follow / replay / report / share). Replaces the buttons under the card. */
   topActions?: (ctx: { replay: () => void; replayKey: number }) => ReactNode;
+  /** Optional slot between the action row and the card (the followers bar on author pages). */
+  header?: ReactNode;
 }
 
 const cover = (r: PeopleStats['top'][number]) => safeExternalUrl(normalizePosterUrl(r.poster_url || r.cover_image_url || '')) || null;
@@ -61,7 +63,7 @@ function CardCover({ src }: { src: string }) {
   return <img key={cors ? 'cors' : 'plain'} src={src} alt="" referrerPolicy="no-referrer" {...(cors ? { crossOrigin: 'anonymous' as const } : {})} onError={() => (cors ? setCors(false) : setDead(true))} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />;
 }
 
-export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, shareUrl, topActions }: PeopleCardProps) {
+export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, shareUrl, topActions, header }: PeopleCardProps) {
   const [replayKey, setReplayKey] = useState(0);
   // Readers can share the page; the PNG export is an admin tool.
   const { isAdmin } = useAuth();
@@ -118,6 +120,7 @@ export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, 
   return (
     <div className="nl-people-card">
       {topActions && <div className="w-full">{topActions({ replay: () => setReplayKey((n) => n + 1), replayKey })}</div>}
+      {header && <div className="nl-pc-head w-full">{header}</div>}
       <div ref={wrapRef} className="nl-people-card-frame" style={{ height: H * scale, borderRadius: 24 }}>
         <div ref={canvasRef} key={replayKey} className={replayKey > 0 ? 'nl-people-replay' : undefined} style={{ position: 'absolute', top: 0, left: 0, width: W, height: H, overflow: 'hidden', transform: `scale(${scale})`, transformOrigin: 'top left', background: pal.bg, color: pal.text }}>
           <div style={{ position: 'absolute', right: -W * 0.25, top: -H * 0.1, width: W * 0.95, height: W * 0.95, borderRadius: '50%', background: pal.glowA }} />
@@ -179,16 +182,10 @@ export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, 
             </div>
           )}
 
-          {variant === 'author' ? (
-            <div style={{ position: 'absolute', right: 70, bottom: 36, textAlign: 'right' }}>
-              <p className="font-serif" style={{ fontSize: 36, fontWeight: 800, lineHeight: 1, color: pal.text }}>Novelty Library</p>
-            </div>
-          ) : (
-            <div style={{ position: 'absolute', right: 70, bottom: 30, display: 'flex', alignItems: 'center', gap: 16, borderRadius: 26, padding: '12px 22px', background: pal.boxBg, border: '1.5px solid rgba(255,255,255,.7)', boxShadow: '0 18px 40px rgba(0,0,0,.3)' }}>
+          <div style={{ position: 'absolute', right: 70, bottom: 30, display: 'flex', alignItems: 'center', gap: 16, borderRadius: 26, padding: '12px 22px', background: pal.boxBg, border: '1.5px solid rgba(255,255,255,.7)', boxShadow: '0 18px 40px rgba(0,0,0,.3)' }}>
               <div style={{ display: 'grid', placeItems: 'center', width: 84, height: 84, borderRadius: 22, background: '#fff', boxShadow: '0 8px 20px rgba(0,0,0,.25)' }}><img src={LOGO} alt="Novelty Library" style={{ width: 76, height: 76, objectFit: 'contain' }} /></div>
               <div><p className="font-serif" style={{ fontSize: 36, fontWeight: 800, lineHeight: 1, color: pal.boxInk }}>Novelty Library</p><p style={{ marginTop: 8, fontSize: 15, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 900, color: pal.boxAccent }}>{pal.footer}</p></div>
             </div>
-          )}
         </div>
       </div>
       <div className="nl-people-card-actions">

@@ -29,7 +29,6 @@ import { AdminManageAdminsPage } from '@/pages/AdminManageAdminsPage';
 import { AdminUsersPage } from '@/pages/AdminUsersPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { PublicProfilePage } from '@/pages/PublicProfilePage';
-import { AccountPage } from '@/pages/AccountPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { LiveRankingsPage } from '@/pages/LiveRankingsPage';
@@ -138,7 +137,7 @@ function AppContent() {
         {route.name === 'admin-finances' && <AdminFinancesPage navigate={navigate} />}
         {route.name === 'admin-pages' && <AdminPagesModerationPage navigate={navigate} view={route.view} />}
         {route.name === 'profile' && (route.username ? <PublicProfilePage username={route.username} navigate={navigate} /> : <ProfilePage navigate={navigate} />)}
-        {route.name === 'account' && <AccountPage navigate={navigate} />}
+        {route.name === 'account' && <ProfilePage navigate={navigate} openAccounts />}
         {route.name === 'notifications' && <NotificationsPage navigate={navigate} />}
         {route.name === 'author' && <AuthorPage name={route.author} navigate={navigate} />}
         {route.name === 'authors' && <PeoplePage tab="authors" navigate={navigate} />}

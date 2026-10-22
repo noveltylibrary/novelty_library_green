@@ -1,7 +1,7 @@
 import { VerdictBanner } from '@/components/VerdictBanner';
 import { useState, useEffect } from 'react';
 import { setPageMeta } from '@/lib/seo';
-import { ArrowLeft, ExternalLink, Instagram, Calendar, Globe, Tag, Star, Newspaper, Clock } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Instagram, Calendar, Globe, Tag, Star, Newspaper, Clock, Library } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { loadReviewCached, peekReview, storeReviewInCache } from '@/lib/reviews';
 import { fetchBlogPosts, peekBlogPosts, blogPostDate, htmlToText } from '@/lib/blog';
@@ -24,6 +24,8 @@ import { useAuth } from '@/lib/auth';
 import { reviewerPath, reviewNoOf, useReviewerIndex } from '@/lib/reviewers';
 import { computeNlRating, deleteFeedback, fetchFeedback, saveFeedback, useEngagement, type FeedbackEntry, type FeedbackInput } from '@/lib/engagement';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
+import { parseSeriesName } from '@/lib/series';
+import { StandaloneTag } from '@/components/StandaloneTag';
 
 interface ReviewPageProps {
   slug: string;
@@ -317,11 +319,16 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
                   Translated from {sanitizeUserText(review.translated_from, 80)}
                 </span>
               )}
-              {review.series_name && (
-                <span className="flex items-center gap-1.5">
-                  {sanitizeUserText(review.series_name, 120)}{review.series_number ? ` #${review.series_number}` : ''}
-                </span>
-              )}
+              {(() => {
+                // Check 1: the book has a series name. Check 2: that name says "standalone sufficed" (any case, hyphen or brackets).
+                const series = parseSeriesName(review.series_name);
+                if (!series.name && !series.standalone) return null;
+                return <span className="flex flex-wrap items-center gap-1.5" title="Series">
+                  <Library className="w-4 h-4" aria-hidden="true" />
+                  {series.name && <span>{sanitizeUserText(series.name, 120)}{review.series_number ? ` #${review.series_number}` : ''}</span>}
+                  {series.standalone && <StandaloneTag seriesName={series.name ? sanitizeUserText(series.name, 120) : undefined} />}
+                </span>;
+              })()}
               {!review.novelty_username && reviewerLink && (
                 <button type="button" onClick={() => navigate(reviewerLink)} className="inline-flex items-center gap-1.5 font-semibold hover:underline" style={{ color: 'var(--color-teal-dark)' }}>
                   <span className="nl-handle-box" aria-hidden="true">NL</span>

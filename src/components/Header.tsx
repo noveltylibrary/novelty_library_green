@@ -1,4 +1,4 @@
-import { ArrowLeft, Menu, X, Shield, Moon, Sun, User, Download, Home, BookOpen, PenTool, Compass, Settings, Bell, LogIn } from 'lucide-react';
+import { ArrowLeft, Menu, X, Shield, Moon, Sun, User, Download, Home, BookOpen, PenTool, Compass, Bell, LogIn } from 'lucide-react';
 import { useState, useEffect, type CSSProperties, type ComponentType } from 'react';
 import { createPortal } from 'react-dom';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -63,7 +63,6 @@ const panelItems: { label: string; icon: ComponentType<{ className?: string }>; 
     ...navItems.map((i) => ({ label: i.label, icon: i.icon, run: () => handleNav(i.path), active: currentRoute === i.route })),
     ...(user ? [
       { label: 'Profile', icon: User, run: () => handleNav('/profile'), active: currentRoute === 'profile' },
-      { label: 'Accounts', icon: Settings, run: () => handleNav('/account'), active: currentRoute === 'account' },
       { label: 'Notifications', icon: Bell, run: () => handleNav('/notifications'), active: currentRoute === 'notifications', badge: unreadCount },
     ] : [{ label: 'Sign In', icon: LogIn, run: () => handleNav('/auth'), accent: true }]),
     ...(isAdmin ? [{ label: 'Admin Panel', icon: Shield, run: () => handleNav('/admin'), accent: true, active: currentRoute.startsWith('admin') }] : []),
@@ -96,7 +95,6 @@ const panelItems: { label: string; icon: ComponentType<{ className?: string }>; 
         {navItems.map((item) => <NavIcon key={item.path} label={item.label} icon={item.icon} active={currentRoute === item.route} onClick={() => handleNav(item.path)} />)}
         {user && <>
           <NavIcon label="Profile" icon={User} active={currentRoute === 'profile'} onClick={() => handleNav('/profile')} />
-          <NavIcon label="Accounts" icon={Settings} active={currentRoute === 'account'} onClick={() => handleNav('/account')} />
           <NavIcon label="Notifications" icon={Bell} active={currentRoute === 'notifications'} badge={unreadCount} onClick={() => handleNav('/notifications')} />
         </>}
         {isAdmin && <NavIcon label="Admin" icon={Shield} active={currentRoute.startsWith('admin')} tone="accent" onClick={() => handleNav('/admin')} />}

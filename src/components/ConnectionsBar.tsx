@@ -9,17 +9,18 @@ import { useOverlayHistory } from '@/lib/overlayHistory';
 export type ConnKind = 'followers' | 'following';
 
 /** Blue Followers | Following table that sits just above the profile card. */
-export function FollowStatsBar({ followers, following, hideFollowers, hideFollowing, isOwn, onOpen }: { followers: number; following: number; hideFollowers: boolean; hideFollowing: boolean; isOwn: boolean; onOpen: (k: ConnKind) => void }) {
+export function FollowStatsBar({ followers, following, hideFollowers, hideFollowing, isOwn, onOpen, followersOnly = false }: { followers: number; following: number; hideFollowers: boolean; hideFollowing: boolean; isOwn: boolean; onOpen: (k: ConnKind) => void; /** Author pages: one tab with the total follower count; no list to open. */ followersOnly?: boolean }) {
   const cell = (kind: ConnKind, count: number, hidden: boolean) => {
     const locked = hidden && !isOwn;
     return (
-      <button type="button" className={`nl-conn-cell ${locked ? 'is-locked' : ''}`} disabled={locked} onClick={() => onOpen(kind)} aria-label={`${count} ${kind}${locked ? ' (private)' : ' - view list'}`}>
+      <button type="button" className={`nl-conn-cell ${locked ? 'is-locked' : ''}`} disabled={locked || followersOnly} onClick={() => onOpen(kind)} aria-label={`${count} ${kind}${locked ? ' (private)' : ' - view list'}`}>
         <span className="nl-conn-ic">{kind === 'followers' ? <Users aria-hidden="true" /> : <UserCheck aria-hidden="true" />}</span>
         <span className="nl-conn-num">{locked ? <Lock aria-hidden="true" /> : count.toLocaleString()}</span>
         <span className="nl-conn-word">{kind === 'followers' ? 'Followers' : 'Following'}{hidden && isOwn && <em><Lock aria-hidden="true" /> only you</em>}</span>
       </button>
     );
   };
+  if (followersOnly) return <div className="nl-conn-bar nl-conn-bar-single" role="group" aria-label="Followers">{cell('followers', followers, false)}</div>;
   return <div className="nl-conn-bar" role="group" aria-label="Followers and following">{cell('followers', followers, hideFollowers)}{cell('following', following, hideFollowing)}</div>;
 }
 

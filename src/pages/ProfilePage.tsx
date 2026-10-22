@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode, type ChangeEvent, type FormEvent, type CSSProperties } from 'react';
-import { ArrowLeft, Camera, CheckCircle, Eye, EyeOff, Globe, Instagram, Link2, Mail, Save, Upload, User, BookOpen, Library, Minus, Plus, Users, X, Lock, Unlock, ImagePlus, Download, Info, ExternalLink, ChevronRight, ChevronDown, Pencil, Layers, Fingerprint, BookMarked, Compass, Feather, Lightbulb, Heart, Coffee, Smile, Star } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle, Eye, EyeOff, Globe, Instagram, Link2, Mail, Save, Upload, User, BookOpen, Library, Minus, Plus, Users, X, Lock, Unlock, ImagePlus, Download, Info, ExternalLink, ChevronRight, ChevronDown, Pencil, Settings, Layers, Fingerprint, BookMarked, Compass, Feather, Lightbulb, Heart, Coffee, Smile, Star } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { fetchMyAcceptedReviews, fetchMyPublishedReviews, updateProfile, uploadAvatarImage, uploadProfileHeaderImage, type AcceptedReviewCard } from '@/lib/reviews';
 import { RwStarRating } from '@/components/RwStarRating';
 import { fetchFollowStats, fetchConnections, fetchActiveStories, type FollowStats, type ConnectionProfile, type Story } from '@/lib/social';
 import { FollowStatsBar, ConnectionsModal, type ConnKind } from '@/components/ConnectionsBar';
 import { ProfileHighlights } from '@/components/ProfileHighlights';
-import { PublishedPanel } from '@/components/ProfileTabs';
+import { ProfileTabs, PublishedPanel } from '@/components/ProfileTabs';
+import { buildReadingPane, buildQuestionsPane } from '@/components/ProfilePanes';
+import { AccountPanel } from '@/components/AccountPanel';
 import { StoryComposerModal } from '@/components/StoryComposerModal';
 import { fetchProfileQuestions, fetchProfileSections, isLegacyProfileFieldKey, LEGACY_PROFILE_FIELD_KEYS, type LegacyProfileFieldKey, type ProfileQuestion, type ProfileQuestionSection } from '@/lib/profileQuestions';
 import { findAboutQuestion } from '@/components/ProfileIntro';
@@ -22,13 +24,14 @@ import { isCurrentlyReadingQuestion, moveCurrentlyReadingToBasic } from '@/lib/c
 import { fetchShelfCommunityInfo, averageNlRating, type ShelfCommunityInfo } from '@/lib/profileShelf';
 import { useOverlayHistory } from '@/lib/overlayHistory';
 
-interface ProfilePageProps { navigate: (path: string) => void; }
+interface ProfilePageProps { navigate: (path: string) => void; openAccounts?: boolean; }
 type SocialLink = { platform: string; url: string };
 const SOCIAL_PLATFORMS = ['instagram','goodreads','wattpad','facebook','linkedin','x'] as const;
 const SOCIAL_LABELS: Record<string,string> = { instagram:'Instagram', goodreads:'Goodreads', wattpad:'Wattpad', facebook:'Facebook', linkedin:'LinkedIn', x:'X' };
 const DEFAULT_VIS: Record<string, boolean> = { avatar:true,name:true,email:false,header_image:true,books_read_this_month:true,total_books_read:true,reading_since:true,favorite_book:true,favorite_author:true,favorite_genre:true,instagram:true };
 
-export function ProfilePage({ navigate }: ProfilePageProps) {
+export function ProfilePage({ navigate, openAccounts = false }: ProfilePageProps) {
+  const [accountsOpen,setAccountsOpen]=useState(openAccounts);
   const { user, profile, loading, refreshProfile } = useAuth();
   const core = useCoreOverrides();
   const [name,setName]=useState(''); const [favoriteBook,setFavoriteBook]=useState(''); const [booksReadThisMonth,setBooksReadThisMonth]=useState(''); const [totalBooksRead,setTotalBooksRead]=useState(''); const [readingSince,setReadingSince]=useState(''); const [favoriteAuthor,setFavoriteAuthor]=useState(''); const [favoriteGenre,setFavoriteGenre]=useState('');
@@ -273,7 +276,16 @@ export function ProfilePage({ navigate }: ProfilePageProps) {
     <input ref={sbBannerInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadSbBanner} className="hidden"/><input ref={headerInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadHeader} className="hidden"/><input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadAvatar} className="hidden"/>
     <section className="nl-profile-work">
       <div className="nl-profile-main min-w-0"><ProfileCard layout="rows" header={<FollowStatsBar followers={followStats.followers} following={followStats.following} hideFollowers={hideFollowers} hideFollowing={hideFollowing} isOwn onOpen={setConnKind}/>} data={cardData} onFollowersClick={()=>setConnKind('followers')} download initialFormat={publicFormat} publicFormat={publicFormat} onPublicFormatChange={setPublicView} onAvatarUpload={()=>avatarInputRef.current?.click()} onHeaderUpload={()=>headerInputRef.current?.click()} onSuperBlitzBannerUpload={()=>sbBannerInputRef.current?.click()} onViewPublicProfile={()=>profile?.novelty_username && navigate(`/profile/@${encodeURIComponent(profile.novelty_username)}`)} /></div>
-      <aside className="nl-profile-story-col min-w-0">
+      <aside className="nl-profile-story-col min-w-0 space-y-4">
+        <SectionHub items={hubItems} title={bi('profile_questions').header||'Profile sections'} description={bi('profile_questions').description||'Tap a section to open it. Your published reviews stay below.'} onOpen={setOpenSection}/>
+        <section className={`nl-hub ${accountsOpen?'is-open':''}`} aria-label="Accounts and settings">
+          <button type="button" className="nl-hub-toggle" aria-expanded={accountsOpen} aria-controls="nl-acc-drop" onClick={()=>setAccountsOpen(v=>!v)}>
+            <span className="nl-hub-icon"><Settings className="w-5 h-5" aria-hidden="true"/></span>
+            <span className="nl-hub-text"><span className="nl-hub-eyebrow">Your account</span><strong className="nl-hub-title">Accounts &amp; Settings</strong><small className="nl-hub-hint">Username, saved list, archives and security</small></span>
+            <ChevronDown className="nl-hub-caret w-5 h-5" aria-hidden="true"/>
+          </button>
+          {accountsOpen&&<div id="nl-acc-drop" className="nl-hub-drop"><AccountPanel navigate={navigate}/></div>}
+        </section>
         <details className="nl-profile-stories-dropdown">
           <summary className="nl-profile-stories-summary"><span className="nl-profile-stories-label"><span className="nl-profile-stories-icon"><BookOpen className="w-5 h-5" aria-hidden="true"/></span><span>Stories and Highlights</span></span><ChevronDown className="nl-profile-stories-caret w-5 h-5" aria-hidden="true"/></summary>
           <div className="nl-profile-stories-content space-y-5">
@@ -293,13 +305,15 @@ export function ProfilePage({ navigate }: ProfilePageProps) {
 
 <ConnectionsModal open={connKind} onClose={()=>setConnKind(null)} onKind={setConnKind} username={profile?.novelty_username??null} counts={{followers:followStats.followers,following:followStats.following}} hidden={{followers:hideFollowers,following:hideFollowing}} isOwn me={user?{id:user.id,username:profile?.novelty_username??null}:null} navigate={navigate} onChanged={()=>{ if(profile?.novelty_username) void fetchFollowStats(profile.novelty_username).then(setFollowStats).catch(()=>undefined); }} ownerControls={(kind)=>{const current=kind==='followers'?hideFollowers:hideFollowing;return <div className="nl-conn-vis"><p><Lock aria-hidden="true"/> Who can see this list</p><div className="nl-conn-vis-row">{([false,true] as const).map(hide=><button key={String(hide)} type="button" aria-pressed={current===hide} className={current===hide?'is-on':''} onClick={()=>kind==='followers'?setHideFollowers(hide):setHideFollowing(hide)}>{hide?<Lock className="w-4 h-4"/>:<Unlock className="w-4 h-4"/>}{hide?'Only me':'Everyone'}</button>)}<button type="button" className="nl-conn-vis-save" disabled={saving} onClick={()=>void saveSection('privacy')}><Save className="w-4 h-4"/>{saving?'Saving…':saved?'Saved':'Save'}</button></div></div>;}}/>
 
-    <SectionHub items={hubItems} title={bi('profile_questions').header||'Profile sections'} description={bi('profile_questions').description||'Tap a section to open it. Your published reviews stay below.'} onOpen={setOpenSection}/>
-
     {!openSection&&statusMsgs}
     {activeItem&&<SectionSheet key={activeItem.key} item={activeItem} onClose={()=>setOpenSection(null)} onSubmit={save} footer={activeItem.saveKey?<div className="nl-sheet-foot"><div className="min-w-0 flex-1">{statusMsgs}</div><button type="button" onClick={()=>void saveSection(activeItem.saveKey as string)} disabled={saving} className="btn-primary !w-auto !px-5 text-sm shrink-0"><Save className="w-4 h-4"/>{saving?'Saving…':'Save section'}</button></div>:<div className="nl-sheet-foot"><div className="min-w-0 flex-1">{statusMsgs}</div></div>}>{activeItem.body}</SectionSheet>}
 
-    <section className="surface-card p-6"><div className="flex items-center justify-between gap-4 mb-5"><div><p className="text-xs uppercase tracking-[.18em] font-semibold" style={{color:'var(--color-teal-dark)'}}>Published shelf</p><h2 className="font-serif text-2xl font-semibold">Published Reviews <span className="text-base font-sans font-semibold" style={{color:'var(--color-cyan-dark)'}}>({published.length})</span></h2></div><CheckCircle className="w-5 h-5" style={{color:'var(--color-cyan-dark)'}}/></div><PublishedPanel reviews={published} nlRatingForReview={r=>shelfInfo[r.review_no]?.nlRating??null} renderReview={r=><AcceptedCard review={r} navigate={navigate} posterUrl={shelfInfo[r.review_no]?.posterUrl} nlRating={shelfInfo[r.review_no]?.nlRating??null} live/>}/></section>
-    <section className="surface-card p-6"><div className="flex items-center gap-2 mb-5"><Library className="w-5 h-5" style={{color:'var(--color-cyan-dark)'}}/><h2 className="font-serif text-2xl font-semibold">Accepted Reviews <span className="text-base font-sans font-semibold" style={{color:'var(--color-cyan-dark)'}}>({accepted.length})</span></h2></div>{accepted.length?<><div className="grid md:grid-cols-2 gap-4">{(acceptedExpanded?accepted:accepted.slice(0,2)).map(r=><AcceptedCard key={r.id} review={r} navigate={navigate} publishedNos={publishedNos} posterUrl={shelfInfo[r.review_no]?.posterUrl} nlRating={shelfInfo[r.review_no]?.nlRating??null}/>)}</div>{accepted.length>2&&<div className="text-center mt-4"><button type="button" className="nl-more-btn" onClick={()=>setAcceptedExpanded(v=>!v)}>{acceptedExpanded?'Show less':`Show more (${accepted.length-2})`}</button></div>}</>:<p className="py-8 text-center text-sm" style={{color:'var(--color-text-muted)'}}>No accepted reviews yet.</p>}</section>
+    <ProfileTabs panes={{
+      reading:buildReadingPane({questions,rawAnswers:answers,vis:visibility,publishedCount:published.length}),
+      questions:buildQuestionsPane({questions,rawAnswers:answers,vis:visibility,cardKeys:new Set(cardQuestions.map(q=>q.key))}),
+      published:<PublishedPanel reviews={published} nlRatingForReview={r=>shelfInfo[r.review_no]?.nlRating??null} renderReview={r=><AcceptedCard review={r} navigate={navigate} posterUrl={shelfInfo[r.review_no]?.posterUrl} nlRating={shelfInfo[r.review_no]?.nlRating??null} live/>}/>,
+      accepted:<div>{accepted.length?<><div className="grid md:grid-cols-2 gap-4">{(acceptedExpanded?accepted:accepted.slice(0,2)).map(r=><AcceptedCard key={r.id} review={r} navigate={navigate} publishedNos={publishedNos} posterUrl={shelfInfo[r.review_no]?.posterUrl} nlRating={shelfInfo[r.review_no]?.nlRating??null}/>)}</div>{accepted.length>2&&<div className="text-center mt-4"><button type="button" className="nl-more-btn" onClick={()=>setAcceptedExpanded(v=>!v)}>{acceptedExpanded?'Show less':`Show more (${accepted.length-2})`}</button></div>}</>:<p className="py-8 text-center text-sm" style={{color:'var(--color-text-muted)'}}>No accepted reviews yet.</p>}</div>,
+    }}/>
     <div className="mt-2 rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5" style={{background:'linear-gradient(90deg,rgba(0,151,178,.09),rgba(92,225,230,.12))',border:'1px solid rgba(0,151,178,.18)',color:'var(--color-text)'}}><div className="flex items-start gap-3"><Info className="w-4 h-4 mt-0.5 shrink-0" style={{color:'var(--color-cyan-dark)'}}/><p className="text-xs sm:text-sm leading-5"><strong>Deployment notice:</strong> Some features available in the current webapp deployment might become locked in future deployments once subscription plans are introduced.</p></div></div>
     </div></div>;
 }

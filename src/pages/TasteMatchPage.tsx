@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BarChart3, BookOpen, Home, LoaderCircle, Trophy } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ArrowLeft, BarChart3, BookOpen, ChevronRight, HelpCircle, Home, LoaderCircle, Trophy, X } from 'lucide-react';
+import { useOverlayHistory } from '@/lib/overlayHistory';
 import { TasteMatchPanel, type FinderBook } from '@/components/RankingFinder';
 import { TasteMatchEmblem } from '@/components/TasteMatchIcon';
 import { fetchReviews } from '@/lib/reviews';
@@ -49,6 +51,15 @@ export function TasteMatchPage({ navigate }: { navigate: (path: string) => void 
   const [books, setBooks] = useState<FinderBook[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  useOverlayHistory(aboutOpen, () => setAboutOpen(false));
+  useEffect(() => {
+    if (!aboutOpen) return;
+    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setAboutOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey); };
+  }, [aboutOpen]);
 
   const facts = useMemo(() => {
     const uniq = (values: string[]) => new Set(values.map((v) => v.trim().toLowerCase()).filter(Boolean)).size;
@@ -89,7 +100,16 @@ export function TasteMatchPage({ navigate }: { navigate: (path: string) => void 
             </div>
           </div>
         </header>
-        <section className="nl-taste-about" aria-labelledby="nl-taste-what">
+        <button type="button" className="nl-taste-field" onClick={() => setAboutOpen(true)} aria-haspopup="dialog">
+          <span className="nl-taste-field-ico"><HelpCircle size={20} aria-hidden="true" /></span>
+          <span className="nl-taste-field-txt"><strong>What is Taste Match SE?</strong><small>Meet your literary matchmaker</small></span>
+          <ChevronRight className="nl-taste-field-arrow" aria-hidden="true" />
+        </button>
+        {aboutOpen && createPortal(
+          <div className="nl-taste-pop" onClick={() => setAboutOpen(false)}>
+            <div className="nl-taste-pop-card" role="dialog" aria-modal="true" aria-labelledby="nl-taste-what" onClick={(e) => e.stopPropagation()}>
+              <button type="button" className="nl-taste-pop-x" onClick={() => setAboutOpen(false)} aria-label="Close"><X size={18} aria-hidden="true" /></button>
+              <section className="nl-taste-about" aria-labelledby="nl-taste-what">
           <h2 id="nl-taste-what">What is Taste Match SE?</h2>
           <p className="nl-taste-about-lede">Meet your literary matchmaker.</p>
           <p>Finding your next great read shouldn&rsquo;t feel like searching for a needle in a digital haystack.</p>
@@ -103,6 +123,8 @@ export function TasteMatchPage({ navigate }: { navigate: (path: string) => void 
             {facts.languages > 0 && <li><b>{facts.languages}</b> {facts.languages === 1 ? 'language' : 'languages'}</li>}
           </ul>}
         </section>
+            </div>
+          </div>, document.body)}
         {loading && <div className="nl-live-loading"><LoaderCircle size={20} className="nl-live-spin" /> Finding the published library…</div>}
         {!loading && failed && <div className="nl-live-state"><strong>Taste Match SE couldn't load the library.</strong><span>Please try again in a moment.</span><button type="button" onClick={() => window.location.reload()}>Retry</button></div>}
         {!loading && !failed && books.length === 0 && <div className="nl-live-state"><strong>No published reviews are available yet.</strong><span>Taste Match SE will recommend books as reviews enter the public library.</span></div>}
