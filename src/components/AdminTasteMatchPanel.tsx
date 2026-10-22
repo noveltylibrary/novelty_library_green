@@ -8,7 +8,7 @@ import { TMAI40_METRICS, getTmaiMetricReadiness } from '@/lib/tmai40Engine';
 const FIELD_LABELS: Record<FieldKey, string> = { genre: 'Genre', traits: 'Traits', title: 'Title', author: 'Author', language: 'Language', verdict: 'Verdict' };
 const STEPS: { title: string; body: string }[] = [
   { title: 'A reader says what they want', body: 'They pick up to three moods and can add a book they loved, a verdict (Perfection / Go for it / Timepass) and a language. In Live Rankings search they type a few words instead.' },
-  { title: 'Every review becomes a list of weighted words', body: 'Each published review is turned into words from its genre, traits, title, author, language, verdict and review text, plus hidden "concept tags" so related genres (psychological thriller, suspense, crime) sit close together.' },
+  { title: 'Every review becomes a list of weighted words', body: 'Each published review is turned into words from its title, author, genre, language, traits, verdict, translation, series and the first 4,000 characters of its text.' },
   { title: 'Rare words count for more (TF-IDF)', body: 'A word that appears in only a few reviews says more about a review than a word everyone uses, so it gets a higher weight. Repeating a word helps, but with diminishing returns.' },
   { title: 'The reader\'s wishes get the same treatment', body: 'The choices are turned into one weighted list of words, in exactly the same way, so they can be compared with every review.' },
   { title: 'Cosine similarity ranks the library', body: 'Each review is scored by how closely its word list points in the same direction as the reader\'s (0–100%). The top three are shown, each with the reasons it fits.' },
@@ -36,9 +36,9 @@ const BACKSTAGE: { title: string; items: string[] }[] = [
     'Hard filters apply before scoring: the language must match exactly, the verdict filter (Perfection / Go for it / Timepass) must match, and the loved book itself is never suggested back.',
   ] },
   { title: 'Score 1: word similarity (62% of the final score)', items: [
-    'Each review becomes a weighted word list from its title, genre, traits, author, language, verdict and the first 600 words of its text. Genre and traits count most.',
-    'Rare words count more than common ones (TF-IDF) and repeats count with diminishing returns. The wish gets the same treatment and each review is scored by cosine similarity.',
-    'Hidden concept tags group 22 genres (psychological thriller, suspense, crime, mystery, romance, dark romance, fantasy, mythological, dystopian, memoir, self-help…). Neighbouring groups (for example psychological ↔ suspense ↔ crime) pull each other up a little, so “twisty crime” can surface a psychological thriller.',
+    'Each review becomes one bag of words: title, author, genre, language, traits, verdict, translation, series name and the first 4,000 characters of its text. All fields count equally in this score; genre and traits get their extra push from Score 2.',
+    'Rare words count more than common ones (TF-IDF: 1 + ln(count) × ln((n+1)/(df+1)) + 1, each list scaled to length 1). The wish gets the same treatment and each review is scored by cosine similarity, clamped to 0–1.',
+    'The 22 hidden genre groups (psychological thriller, suspense, crime, mystery, romance, dark romance, fantasy, mythological, dystopian, memoir, self-help…) and their 30 neighbour links are not part of this score. They belong to the library-search engine below.',
   ] },
   { title: 'Score 2: the 40 story-feel metrics (38% of the final score)', items: [
     'Forty dimensions such as pace, writing style, atmosphere, emotional resonance, twist predictability, rereadability, poetic weight and post-read hangover, each with its own weight (genre 1.5 is the heaviest; popularity-style metrics 0.2 the lightest).',
@@ -57,11 +57,12 @@ const BACKSTAGE: { title: string; items: string[] }[] = [
     'Taste Match page: top three picks for moods, description, loved book, language and verdict.',
     'Live Rankings free-description search: top five.',
     'Review pages, “More like this”: the same engine seeded only with that review as the loved book, top three.',
-    'Separate from the engine: exact-first field search (exact 100, known equivalent 92, phrase 85, contained 80, all words 75, typo-tolerant 60), “Did you mean” and nearest-books fall-backs.',
+    'Separate library-search engine (Live Rankings): exact-first field search (exact 100, known equivalent 92, phrase 85, contained 80, all words 75, typo-tolerant 60). Its “related” list, “Did you mean” and nearest-books fall-backs use a second TF-IDF index with field weights (genre 3, traits 3, title 2, author 2, language 2, verdict 1, text 1 over the first 600 words), 22 genre-group tags (weight 3) and 30 neighbour links (0.8). The Settings lab below runs this engine, not the TMAI-40 blend.',
+    'Full written architecture, query catalog and read-only source copies: the taste-match folder at the root of the project files.',
   ] },
   { title: 'Page extras readers see without knowing how they work', items: [
     '“What is Taste Match SE?” numbers (books, authors, genres, languages) are simple distinct counts over the published reviews loaded on the page. Authors and languages are compared case-insensitively; genres use only the first genre listed before a comma, slash or “&”.',
-    'Moods are fixed bundles of words and concept tags (see the Settings lab mood buttons). Up to three can be chosen and they are merged into the wish with the typed description.',
+    'Each mood is a fixed list of words (for example Dark & intense: dark, anger, violence, mafia, tragedy, revenge, boxer). Up to three can be chosen and their words are merged into the wish with the typed description.',
     'Language and verdict chips are hard filters, not scores: a review that fails them is removed before ranking.',
     'The poster shown on each result is the review’s poster, falling back to its cover image; Drive links are converted to direct image links and sent without a referrer.',
     'Opening a result goes to that review; no click, search text or mood choice is recorded anywhere.',
@@ -118,7 +119,7 @@ export function AdminTasteMatchPanel() {
 
       <section className="surface-card p-5 sm:p-6">
         <div className="flex items-center gap-2"><Layers className="w-5 h-5" style={{ color: 'var(--color-teal-dark)' }} /><h2 className="font-serif text-xl font-semibold">Behind the scenes (admin only)</h2></div>
-        <p className="text-sm mt-1 max-w-3xl" style={{ color: 'var(--color-text-muted)' }}>Everything Taste Match does that readers don’t see directly. Readers never see this section or the numbers in it, and the public pages never explain how matching works.</p>
+        <p className="text-sm mt-1 max-w-3xl" style={{ color: 'var(--color-text-muted)' }}>Everything Taste Match does that readers don’t see directly. Readers never see this section or the numbers in it, and the public pages never explain how matching works. The full write-up (architecture, source map and a catalog of every query) is in the project’s taste-match/ folder as Markdown and PDF.</p>
         <div className="nl-tmadmin-dump">
           {BACKSTAGE.map((g, i) => (
             <details key={g.title} open={i === 0}>
@@ -151,7 +152,7 @@ export function AdminTasteMatchPanel() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2"><FlaskConical className="w-5 h-5" style={{ color: 'var(--color-teal-dark)' }} /><h2 className="font-serif text-xl font-semibold">Settings lab</h2></div>
-            <p className="text-sm mt-1 max-w-3xl" style={{ color: 'var(--color-text-muted)' }}>Runs the real engine on your {books.length} published reviews. Change a setting and compare against the settings the site uses today. <strong>This is a sandbox: nothing here changes what readers see.</strong></p>
+            <p className="text-sm mt-1 max-w-3xl" style={{ color: 'var(--color-text-muted)' }}>Runs the library-search TF-IDF engine (the one behind Live Rankings “related” results, not the TMAI-40 blend) on your {books.length} published reviews. Change a setting and compare against the settings the site uses today. <strong>This is a sandbox: nothing here changes what readers see.</strong></p>
           </div>
           <button type="button" className="btn-ghost !w-auto text-sm" onClick={() => { setCfg(DEFAULT_TF_CONFIG); setMinScore(5); }} disabled={!changed && minScore === 5}><RotateCcw className="w-4 h-4" /> Back to live settings</button>
         </div>
