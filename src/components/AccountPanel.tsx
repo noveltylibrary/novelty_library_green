@@ -12,15 +12,33 @@ import { useTheme } from '@/lib/theme';
 import { useCookieConsent } from '@/lib/cookieConsent';
 import { NOTIF_CATEGORIES, fetchContentTraits, useUserPrefs, type ContentTrait } from '@/lib/userPrefs';
 
-type View = 'root' | 'username' | 'appearance' | 'notifications' | 'content' | 'cookies' | 'password' | 'grievances' | 'delete';
-const VIEW_KEY = 'nl_account_view';
+export type AccountView = 'root' | 'username' | 'appearance' | 'notifications' | 'content' | 'cookies' | 'password' | 'grievances' | 'delete';
+type View = AccountView;
+const VIEWS: View[] = ['root', 'username', 'appearance', 'notifications', 'content', 'cookies', 'password', 'grievances', 'delete'];
+/** Turns the address (/account/<tab>) into a known tab; anything else is the list. */
+export const asAccountView = (v?: string | null): View => (VIEWS.includes(v as View) ? (v as View) : 'root');
+
+/** True on PC-sized screens, where the settings list and the open tab sit side by side. */
+function useWideScreen(): boolean {
+  const query = '(min-width: 1024px)';
+  const [wide, setWide] = useState(() => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(query).matches);
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia(query);
+    const on = () => setWide(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return wide;
+}
 
 /** A glassy shelf of rows. Rows are split by a hairline that fades out towards both edges. */
 function Shelf({ label, children }: { label: string; children: ReactNode }) {
   return <section className="nl-acc-section" aria-label={label}><h3 className="nl-acc-label">{label}</h3><div className="nl-acc-shelf">{children}</div></section>;
 }
-function Row({ icon, label, value, danger, onClick, busy }: { icon: ReactNode; label: string; value?: string; danger?: boolean; onClick: () => void; busy?: boolean }) {
-  return <button type="button" className={`nl-acc-row ${danger ? 'is-danger' : ''}`} onClick={onClick} disabled={busy}>
+function Row({ icon, label, value, danger, onClick, busy, active }: { icon: ReactNode; label: string; value?: string; danger?: boolean; onClick: () => void; busy?: boolean; active?: boolean }) {
+  return <button type="button" className={`nl-acc-row ${danger ? 'is-danger' : ''} ${active ? 'is-active' : ''}`} aria-current={active ? 'page' : undefined} onClick={onClick} disabled={busy}>
     <span className="nl-acc-ico" aria-hidden="true">{icon}</span>
     <span className="nl-acc-name">{label}</span>
     {value && <span className="nl-acc-val">{value}</span>}
@@ -29,15 +47,19 @@ function Row({ icon, label, value, danger, onClick, busy }: { icon: ReactNode; l
 }
 
 /**
- * Accounts & Settings, shown inside the profile page. The root view lists the sections; tapping a row opens
- * that tab in the same place, with a Back row to return.
+ * Accounts & Settings, shown on its own page (/account). On a phone the page lists the sections and tapping a row
+ * opens that tab (/account/<tab>) with a Back link; on a PC the list stays on the left and the open tab on the right.
  */
-export function AccountPanel({ navigate }: { navigate: (path: string) => void }) {
+export function AccountPanel({ navigate, view: viewProp, onView }: { navigate: (path: string) => void; view?: string; onView: (v: View) => void }) {
   const { user, profile, refreshProfile, signOut, resetPassword } = useAuth();
   const identities = user?.identities ?? [];
   const providers: string[] = identities.length ? identities.map((i) => i.provider) : ((user?.app_metadata?.providers as string[] | undefined) ?? []);
   const usesGoogle = providers.includes('google');
-  const [view, setView] = useState<View>(() => { try { const v = sessionStorage.getItem(VIEW_KEY); if (v === 'delete') { sessionStorage.removeItem(VIEW_KEY); return 'delete'; } } catch { /* ignore */ } return 'root'; });
+  const wide = useWideScreen();
+  const current = asAccountView(viewProp);
+  // On a PC the right-hand side is never empty: the list opens on Username until another tab is chosen.
+  const view: View = current === 'root' && wide ? 'username' : current;
+  const setView = (v: View) => onView(v);
   const [passwordSet, setPasswordSet] = useState<boolean | null>(null);
   const [grievanceCategory, setGrievanceCategory] = useState('Account or profile issue');
   const [grievanceSubject, setGrievanceSubject] = useState('');
@@ -152,6 +174,7 @@ export function AccountPanel({ navigate }: { navigate: (path: string) => void })
 
   const Back = ({ title }: { title: string }) => <div className="nl-acc-back"><button type="button" onClick={() => setView('root')}><ArrowLeft className="w-4 h-4" aria-hidden="true" /> Accounts &amp; Settings</button><h3>{title}</h3></div>;
 
+  const renderPane = (): ReactNode => {
   if (view === 'username') return <div className="nl-acc-pane">
     <Back title="Username" />
     <form onSubmit={saveUsername} className="space-y-3">
@@ -230,7 +253,7 @@ export function AccountPanel({ navigate }: { navigate: (path: string) => void })
       {hasPassword ? <PasswordField label="Confirm with your current password" value={deletePassword} onChange={setDeletePassword} auto="current-password" /> : <>
         <div><label className="label">Type your account email to confirm</label><input type="email" required value={deleteEmail} onChange={(e) => setDeleteEmail(e.target.value)} className="input-field" autoComplete="off" placeholder={user.email || ''} /></div>
         <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{recentSignIn ? 'Your Google sign-in is recent, so you can continue.' : 'Your Google sign-in is older than 10 minutes. Re-verify with Google before deleting.'}</p>
-        {!recentSignIn && <GoogleSignInButton fallbackLabel="Re-verify with Google" onStart={() => { try { sessionStorage.setItem('nl_return_to', '/account'); sessionStorage.setItem(VIEW_KEY, 'delete'); } catch { /* ignore */ } }} onError={(message) => setDeleteError(message)} />}
+        {!recentSignIn && <GoogleSignInButton fallbackLabel="Re-verify with Google" onStart={() => { try { sessionStorage.setItem('nl_return_to', '/account/delete'); } catch { /* ignore */ } }} onError={(message) => setDeleteError(message)} />}
       </>}
       <div><label className="label">Type DELETE to confirm</label><input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} className="input-field" autoComplete="off" /></div>
       {deleteError && <p className="text-sm" style={{ color: '#dc2626' }}>{deleteError}</p>}
@@ -238,18 +261,21 @@ export function AccountPanel({ navigate }: { navigate: (path: string) => void })
     </form>
   </div>;
 
-  return <div className="nl-acc-root">
+  return null;
+  };
+
+  const nav = <div className="nl-acc-root">
     <p className="nl-acc-who">Signed in as <strong>{user.email}</strong>{usesGoogle ? ' · via Google' : ''}</p>
     <Shelf label="Account">
-      <Row icon={<AtSign />} label="Username" value={profile?.novelty_username ? `@${profile.novelty_username}` : undefined} onClick={() => setView('username')} />
+      <Row icon={<AtSign />} label="Username" value={profile?.novelty_username ? `@${profile.novelty_username}` : undefined} active={view === 'username'} onClick={() => setView('username')} />
       <Row icon={<Bookmark />} label="My Reviews List" value="Saved" onClick={() => navigate('/saved')} />
       <Row icon={<Archive />} label="Archives" onClick={() => setArchivesOpen(true)} />
-      <Row icon={theme === 'dark' ? <Moon /> : <Sun />} label="Appearance" value={theme === 'dark' ? 'Dark' : 'Light'} onClick={() => setView('appearance')} />
+      <Row icon={theme === 'dark' ? <Moon /> : <Sun />} label="Appearance" value={theme === 'dark' ? 'Dark' : 'Light'} active={view === 'appearance'} onClick={() => setView('appearance')} />
     </Shelf>
     <Shelf label="Settings">
-      <Row icon={<Bell />} label="Notification settings" onClick={() => setView('notifications')} />
-      <Row icon={<SlidersHorizontal />} label="Content preferences" value={userPrefs.prefs.content.length ? String(userPrefs.prefs.content.length) : undefined} onClick={() => setView('content')} />
-      <Row icon={<Cookie />} label="Cookie settings" onClick={() => setView('cookies')} />
+      <Row icon={<Bell />} label="Notification settings" active={view === 'notifications'} onClick={() => setView('notifications')} />
+      <Row icon={<SlidersHorizontal />} label="Content preferences" value={userPrefs.prefs.content.length ? String(userPrefs.prefs.content.length) : undefined} active={view === 'content'} onClick={() => setView('content')} />
+      <Row icon={<Cookie />} label="Cookie settings" active={view === 'cookies'} onClick={() => setView('cookies')} />
     </Shelf>
     <Shelf label="Documentation">
       <Row icon={<FileText />} label="Terms" onClick={() => navigate('/terms')} />
@@ -257,11 +283,17 @@ export function AccountPanel({ navigate }: { navigate: (path: string) => void })
       <Row icon={<Cookie />} label="Cookie policy" onClick={() => navigate('/cookies')} />
     </Shelf>
     <Shelf label="Security">
-      <Row icon={<KeyRound />} label="Change password" onClick={() => setView('password')} />
-      <Row icon={<MessageSquareWarning />} label="Grievances" value={grievances.length ? String(grievances.length) : undefined} onClick={() => setView('grievances')} />
+      <Row icon={<KeyRound />} label="Change password" active={view === 'password'} onClick={() => setView('password')} />
+      <Row icon={<MessageSquareWarning />} label="Grievances" value={grievances.length ? String(grievances.length) : undefined} active={view === 'grievances'} onClick={() => setView('grievances')} />
       <Row icon={<LogOut />} label={signingOut ? 'Signing out…' : 'Sign out'} danger busy={signingOut} onClick={() => void logOut()} />
-      <Row icon={<Trash2 />} label="Delete account" danger onClick={() => setView('delete')} />
+      <Row icon={<Trash2 />} label="Delete account" danger active={view === 'delete'} onClick={() => setView('delete')} />
     </Shelf>
+  </div>;
+
+  const pane = renderPane();
+  return <div className={`nl-acc-layout ${pane ? 'is-detail' : 'is-list'}`}>
+    <div className="nl-acc-nav">{nav}</div>
+    {pane && <div className="nl-acc-detail">{pane}</div>}
     {archivesOpen && <ArchivesModal userId={user.id} navigate={navigate} onClose={() => setArchivesOpen(false)} />}
   </div>;
 }

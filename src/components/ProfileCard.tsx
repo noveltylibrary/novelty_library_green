@@ -393,9 +393,9 @@ export function ProfileCard({ data, download = false, onAvatarUpload, onHeaderUp
       </div>}
       <div className="nl-pc-tiles nl-pc-tiles-line">
         {download && <div className="nl-pc-tile-wrap nl-pc-wrap-grow" style={{ '--i': 0 } as CSSProperties}>
-          <button type="button" onClick={() => setDownloadMenuOpen((v) => !v)} disabled={downloading} aria-haspopup="menu" aria-expanded={downloadMenuOpen} className="nl-pc-tile nl-pc-tile-primary nl-ico-download disabled:opacity-60">
+          <button type="button" onClick={() => setDownloadMenuOpen((v) => !v)} disabled={downloading} aria-haspopup="menu" aria-expanded={downloadMenuOpen} aria-label={`Download profile card (${format} PNG)`} title="Download" className="nl-pc-tile nl-pc-tile-primary nl-ico-download disabled:opacity-60">
             <span className="nl-pc-tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path className="nl-ico-arrow" d="M12 4v11m0 0l-4-4m4 4l4-4" /><path d="M5 19h14" /></svg></span>
-            <span className="nl-pc-tile-txt"><strong>{downloading ? 'Preparing…' : 'Download'}</strong><small>{format} PNG</small></span>
+            <span className="nl-pc-tile-txt"><strong>{downloading ? 'Preparing…' : `${format} PNG`}</strong></span>
             <ChevronDown className={`nl-pc-tile-chev ${downloadMenuOpen ? 'is-open' : ''}`} aria-hidden="true" />
           </button>
 

@@ -63,7 +63,7 @@ export function AuthorPage({ name, navigate }: { name: string; navigate: (path: 
             stats={stats}
             fileSlug={key.replace(/\s+/g, '-')}
             shareUrl={shareUrl}
-            header={<FollowStatsBar followers={follow.followers} following={0} hideFollowers={false} hideFollowing={false} isOwn={false} onOpen={() => undefined} followersOnly />}
+            header={<FollowStatsBar followers={follow.followers} following={0} hideFollowers={false} hideFollowing={false} isOwn={false} onOpen={() => undefined} followersOnly tone="author" />}
             topActions={({ replay, replayKey }) => (
               <div className="nl-trio" role="group" aria-label="Author actions">
                 <button type="button" disabled={follow.busy} onClick={() => void follow.toggle()} aria-pressed={follow.following} aria-label={`${follow.following ? 'Unfollow' : 'Follow'} ${sanitizeUserText(display, 60)}`} className={`nl-trio-btn nl-trio-follow ${follow.following ? 'is-following' : ''}`}>

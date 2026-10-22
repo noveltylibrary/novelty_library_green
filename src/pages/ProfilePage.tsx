@@ -8,7 +8,6 @@ import { FollowStatsBar, ConnectionsModal, type ConnKind } from '@/components/Co
 import { ProfileHighlights } from '@/components/ProfileHighlights';
 import { ProfileTabs, PublishedPanel } from '@/components/ProfileTabs';
 import { buildReadingPane, buildQuestionsPane } from '@/components/ProfilePanes';
-import { AccountPanel } from '@/components/AccountPanel';
 import { StoryComposerModal } from '@/components/StoryComposerModal';
 import { fetchProfileQuestions, fetchProfileSections, isLegacyProfileFieldKey, LEGACY_PROFILE_FIELD_KEYS, type LegacyProfileFieldKey, type ProfileQuestion, type ProfileQuestionSection } from '@/lib/profileQuestions';
 import { findAboutQuestion } from '@/components/ProfileIntro';
@@ -24,14 +23,13 @@ import { isCurrentlyReadingQuestion, moveCurrentlyReadingToBasic } from '@/lib/c
 import { fetchShelfCommunityInfo, averageNlRating, type ShelfCommunityInfo } from '@/lib/profileShelf';
 import { useOverlayHistory } from '@/lib/overlayHistory';
 
-interface ProfilePageProps { navigate: (path: string) => void; openAccounts?: boolean; }
+interface ProfilePageProps { navigate: (path: string) => void; }
 type SocialLink = { platform: string; url: string };
 const SOCIAL_PLATFORMS = ['instagram','goodreads','wattpad','facebook','linkedin','x'] as const;
 const SOCIAL_LABELS: Record<string,string> = { instagram:'Instagram', goodreads:'Goodreads', wattpad:'Wattpad', facebook:'Facebook', linkedin:'LinkedIn', x:'X' };
 const DEFAULT_VIS: Record<string, boolean> = { avatar:true,name:true,email:false,header_image:true,books_read_this_month:true,total_books_read:true,reading_since:true,favorite_book:true,favorite_author:true,favorite_genre:true,instagram:true };
 
-export function ProfilePage({ navigate, openAccounts = false }: ProfilePageProps) {
-  const [accountsOpen,setAccountsOpen]=useState(openAccounts);
+export function ProfilePage({ navigate }: ProfilePageProps) {
   const { user, profile, loading, refreshProfile } = useAuth();
   const core = useCoreOverrides();
   const [name,setName]=useState(''); const [favoriteBook,setFavoriteBook]=useState(''); const [booksReadThisMonth,setBooksReadThisMonth]=useState(''); const [totalBooksRead,setTotalBooksRead]=useState(''); const [readingSince,setReadingSince]=useState(''); const [favoriteAuthor,setFavoriteAuthor]=useState(''); const [favoriteGenre,setFavoriteGenre]=useState('');
@@ -277,15 +275,6 @@ export function ProfilePage({ navigate, openAccounts = false }: ProfilePageProps
     <section className="nl-profile-work">
       <div className="nl-profile-main min-w-0"><ProfileCard layout="rows" header={<FollowStatsBar followers={followStats.followers} following={followStats.following} hideFollowers={hideFollowers} hideFollowing={hideFollowing} isOwn onOpen={setConnKind}/>} data={cardData} onFollowersClick={()=>setConnKind('followers')} download initialFormat={publicFormat} publicFormat={publicFormat} onPublicFormatChange={setPublicView} onAvatarUpload={()=>avatarInputRef.current?.click()} onHeaderUpload={()=>headerInputRef.current?.click()} onSuperBlitzBannerUpload={()=>sbBannerInputRef.current?.click()} onViewPublicProfile={()=>profile?.novelty_username && navigate(`/profile/@${encodeURIComponent(profile.novelty_username)}`)} /></div>
       <aside className="nl-profile-story-col min-w-0 space-y-4">
-        <SectionHub items={hubItems} title={bi('profile_questions').header||'Profile sections'} description={bi('profile_questions').description||'Tap a section to open it. Your published reviews stay below.'} onOpen={setOpenSection}/>
-        <section className={`nl-hub ${accountsOpen?'is-open':''}`} aria-label="Accounts and settings">
-          <button type="button" className="nl-hub-toggle" aria-expanded={accountsOpen} aria-controls="nl-acc-drop" onClick={()=>setAccountsOpen(v=>!v)}>
-            <span className="nl-hub-icon"><Settings className="w-5 h-5" aria-hidden="true"/></span>
-            <span className="nl-hub-text"><span className="nl-hub-eyebrow">Your account</span><strong className="nl-hub-title">Accounts &amp; Settings</strong><small className="nl-hub-hint">Username, saved list, archives and security</small></span>
-            <ChevronDown className="nl-hub-caret w-5 h-5" aria-hidden="true"/>
-          </button>
-          {accountsOpen&&<div id="nl-acc-drop" className="nl-hub-drop"><AccountPanel navigate={navigate}/></div>}
-        </section>
         <details className="nl-profile-stories-dropdown">
           <summary className="nl-profile-stories-summary"><span className="nl-profile-stories-label"><span className="nl-profile-stories-icon"><BookOpen className="w-5 h-5" aria-hidden="true"/></span><span>Stories and Highlights</span></span><ChevronDown className="nl-profile-stories-caret w-5 h-5" aria-hidden="true"/></summary>
           <div className="nl-profile-stories-content space-y-5">
@@ -299,6 +288,14 @@ export function ProfilePage({ navigate, openAccounts = false }: ProfilePageProps
             <div className="nl-profile-highlights min-w-0"><ProfileHighlights userId={user.id} isOwn/></div>
           </div>
         </details>
+        <SectionHub items={hubItems} title={bi('profile_questions').header||'Profile sections'} description={bi('profile_questions').description||'Tap a section to open it. Your published reviews stay below.'} onOpen={setOpenSection}/>
+        <section className="nl-hub nl-hub-link" aria-label="Accounts and settings">
+          <button type="button" className="nl-hub-toggle" onClick={()=>navigate('/account')}>
+            <span className="nl-hub-icon"><Settings className="w-5 h-5" aria-hidden="true"/></span>
+            <span className="nl-hub-text"><span className="nl-hub-eyebrow">Your account</span><strong className="nl-hub-title">Accounts &amp; Settings</strong><small className="nl-hub-hint">Username, saved list, archives and security</small></span>
+            <ChevronRight className="nl-hub-go w-5 h-5" aria-hidden="true"/>
+          </button>
+        </section>
       </aside>
     </section>
     <StoryComposerModal open={storyComposerOpen} onClose={()=>setStoryComposerOpen(false)} onPublished={refreshMyStories}/>

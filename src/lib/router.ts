@@ -26,7 +26,7 @@ export type Route =
   | { name: 'admin-finances' }
   | { name: 'admin-pages'; view?: 'editor' | 'guide' | 'about' | 'profile' | 'announcements' | 'roadmap' | 'submit' | 'content' }
   | { name: 'profile'; username?: string }
-  | { name: 'account' }
+  | { name: 'account'; view?: string }
   | { name: 'notifications' }
   | { name: 'genre'; genre: string }
   | { name: 'author'; author: string }
@@ -107,7 +107,7 @@ function parsePathUnsafe(): Route {
   }
   if (parts[0] === 'profile' && parts[1]) return { name: 'profile', username: decodeURIComponent(parts.slice(1).join('/')) };
   if (parts[0] === 'profile') return { name: 'profile' };
-  if (parts[0] === 'account') return { name: 'account' };
+  if (parts[0] === 'account') return parts[1] ? { name: 'account', view: decodeURIComponent(parts[1]) } : { name: 'account' };
   if (parts[0] === 'notifications') return { name: 'notifications' };
   if (parts[0] === 'reviews') return { name: 'reviews' };
   if (parts[0] === 'analytics') return { name: 'analytics' };

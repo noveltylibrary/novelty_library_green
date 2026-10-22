@@ -1,4 +1,4 @@
-import { ArrowLeft, Menu, X, Shield, User, Download, Home, BookOpen, PenTool, Compass, Bell, LogIn } from 'lucide-react';
+import { ArrowLeft, Menu, X, Shield, User, Download, Home, BookOpen, PenTool, Compass, Bell, LogIn, LogOut } from 'lucide-react';
 import { useState, useEffect, type CSSProperties, type ComponentType } from 'react';
 import { createPortal } from 'react-dom';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -7,6 +7,7 @@ import logo from '@/assets/logo.png';
 import { usePwaInstall } from '@/lib/pwa';
 import { useUnreadNotifications } from '@/lib/notifications';
 import { useOverlayHistory } from '@/lib/overlayHistory';
+import { useAuth } from '@/lib/auth';
 
 interface HeaderProps { navigate: (path: string) => void; currentRoute: string; user: SupabaseUser | null; isAdmin: boolean; }
 
@@ -24,6 +25,8 @@ export function Header({ navigate, currentRoute, user, isAdmin }: HeaderProps) {
   const { theme } = useTheme();
   const { canInstall, install } = usePwaInstall();
   const { unreadCount } = useUnreadNotifications();
+  const { signOut } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
   const onDarkHero = currentRoute === 'home' && !scrolled && !menuOpen && theme === 'dark';
   const heroInk = onDarkHero ? ({ '--color-text': '#e7fffe', '--color-text-muted': 'rgba(231,255,254,0.72)', '--color-teal-dark': '#5ce1e6', '--color-cyan-dark': '#5ce1e6' } as CSSProperties) : undefined;
 
@@ -58,8 +61,13 @@ export function Header({ navigate, currentRoute, user, isAdmin }: HeaderProps) {
     { label: 'Explore', path: '/about', route: 'about', icon: Compass },
   ];
   const handleNav = (path: string) => { navigate(path); setMenuOpen(false); };
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try { await signOut(); } catch { /* the account page shows sign-out errors; here we just leave the menu */ } finally { setSigningOut(false); setMenuOpen(false); navigate('/'); }
+  };
 
-const panelItems: { label: string; icon: ComponentType<{ className?: string }>; run: () => void; active?: boolean; badge?: number; accent?: boolean }[] = [
+const panelItems: { label: string; icon: ComponentType<{ className?: string }>; run: () => void; active?: boolean; badge?: number; accent?: boolean; danger?: boolean }[] = [
     ...navItems.map((i) => ({ label: i.label, icon: i.icon, run: () => handleNav(i.path), active: currentRoute === i.route })),
     ...(user ? [
       { label: 'Profile', icon: User, run: () => handleNav('/profile'), active: currentRoute === 'profile' },
@@ -67,13 +75,14 @@ const panelItems: { label: string; icon: ComponentType<{ className?: string }>; 
     ] : [{ label: 'Sign In', icon: LogIn, run: () => handleNav('/auth'), accent: true }]),
     ...(isAdmin ? [{ label: 'Admin Panel', icon: Shield, run: () => handleNav('/admin'), accent: true, active: currentRoute.startsWith('admin') }] : []),
     ...(canInstall ? [{ label: 'Install Web App', icon: Download, run: () => { setMenuOpen(false); void install(); }, accent: true }] : []),
+    ...(user ? [{ label: signingOut ? 'Signing out…' : 'Sign out', icon: LogOut, run: () => { void handleSignOut(); }, danger: true }] : []),
   ];
   const panel = typeof document !== 'undefined' ? createPortal(<div className={`nl-sp-root md:hidden ${menuOpen ? 'is-open' : ''}`} aria-hidden={!menuOpen}>
     <div className="nl-sp-scrim" onClick={() => setMenuOpen(false)} />
     <aside className="nl-sp-panel" role="dialog" aria-label="Menu">
       <div className="nl-sp-head"><span className="nl-sp-title">Menu</span><button type="button" className="nl-sp-close" onClick={() => setMenuOpen(false)} aria-label="Close menu" tabIndex={menuOpen ? 0 : -1}><X className="w-5 h-5" /></button></div>
       <nav className="nl-sp-list">
-        {panelItems.map((it, i) => <button key={it.label} type="button" tabIndex={menuOpen ? 0 : -1} onClick={it.run} className={`nl-sp-item ${it.active ? 'is-active' : ''} ${it.accent ? 'is-accent' : ''}`} style={{ '--i': i } as CSSProperties}><span className="nl-sp-ico"><it.icon className="w-[18px] h-[18px]" /></span><span className="nl-sp-label">{it.label}</span>{!!it.badge && it.badge > 0 && <span className="nl-sp-badge">{it.badge > 99 ? '99+' : it.badge}</span>}</button>)}
+        {panelItems.map((it, i) => <button key={it.label} type="button" tabIndex={menuOpen ? 0 : -1} onClick={it.run} className={`nl-sp-item ${it.active ? 'is-active' : ''} ${it.accent ? 'is-accent' : ''} ${it.danger ? 'is-danger' : ''}`} style={{ '--i': i } as CSSProperties}><span className="nl-sp-ico"><it.icon className="w-[18px] h-[18px]" /></span><span className="nl-sp-label">{it.label}</span>{!!it.badge && it.badge > 0 && <span className="nl-sp-badge">{it.badge > 99 ? '99+' : it.badge}</span>}</button>)}
       </nav>
       <div className="nl-sp-foot">Novelty Library</div>
     </aside>

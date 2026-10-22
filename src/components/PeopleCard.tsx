@@ -65,7 +65,7 @@ function CardCover({ src }: { src: string }) {
 
 export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, shareUrl, topActions, header }: PeopleCardProps) {
   const [replayKey, setReplayKey] = useState(0);
-  // Readers can share the page; the PNG export is an admin tool.
+  // Readers can share the page; the PNG export is an admin tool and is not offered on author cards at all.
   const { isAdmin } = useAuth();
   const pal = PALETTE[variant];
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -189,7 +189,7 @@ export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, 
         </div>
       </div>
       <div className="nl-people-card-actions">
-        {isAdmin && <button type="button" onClick={() => void download()} disabled={busy} className="nl-people-btn is-primary"><Download aria-hidden="true" />{busy ? 'Preparing…' : 'Download card (PNG)'}</button>}
+        {isAdmin && variant !== 'author' && <button type="button" onClick={() => void download()} disabled={busy} className="nl-people-btn is-primary"><Download aria-hidden="true" />{busy ? 'Preparing…' : 'Download card (PNG)'}</button>}
         {!topActions && <button type="button" onClick={() => void share()} className="nl-people-btn">{shared ? <Check aria-hidden="true" /> : <Share2 aria-hidden="true" />}{shared ? 'Link copied' : 'Share page'}</button>}
       </div>
     </div>

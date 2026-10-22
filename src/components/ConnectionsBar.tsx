@@ -9,19 +9,21 @@ import { useOverlayHistory } from '@/lib/overlayHistory';
 export type ConnKind = 'followers' | 'following';
 
 /** Blue Followers | Following table that sits just above the profile card. */
-export function FollowStatsBar({ followers, following, hideFollowers, hideFollowing, isOwn, onOpen, followersOnly = false }: { followers: number; following: number; hideFollowers: boolean; hideFollowing: boolean; isOwn: boolean; onOpen: (k: ConnKind) => void; /** Author pages: one tab with the total follower count; no list to open. */ followersOnly?: boolean }) {
-  const cell = (kind: ConnKind, count: number, hidden: boolean) => {
+export function FollowStatsBar({ followers, following, hideFollowers, hideFollowing, isOwn, onOpen, followersOnly = false, tone }: { followers: number | null; following: number | null; hideFollowers: boolean; hideFollowing: boolean; isOwn: boolean; onOpen: (k: ConnKind) => void; /** Author pages: one tab with the total follower count; no list to open. */ followersOnly?: boolean; /** Author pages: purple and gold instead of the reader teal. */ tone?: 'author' }) {
+  // A count that has not loaded yet (or cannot be read) shows a dash instead of breaking the page.
+  const cell = (kind: ConnKind, count: number | null, hidden: boolean) => {
     const locked = hidden && !isOwn;
     return (
-      <button type="button" className={`nl-conn-cell ${locked ? 'is-locked' : ''}`} disabled={locked || followersOnly} onClick={() => onOpen(kind)} aria-label={`${count} ${kind}${locked ? ' (private)' : ' - view list'}`}>
+      <button type="button" className={`nl-conn-cell ${locked ? 'is-locked' : ''}`} disabled={locked || followersOnly} onClick={() => onOpen(kind)} aria-label={`${count ?? 'Unknown number of'} ${kind}${locked ? ' (private)' : followersOnly ? '' : ' - view list'}`}>
         <span className="nl-conn-ic">{kind === 'followers' ? <Users aria-hidden="true" /> : <UserCheck aria-hidden="true" />}</span>
-        <span className="nl-conn-num">{locked ? <Lock aria-hidden="true" /> : count.toLocaleString()}</span>
+        <span className="nl-conn-num">{locked ? <Lock aria-hidden="true" /> : count == null ? '—' : Number(count).toLocaleString()}</span>
         <span className="nl-conn-word">{kind === 'followers' ? 'Followers' : 'Following'}{hidden && isOwn && <em><Lock aria-hidden="true" /> only you</em>}</span>
       </button>
     );
   };
-  if (followersOnly) return <div className="nl-conn-bar nl-conn-bar-single" role="group" aria-label="Followers">{cell('followers', followers, false)}</div>;
-  return <div className="nl-conn-bar" role="group" aria-label="Followers and following">{cell('followers', followers, hideFollowers)}{cell('following', following, hideFollowing)}</div>;
+  const toneClass = tone === 'author' ? ' nl-conn-bar-author' : '';
+  if (followersOnly) return <div className={`nl-conn-bar nl-conn-bar-single${toneClass}`} role="group" aria-label="Followers">{cell('followers', followers, false)}</div>;
+  return <div className={`nl-conn-bar${toneClass}`} role="group" aria-label="Followers and following">{cell('followers', followers, hideFollowers)}{cell('following', following, hideFollowing)}</div>;
 }
 
 type Props = {

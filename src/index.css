@@ -3569,3 +3569,57 @@ header.fixed { max-width: 100vw; z-index: 60; }
 .nl-acc-chips button { padding: 8px 14px; border-radius: 999px; font-size: .84rem; font-weight: 650; color: var(--color-text); background: var(--color-paper); border: 1px solid var(--color-border); transition: background .18s ease, border-color .18s ease; }
 .nl-acc-chips button:hover { border-color: rgba(0,151,178,.5); }
 .nl-acc-chips button.is-on { color: #fff; background: linear-gradient(135deg, #013a46, #0097b2); border-color: transparent; }
+
+/* ===== v2.25: Accounts & Settings page, two-up Edit profile tiles on PC, author followers bar, red menu Sign out ===== */
+
+/* Profile page: "Accounts & Settings" is a page opener (same look as the Edit profile bar, arrow points right). */
+.nl-hub-link { transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+.nl-hub-link:hover { border-color: rgba(8,145,178,.45); box-shadow: 0 14px 30px rgba(0,80,95,.14); }
+.nl-hub-link .nl-hub-toggle:focus-visible { outline: 3px solid rgba(0,151,178,.45); outline-offset: 6px; border-radius: 18px; }
+.nl-hub-go { flex: none; color: var(--color-teal-dark); transition: transform .22s ease; }
+.nl-hub-link:hover .nl-hub-go { transform: translateX(4px); }
+
+/* PC: the Edit profile sections sit two beside each other, exactly like on a phone. */
+@media (min-width: 1024px) {
+  .nl-profile-story-col .nl-hub-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Accounts & Settings page: phone = list, then one tab at a time; PC = list on the left, open tab on the right. */
+.nl-acc-layout { display: block; }
+.nl-acc-layout.is-detail > .nl-acc-nav { display: none; }
+.nl-acc-detail { padding: 18px; border-radius: 22px; background: var(--color-paper); border: 1px solid var(--color-border); box-shadow: 0 10px 26px rgba(0,80,95,.08); }
+.nl-acc-row.is-active { background: rgba(92,225,230,.18); }
+.nl-acc-row.is-active .nl-acc-name { color: var(--color-teal-dark); }
+.nl-acc-row.is-active::after { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: linear-gradient(180deg, var(--color-teal-dark), var(--color-cyan)); }
+.nl-acc-row.is-danger.is-active { background: rgba(239,68,68,.10); }
+.nl-acc-row.is-danger.is-active .nl-acc-name { color: #dc2626; }
+.nl-acc-row.is-danger.is-active::after { background: #dc2626; }
+@media (min-width: 1024px) {
+  .nl-acc-layout { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .nl-acc-layout.is-detail > .nl-acc-nav { display: block; }
+  .nl-acc-nav { position: sticky; top: 96px; max-height: calc(100vh - 120px); overflow-y: auto; scrollbar-width: thin; padding-bottom: 4px; }
+  .nl-acc-detail { padding: 28px 30px; border-radius: 26px; }
+  .nl-acc-detail .nl-acc-pane { max-width: 640px; }
+  .nl-acc-detail .nl-acc-back button { display: none; }
+  .nl-acc-detail .nl-acc-back h3 { font-size: 1.5rem; }
+}
+.dark .nl-acc-detail { box-shadow: 0 10px 26px rgba(0,0,0,.28); }
+
+/* Author page: the Followers bar is purple and gold only (no teal), matching the author card. */
+.nl-conn-bar.nl-conn-bar-author { background: linear-gradient(135deg, #1a0836 0%, #2e1065 38%, #5b21b6 78%, #7c3aed 100%); border: 1px solid rgba(245,197,66,.55); box-shadow: 0 12px 28px rgba(60,20,120,.34), inset 0 1px 0 rgba(255,233,168,.28); }
+.nl-conn-bar.nl-conn-bar-author::before { background: radial-gradient(120% 140% at 0% 0%, rgba(245,197,66,.22), transparent 55%); }
+.nl-conn-bar-author .nl-conn-cell { color: #ffe9a8; }
+.nl-conn-bar-author .nl-conn-cell + .nl-conn-cell { border-left-color: rgba(245,197,66,.35); }
+.nl-conn-bar-author .nl-conn-cell:hover:not(:disabled) { background: rgba(245,197,66,.12); }
+.nl-conn-bar-author .nl-conn-cell:disabled { color: #ffe9a8; opacity: 1; }
+.nl-conn-bar-author .nl-conn-ic { background: rgba(245,197,66,.16); color: #f5c542; box-shadow: inset 0 0 0 1px rgba(245,197,66,.45); }
+.nl-conn-bar-author .nl-conn-num { color: #f5c542; text-shadow: none; }
+.nl-conn-bar-author .nl-conn-word { color: #ffe9a8; opacity: 1; }
+.nl-conn-bar-author .nl-conn-word em { color: rgba(255,233,168,.82); }
+
+/* Menu: Sign out is red. */
+.nl-sp-item.is-danger { color: #dc2626; margin-top: 8px; }
+.nl-sp-item.is-danger .nl-sp-ico { background: rgba(239,68,68,.12); color: #dc2626; }
+.nl-sp-item.is-danger:active { background: rgba(239,68,68,.10); color: #dc2626; }
+.dark .nl-sp-item.is-danger { color: #f87171; }
+.dark .nl-sp-item.is-danger .nl-sp-ico { background: rgba(248,113,113,.14); color: #f87171; }

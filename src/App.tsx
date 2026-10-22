@@ -28,6 +28,7 @@ import { AdminBookReviewsPage } from '@/pages/AdminBookReviewsPage';
 import { AdminManageAdminsPage } from '@/pages/AdminManageAdminsPage';
 import { AdminUsersPage } from '@/pages/AdminUsersPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { AccountPage } from '@/pages/AccountPage';
 import { PublicProfilePage } from '@/pages/PublicProfilePage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
@@ -101,9 +102,10 @@ function AppContent() {
   useEffect(() => {
     if (!user) return;
     try {
-      if (sessionStorage.getItem('nl_return_to') === '/account') {
+      const back = sessionStorage.getItem('nl_return_to');
+      if (back === '/account' || back?.startsWith('/account/')) {
         sessionStorage.removeItem('nl_return_to');
-        navigate('/account');
+        navigate(back);
       }
     } catch { /* ignore */ }
   }, [user, navigate]);
@@ -137,7 +139,7 @@ function AppContent() {
         {route.name === 'admin-finances' && <AdminFinancesPage navigate={navigate} />}
         {route.name === 'admin-pages' && <AdminPagesModerationPage navigate={navigate} view={route.view} />}
         {route.name === 'profile' && (route.username ? <PublicProfilePage username={route.username} navigate={navigate} /> : <ProfilePage navigate={navigate} />)}
-        {route.name === 'account' && <ProfilePage navigate={navigate} openAccounts />}
+        {route.name === 'account' && <AccountPage navigate={navigate} view={route.view} />}
         {route.name === 'notifications' && <NotificationsPage navigate={navigate} />}
         {route.name === 'author' && <AuthorPage name={route.author} navigate={navigate} />}
         {route.name === 'authors' && <PeoplePage tab="authors" navigate={navigate} />}
