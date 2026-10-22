@@ -29,3 +29,13 @@ STEP 2c - OPTIONAL NOW   NL_SQL_220_saved_reviews.sql
   What: new private table user_saved_reviews (user_id + review_no) so "My Reviews" follows the reader to every device.
   Additive, safe for older versions. Until it is run, the app keeps using the browser-only list (nothing breaks).
   Check: sign in, save a review, open the site on another device signed in to the same account - it appears under Accounts -> My Reviews.
+
+STEP 2d - OPTIONAL NOW   NL_SQL_230_notifications_settings_devices.sql   (run AFTER NL_SQL_220)
+  What: (1) notifications for likes / comments / replies / ratings on a reader's review, story likes and shares;
+        (2) settings stored in the database and enforced server-side (a category a reader switched off is never created),
+            plus Content preferences saved per account; (3) one-time alerts for a NEW device and a NEW country (possible VPN).
+  Adds 4 new tables + 5 nullable columns and a settings-gate trigger on notifications. Every trigger swallows its own errors,
+  so likes/comments/ratings/stories can never fail because of it. Older versions (1.116) ignore all of it.
+  Optional switch (default OFF): notify every reader about each new published review:
+     update public.nl_notification_switches set enabled = true where key = 'broadcast_new_reviews';
+  Check: like another reader's review from a second account -> the reviewer gets a bell notification; sign in on a new browser -> "New sign-in on a new device".

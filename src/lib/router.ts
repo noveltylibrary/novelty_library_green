@@ -11,7 +11,7 @@ export type Route =
   | { name: 'blog-review'; id: string }
   | { name: 'submit' }
   | { name: 'review-guidelines' }
-  | { name: 'about' }
+  | { name: 'about'; tab: 'about' | 'discovery' }
   | { name: 'privacy' }
   | { name: 'terms' }
   | { name: 'cookies' }
@@ -79,7 +79,9 @@ function parsePathUnsafe(): Route {
   if (parts[0] === 'blog-review' && parts[1]) return { name: 'blog-review', id: decodeURIComponent(parts.slice(1).join('/')) };
   if (parts[0] === 'submit') return { name: 'submit' };
   if (parts[0] === 'review-guidelines') return { name: 'review-guidelines' };
-  if (parts[0] === 'about' || parts[0] === 'explore') return { name: 'about' };
+  // Explore has two tabs. /explore opens Discovery (the default); /explore/about and the old /about link open About.
+  if (parts[0] === 'about') return { name: 'about', tab: 'about' };
+  if (parts[0] === 'explore') return { name: 'about', tab: parts[1] === 'about' ? 'about' : 'discovery' };
   if (parts[0] === 'privacy') return { name: 'privacy' };
   if (parts[0] === 'terms') return { name: 'terms' };
   if (parts[0] === 'cookies') return { name: 'cookies' };

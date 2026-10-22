@@ -14,7 +14,7 @@ import { ReviewPage } from '@/pages/ReviewPage';
 import { BlogReviewPage } from '@/pages/BlogReviewPage';
 import { SubmitPage } from '@/pages/SubmitPage';
 import { ReviewGuidelinesPage } from '@/pages/ReviewGuidelinesPage';
-import { AboutPage } from '@/pages/AboutPage';
+import { ExplorePage } from '@/pages/ExplorePage';
 import { PrivacyPage } from '@/pages/PrivacyPage';
 import { TermsPage } from '@/pages/TermsPage';
 import { CookiesPage } from '@/pages/CookiesPage';
@@ -124,7 +124,7 @@ function AppContent() {
         {route.name === 'blog-review' && <BlogReviewPage id={route.id} navigate={navigate} />}
         {route.name === 'submit' && <SubmitPage navigate={navigate} />}
         {route.name === 'review-guidelines' && <ReviewGuidelinesPage navigate={navigate} />}
-        {route.name === 'about' && <AboutPage navigate={navigate} />}
+        {route.name === 'about' && <ExplorePage tab={route.tab} navigate={navigate} />}
         {route.name === 'privacy' && <PrivacyPage navigate={navigate} />}
         {route.name === 'terms' && <TermsPage navigate={navigate} />}
         {route.name === 'cookies' && <CookiesPage navigate={navigate} />}

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import { go } from '@/lib/router';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { recordLoginDevice } from '@/lib/loginDevices';
 import { getCaptchaToken } from '@/lib/captcha';
 import type { Profile } from '@/types/review';
 
@@ -149,6 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           if (newUserEmail) await checkAdmin();
           if (newUserId) await loadProfile(newUserId);
+          if (newUserId) void recordLoginDevice(newUserId); // new-device / new-location alert (once per browser session)
         }
 
         setLoading(false);

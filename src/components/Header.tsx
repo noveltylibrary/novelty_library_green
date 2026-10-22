@@ -58,7 +58,7 @@ export function Header({ navigate, currentRoute, user, isAdmin }: HeaderProps) {
     { label: 'Home', path: '/', route: 'home', icon: Home },
     { label: 'Reviews', path: '/reviews', route: 'reviews', icon: BookOpen },
     { label: 'Submit', path: '/submit', route: 'submit', icon: PenTool },
-    { label: 'Explore', path: '/about', route: 'about', icon: Compass },
+    { label: 'Explore', path: '/explore', route: 'about', icon: Compass },
   ];
   const handleNav = (path: string) => { navigate(path); setMenuOpen(false); };
   const handleSignOut = async () => {

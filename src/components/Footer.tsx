@@ -15,7 +15,7 @@ const LINKS: [string, string][] = [
   ['Authors', '/authors'],
   ['Reviewers', '/reviewers'],
   ['Submit a Review', '/submit'],
-  ['Explore', '/about'],
+  ['Explore', '/explore'],
 ];
 
 export function Footer({ navigate }: FooterProps) {

@@ -1,3 +1,11 @@
+# v2.30 — Explore page: About / Discovery tabs
+
+- Explore now has two tabs: **About** (manifesto and platform background) and **Discovery ⚡** (default), at `/explore/about` and `/explore`. The old `/about` link still opens About.
+- Discovery holds the Live Rankings, Analytics and Taste Match SE cards (with jump links and an interactive Taste Match preview), with an ad block between Analytics and Taste Match SE and another at the bottom before the footer.
+- The Taste Match SE explainer moved from About to Discovery. No SQL.
+
+---
+
 # v2.11 — Back button, Taste Match polish
 
 - **Back button closes popups, not the page.** Every popup, sheet and lightbox (profile sections, followers list, stories and highlights, share card, feedback, submit-page dialogs, guidelines, report, admin dialogs, mobile menu) now owns one history entry: Back / swipe-back closes just the popup and you stay on the same page, at the same scroll position, on the control you tapped. Closing with X / backdrop / Esc removes that entry again so Back still goes to the previous page. (`src/lib/overlayHistory.ts`)
@@ -484,3 +492,9 @@ Signed-in users can still read `community_reviews.email` through the API; closin
 - Browser support affects whether MP4 recording is available. WebM is the fallback for browsers that do not expose MP4 recording.
 - PDF creation uses the browser print-to-PDF flow rather than a bundled PDF library.
 - A full application build still requires installing the dependencies listed in `package.json`.
+
+## v2.26 - Notifications, settings backend, login devices
+- Interaction notifications (likes, comments, replies, ratings/reviews, comment likes, story likes/shares) created by database triggers (NL_SQL_230).
+- Settings (notification categories + content preferences) saved per account in `user_settings` and enforced by a gate on `notifications`; falls back to the old sign-in-record storage until the SQL is run.
+- New-device and new-country sign-in alerts (shown once each) and an Accounts -> Login devices list.
+- My Reviews list synced to the account (NL_SQL_220); share sheet, Archive/My Reviews popup, frosted Accounts & Settings, About on own profile.

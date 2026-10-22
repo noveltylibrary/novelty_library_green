@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
-import { AlertTriangle, ArrowLeft, Archive, AtSign, Bell, Bookmark, ChevronRight, Cookie, FileText, KeyRound, LogOut, Lock, Mail, MessageSquareWarning, Moon, Save, ShieldCheck, SlidersHorizontal, Sun, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Archive, AtSign, Bell, Bookmark, ChevronRight, Cookie, FileText, Fingerprint, KeyRound, LogOut, Lock, Mail, MessageSquareWarning, Moon, Save, ShieldCheck, SlidersHorizontal, Sun, Trash2 } from 'lucide-react';
 import { ArchivesModal } from '@/components/ArchivesModal';
 import { useAuth } from '@/lib/auth';
 import { updateProfile } from '@/lib/reviews';
@@ -10,11 +10,12 @@ import { getCaptchaToken } from '@/lib/captcha';
 import { createGrievance, fetchMyGrievances, type GrievanceRecord } from '@/lib/moderation';
 import { useTheme } from '@/lib/theme';
 import { useCookieConsent } from '@/lib/cookieConsent';
+import { fetchMyLoginDevices, removeMyLoginDevice, describeDevice, type LoginDevice } from '@/lib/loginDevices';
 import { NOTIF_CATEGORIES, fetchContentTraits, useUserPrefs, type ContentTrait } from '@/lib/userPrefs';
 
-export type AccountView = 'root' | 'username' | 'appearance' | 'notifications' | 'content' | 'cookies' | 'password' | 'grievances' | 'delete';
+export type AccountView = 'root' | 'username' | 'appearance' | 'notifications' | 'content' | 'cookies' | 'password' | 'devices' | 'grievances' | 'delete';
 type View = AccountView;
-const VIEWS: View[] = ['root', 'username', 'appearance', 'notifications', 'content', 'cookies', 'password', 'grievances', 'delete'];
+const VIEWS: View[] = ['root', 'username', 'appearance', 'notifications', 'content', 'cookies', 'password', 'devices', 'grievances', 'delete'];
 /** Turns the address (/account/<tab>) into a known tab; anything else is the list. */
 export const asAccountView = (v?: string | null): View => (VIEWS.includes(v as View) ? (v as View) : 'root');
 
@@ -88,6 +89,10 @@ export function AccountPanel({ navigate, view: viewProp, onView }: { navigate: (
   const { theme, toggleTheme } = useTheme();
   const consent = useCookieConsent();
   const userPrefs = useUserPrefs();
+  const [devices, setDevices] = useState<LoginDevice[] | null>(null);
+  const [devicesError, setDevicesError] = useState<string | null>(null);
+  useEffect(() => { if (view === 'devices' && devices === null) void fetchMyLoginDevices().then(setDevices).catch(() => { setDevices([]); setDevicesError('Device history is not available yet.'); }); }, [view, devices]);
+  const thisDevice = describeDevice().label;
   const [traits, setTraits] = useState<ContentTrait[] | null>(null);
   useEffect(() => { if (view === 'content' && traits === null) void fetchContentTraits().then(setTraits); }, [view, traits]);
 
@@ -195,12 +200,23 @@ export function AccountPanel({ navigate, view: viewProp, onView }: { navigate: (
 
   if (view === 'notifications') return <div className="nl-acc-pane">
     <Back title="Notification settings" />
-    <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Choose which notifications you see. Account and security messages are always shown.</p>
+    <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Choose which notifications you see. Account and security messages, including new-device sign-in alerts, are always shown. Saved to your account, so they apply on every device.</p>
     <div className="nl-acc-shelf">{NOTIF_CATEGORIES.map((c) => <label key={c.key} className="nl-acc-row nl-acc-toggle">
       <span className="nl-acc-name"><span className="block">{c.label}</span><small className="block text-xs font-normal" style={{ color: 'var(--color-text-muted)' }}>{c.hint}</small></span>
       <input type="checkbox" role="switch" className="nl-switch" checked={userPrefs.notifOn(c.key)} onChange={(e) => void userPrefs.setNotif(c.key, e.target.checked)} aria-label={c.label} />
     </label>)}</div>
     {userPrefs.error && <p className="text-sm" style={{ color: '#dc2626' }}>{userPrefs.error}</p>}
+  </div>;
+
+  if (view === 'devices') return <div className="nl-acc-pane">
+    <Back title="Login devices" />
+    <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Browsers and devices that have signed in to your account. You get a notification the first time a new device or a new country signs in. Remove any you don&apos;t recognise, then change your password.</p>
+    {devices === null ? <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading…</p> : devices.length === 0 ? <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{devicesError || 'No devices recorded yet. They appear after your next sign-in.'}</p> :
+      <div className="nl-acc-shelf">{devices.map((d) => <div key={d.id} className="nl-acc-row" style={{ cursor: 'default' }}>
+        <span className="nl-acc-name"><span className="block">{d.label || 'Unknown device'}{d.label === thisDevice ? ' · this device' : ''}</span><small className="block text-xs font-normal" style={{ color: 'var(--color-text-muted)' }}>{d.country ? `${d.country} · ` : ''}Last active {new Date(d.last_seen).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · first seen {new Date(d.first_seen).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</small></span>
+        <button type="button" className="text-xs font-semibold" style={{ color: '#dc2626' }} onClick={() => void removeMyLoginDevice(d.id).then(() => setDevices((cur) => (cur || []).filter((x) => x.id !== d.id))).catch(() => setDevicesError('Could not remove that device.'))}>Remove</button>
+      </div>)}</div>}
+    {devicesError && devices && devices.length > 0 && <p className="text-sm" style={{ color: '#dc2626' }}>{devicesError}</p>}
   </div>;
 
   if (view === 'content') return <div className="nl-acc-pane">
@@ -285,6 +301,7 @@ export function AccountPanel({ navigate, view: viewProp, onView }: { navigate: (
     </Shelf>
     <Shelf label="Security">
       <Row icon={<KeyRound />} label="Change password" active={view === 'password'} onClick={() => setView('password')} />
+      <Row icon={<Fingerprint />} label="Login devices" active={view === 'devices'} onClick={() => setView('devices')} />
       <Row icon={<MessageSquareWarning />} label="Grievances" value={grievances.length ? String(grievances.length) : undefined} active={view === 'grievances'} onClick={() => setView('grievances')} />
       <Row icon={<LogOut />} label={signingOut ? 'Signing out…' : 'Sign out'} danger busy={signingOut} onClick={() => void logOut()} />
       <Row icon={<Trash2 />} label="Delete account" danger active={view === 'delete'} onClick={() => setView('delete')} />
