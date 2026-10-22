@@ -67,8 +67,23 @@ grant execute on function public.save_my_settings(jsonb, text[]) to authenticate
 do $$
 begin
   if to_regclass('public.notifications') is null then
-    raise notice 'public.notifications not found - notification part skipped.';
-    return;
+    -- The bell needs this table. It does not exist here, so create the same shape the app already expects.
+    execute 'create table public.notifications (
+      id uuid primary key default gen_random_uuid(),
+      user_id uuid not null references auth.users(id) on delete cascade,
+      kind text not null default ''system'',
+      title text not null,
+      body text not null default '''',
+      review_id text,
+      review_number text,
+      read_at timestamptz,
+      created_at timestamptz not null default now())';
+    execute 'create index notifications_user_idx on public.notifications (user_id, created_at desc)';
+    execute 'alter table public.notifications enable row level security';
+    execute 'create policy notifications_owner_select on public.notifications for select to authenticated using (user_id = auth.uid())';
+    execute 'create policy notifications_owner_update on public.notifications for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid())';
+    begin execute 'alter publication supabase_realtime add table public.notifications'; exception when others then null; end;
+    raise notice 'public.notifications did not exist - created it.';
   end if;
   execute 'alter table public.notifications add column if not exists event text';
   execute 'alter table public.notifications add column if not exists actor_id uuid';
@@ -118,15 +133,22 @@ end $$;
 do $$
 begin
   if to_regclass('public.notifications') is not null then
-    execute 'drop trigger if exists trg_notifications_respect_settings on public.notifications';
-    execute 'create trigger trg_notifications_respect_settings before insert on public.notifications for each row execute function public.trg_notifications_respect_settings()';
+    begin
+      execute 'drop trigger if exists trg_notifications_respect_settings on public.notifications';
+      execute 'create trigger trg_notifications_respect_settings before insert on public.notifications for each row execute function public.trg_notifications_respect_settings()';
+    exception when others then raise notice 'Settings gate skipped (%).', sqlerrm;
+    end;
   end if;
 end $$;
 
 -- 3) Helpers ------------------------------------------------------------------------------------------------------
-create or replace function public.nl_name(p_user uuid) returns text language sql stable security definer set search_path = public as $$
-  select coalesce((select coalesce(nullif(btrim(p.name), ''), nullif(btrim(p.novelty_username), '')) from public.profiles p where p.id = p_user), 'A reader')
-$$;
+create or replace function public.nl_name(p_user uuid) returns text language plpgsql stable security definer set search_path = public as $$
+declare n text;
+begin
+  select coalesce(nullif(btrim(p.name), ''), nullif(btrim(p.novelty_username), '')) into n from public.profiles p where p.id = p_user;
+  return coalesce(n, 'A reader');
+exception when others then return 'A reader';   -- profiles table/columns missing: still works
+end $$;
 
 -- One notification. Skips self-actions, skips duplicates (same dedupe key), never raises.
 create or replace function public.nl_notify(p_user uuid, p_actor uuid, p_event text, p_title text, p_body text, p_meta jsonb, p_key text, p_link text default null)
@@ -299,8 +321,12 @@ begin
     if to_regclass('public.' || t.tbl) is null then
       raise notice 'Table % not found - trigger % skipped.', t.tbl, t.trg;
     else
-      execute format('drop trigger if exists %I on public.%I', t.trg, t.tbl);
-      execute format('create trigger %I after %s on public.%I for each row execute function public.%I()', t.trg, t.ev, t.tbl, t.fn);
+      begin
+        execute format('drop trigger if exists %I on public.%I', t.trg, t.tbl);
+        execute format('create trigger %I after %s on public.%I for each row execute function public.%I()', t.trg, t.ev, t.tbl, t.fn);
+      exception when others then
+        raise notice 'Trigger % skipped on % (%).', t.trg, t.tbl, sqlerrm;   -- e.g. a column is named differently: skip, never abort
+      end;
     end if;
   end loop;
 end $$;
@@ -386,6 +412,18 @@ create or replace function public.remove_my_login_device(p_id uuid) returns void
   delete from public.user_login_devices where id = p_id and user_id = auth.uid();
 $$;
 grant execute on function public.remove_my_login_device(uuid) to authenticated;
+
+-- 6) Report: which optional tables this database has. Missing ones only mean that one feature is skipped; nothing fails.
+do $$
+declare t text; missing text[] := '{}';
+begin
+  foreach t in array array['profiles','community_reviews','community_review_likes','community_review_feedback','community_review_comments',
+                           'community_review_comment_likes','community_review_feedback_replies','stories','story_likes','story_reposts'] loop
+    if to_regclass('public.' || t) is null then missing := missing || t; end if;
+  end loop;
+  if array_length(missing, 1) is null then raise notice 'NL_SQL_230: all expected tables found.';
+  else raise notice 'NL_SQL_230: installed. These tables were not found, so their notifications are skipped (no error): %', array_to_string(missing, ', '); end if;
+end $$;
 
 -- ROLLBACK (only if you ever need to undo):
 --   drop trigger if exists trg_notifications_respect_settings on public.notifications;
