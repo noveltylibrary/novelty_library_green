@@ -144,7 +144,7 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
           <div>
             <div className="inline-flex items-center gap-2 mb-3 text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-teal-dark)' }}>
               <Users className="w-3.5 h-3.5" />
-              Community Reviews
+              Book Reviews Shelf
             </div>
             <h1 className="font-serif text-4xl md:text-5xl font-semibold" style={{ color: 'var(--color-text)' }}>
               The Novelty Library review shelf

@@ -54,7 +54,7 @@ const BACKSTAGE: { title: string; items: string[] }[] = [
     'Surprise me picks randomly from the top 12 matches; with no wish it picks from Perfection / Go for it reviews (in the chosen language).',
   ] },
   { title: 'Where the engine is used', items: [
-    'Taste Match page: top three picks for moods, description, loved book, language and verdict.',
+    'Taste Match SE page: top three picks for moods, description, loved book, language and verdict.',
     'Live Rankings free-description search: top five.',
     'Review pages, “More like this”: the same engine seeded only with that review as the loved book, top three.',
     'Separate library-search engine (Live Rankings): exact-first field search (exact 100, known equivalent 92, phrase 85, contained 80, all words 75, typo-tolerant 60). Its “related” list, “Did you mean” and nearest-books fall-backs use a second TF-IDF index with field weights (genre 3, traits 3, title 2, author 2, language 2, verdict 1, text 1 over the first 600 words), 22 genre-group tags (weight 3) and 30 neighbour links (0.8). The Settings lab below runs this engine, not the TMAI-40 blend.',
@@ -107,8 +107,8 @@ export function AdminTasteMatchPanel() {
       <section className="surface-card p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2"><TasteMatchIcon size={20} style={{ color: 'var(--color-teal-dark)' }} /><h2 className="font-serif text-xl font-semibold">What Taste Match does</h2></div>
-            <p className="text-sm mt-1 max-w-3xl" style={{ color: 'var(--color-text-muted)' }}>Taste Match suggests three published reviews that fit what a reader feels like reading, and says why. The TMAI-40 engine powers the dedicated Taste Match page, preference-based “More like this” on review pages, and the free-description suggestions in Live Rankings. Exact-first field search and “Did you mean” remain their own library-search tools. It runs in the reader’s browser over published reviews: no extra server or database change.</p>
+            <div className="flex items-center gap-2"><TasteMatchIcon size={20} style={{ color: 'var(--color-teal-dark)' }} /><h2 className="font-serif text-xl font-semibold">What Taste Match SE does</h2></div>
+            <p className="text-sm mt-1 max-w-3xl" style={{ color: 'var(--color-text-muted)' }}>Taste Match SE suggests three published reviews that fit what a reader feels like reading, and says why. The TMAI-40 engine powers the dedicated Taste Match SE page, preference-based “More like this” on review pages, and the free-description suggestions in Live Rankings. Exact-first field search and “Did you mean” remain their own library-search tools. It runs in the reader’s browser over published reviews: no extra server or database change.</p>
           </div>
           <a href="/taste-match" className="btn-ghost !w-auto text-sm"><ExternalLink className="w-4 h-4" /> Open it on the site</a>
         </div>
@@ -119,7 +119,7 @@ export function AdminTasteMatchPanel() {
 
       <section className="surface-card p-5 sm:p-6">
         <div className="flex items-center gap-2"><Layers className="w-5 h-5" style={{ color: 'var(--color-teal-dark)' }} /><h2 className="font-serif text-xl font-semibold">Behind the scenes (admin only)</h2></div>
-        <p className="text-sm mt-1 max-w-3xl" style={{ color: 'var(--color-text-muted)' }}>Everything Taste Match does that readers don’t see directly. Readers never see this section or the numbers in it, and the public pages never explain how matching works. The full write-up (architecture, source map and a catalog of every query) is in the project’s taste-match/ folder as Markdown and PDF.</p>
+        <p className="text-sm mt-1 max-w-3xl" style={{ color: 'var(--color-text-muted)' }}>Everything Taste Match SE does that readers don’t see directly. Readers never see this section or the numbers in it, and the public pages never explain how matching works. The full write-up (architecture, source map and a catalog of every query) is in the project’s taste-match/ folder as Markdown and PDF.</p>
         <div className="nl-tmadmin-dump">
           {BACKSTAGE.map((g, i) => (
             <details key={g.title} open={i === 0}>

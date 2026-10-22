@@ -3,19 +3,15 @@ import { ArrowLeft, BarChart3 } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { fetchReviews } from '@/lib/reviews';
 import { HomeAnalytics } from '@/components/HomeAnalytics';
-import { fetchHomeAnalytics, type HomeAnalytics as AnalyticsData } from '@/lib/homeAnalytics';
+import { useLiveHomeAnalytics } from '@/lib/homeAnalytics';
 
 export function AnalyticsPage({ navigate }: { navigate: (path: string) => void }) {
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  const [failed, setFailed] = useState(false);
+  const { data: analytics, failed } = useLiveHomeAnalytics();
 
   useEffect(() => {
     let alive = true;
-    Promise.all([
-      fetchHomeAnalytics().then((d) => { if (alive) setAnalytics(d); }).catch(() => { if (alive) setFailed(true); }),
-      fetchReviews().then((d) => { if (alive) setReviews(d); }).catch(() => { if (alive) setReviews([]); }),
-    ]);
+    fetchReviews().then((d) => { if (alive) setReviews(d); }).catch(() => { if (alive) setReviews([]); });
     return () => { alive = false; };
   }, []);
 

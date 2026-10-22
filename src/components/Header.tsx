@@ -27,6 +27,28 @@ export function Header({ navigate, currentRoute, user, isAdmin }: HeaderProps) {
   const onDarkHero = currentRoute === 'home' && !scrolled && !menuOpen && theme === 'dark';
   const heroInk = onDarkHero ? ({ '--color-text': '#e7fffe', '--color-text-muted': 'rgba(231,255,254,0.72)', '--color-teal-dark': '#5ce1e6', '--color-cyan-dark': '#5ce1e6' } as CSSProperties) : undefined;
 
+  // While the phone menu is open the page behind it is frozen: no scrolling or rubber-banding on the scrim side.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prev = { h: html.style.overflow, b: body.style.overflow, ho: html.style.overscrollBehavior, bo: body.style.overscrollBehavior };
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    html.style.overscrollBehavior = 'none';
+    body.style.overscrollBehavior = 'none';
+    // iOS Safari still scrolls the page on touch-drag over the scrim; block that, but let the panel itself scroll.
+    const block = (e: TouchEvent) => { if (!(e.target instanceof Element) || !e.target.closest('.nl-sp-panel')) e.preventDefault(); };
+    document.addEventListener('touchmove', block, { passive: false });
+    return () => {
+      html.style.overflow = prev.h;
+      body.style.overflow = prev.b;
+      html.style.overscrollBehavior = prev.ho;
+      body.style.overscrollBehavior = prev.bo;
+      document.removeEventListener('touchmove', block);
+    };
+  }, [menuOpen]);
+
   useEffect(() => { const onScroll = () => setScrolled(window.scrollY > 20); window.addEventListener('scroll', onScroll); return () => window.removeEventListener('scroll', onScroll); }, []);
 
   const navItems = [
@@ -60,7 +82,7 @@ const panelItems: { label: string; icon: ComponentType<{ className?: string }>; 
 
   const goBack = () => { setMenuOpen(false); if (window.history.length > 1) window.history.back(); else navigate('/'); };
   const isInner = currentRoute !== 'home';
-  return <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isInner ? 'nl-hdr-solid' : ''} ${scrolled ? 'backdrop-blur-md shadow-sm py-3' : 'bg-transparent py-5'}`} style={{ backgroundColor: scrolled ? 'var(--color-bg)' : 'transparent', opacity: scrolled ? 0.95 : 1 }}>
+  return <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isInner ? 'nl-hdr-solid' : ''} ${scrolled ? 'backdrop-blur-md shadow-sm py-3' : 'bg-transparent py-5'}`} style={{ backgroundColor: scrolled ? 'var(--color-bg)' : 'transparent', opacity: 1 }}>
     <div className="container-prose flex items-center justify-between" style={heroInk}>
       <div className="flex items-center min-w-0">
       {isInner && <button type="button" onClick={goBack} aria-label="Go back" className="md:hidden p-2 -ml-2 mr-1 rounded-lg shrink-0" style={{ color: 'var(--color-text)' }}><ArrowLeft className="w-5 h-5" /></button>}

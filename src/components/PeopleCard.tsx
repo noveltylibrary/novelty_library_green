@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Check, Download, Share2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { NameBlock, nameInitial } from '@/components/NameBlock';
@@ -47,6 +47,8 @@ export interface PeopleCardProps {
   stats: PeopleStats;
   fileSlug: string;
   shareUrl?: string;
+  /** Optional action row shown above the card (follow / replay / report / share). Replaces the buttons under the card. */
+  topActions?: (ctx: { replay: () => void; replayKey: number }) => ReactNode;
 }
 
 const cover = (r: PeopleStats['top'][number]) => safeExternalUrl(normalizePosterUrl(r.poster_url || r.cover_image_url || '')) || null;
@@ -59,7 +61,8 @@ function CardCover({ src }: { src: string }) {
   return <img key={cors ? 'cors' : 'plain'} src={src} alt="" referrerPolicy="no-referrer" {...(cors ? { crossOrigin: 'anonymous' as const } : {})} onError={() => (cors ? setCors(false) : setDead(true))} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />;
 }
 
-export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, shareUrl }: PeopleCardProps) {
+export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, shareUrl, topActions }: PeopleCardProps) {
+  const [replayKey, setReplayKey] = useState(0);
   // Readers can share the page; the PNG export is an admin tool.
   const { isAdmin } = useAuth();
   const pal = PALETTE[variant];
@@ -114,8 +117,9 @@ export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, 
 
   return (
     <div className="nl-people-card">
+      {topActions && <div className="w-full">{topActions({ replay: () => setReplayKey((n) => n + 1), replayKey })}</div>}
       <div ref={wrapRef} className="nl-people-card-frame" style={{ height: H * scale, borderRadius: 24 }}>
-        <div ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: W, height: H, overflow: 'hidden', transform: `scale(${scale})`, transformOrigin: 'top left', background: pal.bg, color: pal.text }}>
+        <div ref={canvasRef} key={replayKey} className={replayKey > 0 ? 'nl-people-replay' : undefined} style={{ position: 'absolute', top: 0, left: 0, width: W, height: H, overflow: 'hidden', transform: `scale(${scale})`, transformOrigin: 'top left', background: pal.bg, color: pal.text }}>
           <div style={{ position: 'absolute', right: -W * 0.25, top: -H * 0.1, width: W * 0.95, height: W * 0.95, borderRadius: '50%', background: pal.glowA }} />
           <div style={{ position: 'absolute', right: -W * 0.22, bottom: -W * 0.3, width: W * 0.85, height: W * 0.85, borderRadius: '50%', background: pal.glowB }} />
           <svg width={W} height={330} viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, opacity: 0.5 }} aria-hidden="true">
@@ -134,7 +138,7 @@ export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, 
 
           <div style={{ position: 'absolute', left: 335, top: 222, width: 675 }}>
             <p style={{ fontSize: 23, letterSpacing: '.2em', textTransform: 'uppercase', fontWeight: 800, color: pal.accent, marginBottom: 12 }}>{pal.kicker}</p>
-            <NameBlock major={variant === 'author' ? 'last' : 'first'} name={name || (variant === 'author' ? 'Author' : 'Novelty Reader')} size={96} color={pal.text} restColor={pal.accentSoft} shadow="0 4px 22px rgba(0,0,0,.4)" />
+            <NameBlock stacked={variant === 'author'} major={variant === 'author' ? 'last' : 'first'} name={name || (variant === 'author' ? 'Author' : 'Novelty Reader')} size={96} color={pal.text} restColor={pal.accentSoft} shadow="0 4px 22px rgba(0,0,0,.4)" />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 18 }}>
               {followers != null && <span style={pill}><b style={{ color: pal.accent }}>{followers.toLocaleString()}</b> {followers === 1 ? 'follower' : 'followers'}</span>}
               {handle && <span style={{ ...pill, color: pal.accentSoft, maxWidth: 520, overflow: 'hidden', textOverflow: 'ellipsis' }}>@{sanitizeUserText(handle.replace(/^@/, ''), 60)}</span>}
@@ -165,7 +169,7 @@ export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, 
                     <div key={r.id} style={{ minWidth: 0 }}>
                       <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', borderRadius: 22, overflow: 'hidden', background: pal.glass, border: `2px solid ${pal.line}`, boxShadow: '0 14px 30px rgba(0,0,0,.35)' }}>
                         {src && <CardCover src={src} />}
-                        <span style={{ position: 'absolute', right: 10, bottom: 10, padding: '4px 14px', borderRadius: 999, fontSize: 26, fontWeight: 900, color: '#1a0836', background: pal.accent }}>{Number.isFinite(r.rw_rating) ? r.rw_rating.toFixed(1) : '—'}</span>
+                        <span style={{ position: 'absolute', right: 10, top: 10, padding: '4px 14px', borderRadius: 999, fontSize: 26, fontWeight: 900, color: '#1a0836', background: pal.accent }}>{Number.isFinite(r.rw_rating) ? r.rw_rating.toFixed(1) : '—'}</span>
                       </div>
                       <p className="font-serif" style={{ marginTop: 12, fontSize: 24, fontWeight: 700, lineHeight: 1.16, color: '#fff', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sanitizeUserText(r.title, 90)}</p>
                     </div>
@@ -175,15 +179,21 @@ export function PeopleCard({ variant, name, followers, handle, stats, fileSlug, 
             </div>
           )}
 
-          <div style={{ position: 'absolute', right: 70, bottom: 30, display: 'flex', alignItems: 'center', gap: 16, borderRadius: 26, padding: '12px 22px', background: pal.boxBg, border: '1.5px solid rgba(255,255,255,.7)', boxShadow: '0 18px 40px rgba(0,0,0,.3)' }}>
-            <div style={{ display: 'grid', placeItems: 'center', width: 84, height: 84, borderRadius: 22, background: '#fff', boxShadow: '0 8px 20px rgba(0,0,0,.25)' }}><img src={LOGO} alt="Novelty Library" style={{ width: 76, height: 76, objectFit: 'contain' }} /></div>
-            <div><p className="font-serif" style={{ fontSize: 36, fontWeight: 800, lineHeight: 1, color: pal.boxInk }}>Novelty Library</p><p style={{ marginTop: 8, fontSize: 15, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 900, color: pal.boxAccent }}>{pal.footer}</p></div>
-          </div>
+          {variant === 'author' ? (
+            <div style={{ position: 'absolute', right: 70, bottom: 36, textAlign: 'right' }}>
+              <p className="font-serif" style={{ fontSize: 36, fontWeight: 800, lineHeight: 1, color: pal.text }}>Novelty Library</p>
+            </div>
+          ) : (
+            <div style={{ position: 'absolute', right: 70, bottom: 30, display: 'flex', alignItems: 'center', gap: 16, borderRadius: 26, padding: '12px 22px', background: pal.boxBg, border: '1.5px solid rgba(255,255,255,.7)', boxShadow: '0 18px 40px rgba(0,0,0,.3)' }}>
+              <div style={{ display: 'grid', placeItems: 'center', width: 84, height: 84, borderRadius: 22, background: '#fff', boxShadow: '0 8px 20px rgba(0,0,0,.25)' }}><img src={LOGO} alt="Novelty Library" style={{ width: 76, height: 76, objectFit: 'contain' }} /></div>
+              <div><p className="font-serif" style={{ fontSize: 36, fontWeight: 800, lineHeight: 1, color: pal.boxInk }}>Novelty Library</p><p style={{ marginTop: 8, fontSize: 15, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 900, color: pal.boxAccent }}>{pal.footer}</p></div>
+            </div>
+          )}
         </div>
       </div>
       <div className="nl-people-card-actions">
         {isAdmin && <button type="button" onClick={() => void download()} disabled={busy} className="nl-people-btn is-primary"><Download aria-hidden="true" />{busy ? 'Preparing…' : 'Download card (PNG)'}</button>}
-        <button type="button" onClick={() => void share()} className="nl-people-btn">{shared ? <Check aria-hidden="true" /> : <Share2 aria-hidden="true" />}{shared ? 'Link copied' : 'Share page'}</button>
+        {!topActions && <button type="button" onClick={() => void share()} className="nl-people-btn">{shared ? <Check aria-hidden="true" /> : <Share2 aria-hidden="true" />}{shared ? 'Link copied' : 'Share page'}</button>}
       </div>
     </div>
   );

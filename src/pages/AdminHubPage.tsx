@@ -62,7 +62,7 @@ export function AdminHubPage({ navigate }: AdminHubPageProps) {
     },
     {
       title: 'Open Control Settings',
-      desc: 'Control admin access and the Support contact, send notifications, and view how Taste Match works with a settings lab.',
+      desc: 'Control admin access and the Support contact, send notifications, and view how Taste Match SE works with a settings lab.',
       icon: UserCog,
       path: '/admin/admins',
       gradient: 'linear-gradient(135deg, #013a46 0%, #0097b2 100%)',

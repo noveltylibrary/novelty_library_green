@@ -1,14 +1,16 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Award, BookCheck, BookOpen, Check, CheckCircle2, Copy, Globe2, Instagram, Library,
-  MessageCircle, Newspaper, PenTool, Star, Trophy, Users, ArrowRight, ShieldCheck,
+  MessageCircle, Newspaper, PenTool, Star, Trophy, Users, ArrowRight, ShieldCheck, Heart,
 } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { BLOG_URL } from '@/lib/links';
 import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import { RwStarRating } from '@/components/RwStarRating';
+import { CoverImg } from '@/components/CoverImg';
+import { supabase } from '@/lib/supabase';
 import {
-  contributorLink, formatFloor10, formatLangCount, milestone, useCountUp,
+  contributorLink, formatFloor10, formatLangCount, formatTrust, milestone, useCountUp,
   type HomeAnalytics as Data,
 } from '@/lib/homeAnalytics';
 
@@ -22,6 +24,26 @@ interface Props {
 const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
 export function HomeAnalytics({ navigate, published, data, failed }: Props) {
   const [copied, setCopied] = useState(false);
+  // NL likes per published review (community_review_stats aggregate); refreshed with the page's data.
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  useEffect(() => {
+    let alive = true;
+    supabase.from('community_review_stats').select('review_id,like_count').then(({ data: rows }) => {
+      if (!alive) return;
+      const map: Record<string, number> = {};
+      for (const r of (rows ?? []) as Array<{ review_id: string; like_count: number | null }>) map[r.review_id] = Number(r.like_count ?? 0);
+      setLikeCounts(map);
+    }, () => undefined);
+    return () => { alive = false; };
+  }, [data?.community_likes]);
+  const mostLiked = useMemo(() => {
+    let best: { review: Review; likes: number } | null = null;
+    for (const r of published) {
+      const likes = likeCounts[r.id] ?? 0;
+      if (likes > 0 && (!best || likes > best.likes)) best = { review: r, likes };
+    }
+    return best;
+  }, [published, likeCounts]);
 
   const accepted = data?.accepted_total ?? 0;
   const publishedCount = Math.max(data?.published_total ?? 0, published.length);
@@ -108,7 +130,7 @@ export function HomeAnalytics({ navigate, published, data, failed }: Props) {
           <div className="nl-an-trust-icon"><Trophy className="h-4 w-4" /></div>
           <div className="nl-an-trust-text">
             <span>Trust Score</span>
-            <b>{trust === null ? '—' : `${trustAnim.toFixed(1)}/10`}</b>
+            <b>{trust === null ? '—' : `${formatTrust(trustAnim)}/10`}</b>
           </div>
         </div>
       </div>
@@ -182,7 +204,7 @@ export function HomeAnalytics({ navigate, published, data, failed }: Props) {
             <div className="nl-an-sequence-icon"><ShieldCheck className="h-4 w-4" /></div>
             <div className="nl-an-sequence-copy">
               <span>TRUST SCORE</span>
-              <strong>{trust === null ? '—' : `${trustAnim.toFixed(1)}/10`}</strong>
+              <strong>{trust === null ? '—' : `${formatTrust(trustAnim)}/10`}</strong>
               <small>Average reviewer trust score</small>
               <div className="nl-trust-bar"><i style={{ width: `${Math.min(100, Math.max(0, (trust ?? 0) * 10))}%` }} /></div>
             </div>
@@ -200,13 +222,21 @@ export function HomeAnalytics({ navigate, published, data, failed }: Props) {
             </div>
           </div>
 
-          <div className="nl-an-sequence nl-an-total-users">
-            <div className="nl-an-sequence-icon"><Users className="h-4 w-4" /></div>
-            <div className="nl-an-sequence-copy w-full">
-              <span>TOTAL USERS</span>
-              <strong className="nl-total-users-number">{data?.total_users ?? 0}</strong>
-              <small>Registered Novelty Library accounts</small>
+          <div className="nl-an-sequence nl-an-most-liked">
+            <div className="nl-an-sequence-icon"><Heart className="h-4 w-4" /></div>
+            <div className="nl-an-sequence-copy w-full nl-an-ml-copy">
+              <span>MOST LIKED REVIEW</span>
+              {mostLiked ? (
+                <>
+                  <strong className="nl-an-ml-title">{mostLiked.review.title}</strong>
+                  <em className="nl-an-ml-author">{mostLiked.review.author || 'Author unavailable'}</em>
+                  <small className="nl-an-ml-likes"><Heart className="h-3 w-3" aria-hidden="true" /> <b>{mostLiked.likes}</b> NL {mostLiked.likes === 1 ? 'Like' : 'Likes'}</small>
+                </>
+              ) : (
+                <small>{published.length ? 'No likes yet. The most-liked review appears here.' : 'Loading…'}</small>
+              )}
             </div>
+            {mostLiked && <span className="nl-an-ml-poster"><CoverImg src={mostLiked.review.poster_url || mostLiked.review.cover_image_url} alt={`Poster of ${mostLiked.review.title}`} /></span>}
           </div>
         </div>
 

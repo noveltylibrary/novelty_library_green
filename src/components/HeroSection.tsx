@@ -4,6 +4,7 @@ import { StoriesRail } from '@/components/StoriesRail';
 import { HeroCta } from '@/components/HeroCta';
 import { FeaturedPosters } from '@/components/FeaturedPosters';
 import { HomeActionGrid } from '@/components/HomeActionGrid';
+import { formatTrust } from '@/lib/homeAnalytics';
 
 interface HeroSectionProps {
   navigate: (path: string) => void;
@@ -139,7 +140,7 @@ export function HeroSection({ navigate, live }: HeroSectionProps) {
         >
           {[
             { label: 'Curated Critiques', node: <Counter to={curated} suffix="+" />, tone: 'text-cyan-700 dark:text-cyan-300' },
-            { label: 'Trust Score', node: trust === null ? <span>—</span> : <div className="flex flex-col items-center justify-center"><span>{trust.toFixed(1)}/10</span><div className="hero-trust-mini"><i style={{ width: `${Math.min(100, Math.max(0, trust * 10))}%` }} /></div></div>, tone: 'text-teal-700 dark:text-teal-300' },
+            { label: 'Trust Score', node: trust === null ? <span>—</span> : <div className="flex flex-col items-center justify-center"><span>{formatTrust(trust)}/10</span><div className="hero-trust-mini"><i style={{ width: `${Math.min(100, Math.max(0, trust * 10))}%` }} /></div></div>, tone: 'text-teal-700 dark:text-teal-300' },
             { label: 'Unique Authors Cataloged', node: <Counter to={authors} suffix="+" />, tone: 'text-cyan-700 dark:text-cyan-300' },
             { label: 'Unfiltered Honesty Index', node: <Counter to={100} suffix="%" />, tone: 'text-teal-700 dark:text-teal-300' },
           ].map((m, i) => (

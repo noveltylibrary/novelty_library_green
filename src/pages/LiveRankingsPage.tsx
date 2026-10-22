@@ -253,7 +253,7 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
           <div className="nl-live-hero-copy">
             <span className="nl-live-eyebrow"><Activity size={13} aria-hidden="true" /> NOVELTY LIBRARY · LIVE RANKINGS</span>
             <h1>Live Rankings</h1>
-            <p className="nl-live-one-liner">Explore the books readers rate highest, then open Taste Match for a personal recommendation based on your mood and reading preferences.</p>
+            <p className="nl-live-one-liner">Explore the books readers rate highest, then open Taste Match SE for a personal recommendation based on your mood and reading preferences.</p>
             <p className="nl-live-hero-note">A reader-powered snapshot of the books the Novelty Library community rates highest.</p>
             <div className="nl-live-hero-actions">
               <button type="button" className="nl-taste-launch" onClick={() => navigate('/taste-match')}><TasteMatchIcon size={25} /><span><strong>Open Taste Match SE</strong><small>Find a book that fits your mind</small></span><ArrowRight size={17} aria-hidden="true" /></button>
@@ -275,7 +275,7 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
             <RankingSearch books={books} openBook={(review) => navigate(`/review/${encodeURIComponent(bookSlug(review))}`)} />
           </div>
         )}
-        <p className="nl-live-footnote">Explore published reviews ranked by NL Rating or R/W stars. Use the search above to find books by genre, language, traits or author. For personalized recommendations, open Taste Match.</p>
+        <p className="nl-live-footnote">Explore published reviews ranked by NL Rating or R/W stars. Use the search above to find books by genre, language, traits or author. For personalized recommendations, open Taste Match SE.</p>
       </div>
       {showSideAds && <aside className="nl-live-ad-rail nl-live-ad-rail-left" aria-label="Advertisement"><AdSenseAdSlot className="nl-live-rail-ad-slot" active={showSideAds} /></aside>}
       {showSideAds && <aside className="nl-live-ad-rail nl-live-ad-rail-right" aria-label="Advertisement"><AdSenseAdSlot className="nl-live-rail-ad-slot" active={showSideAds} /></aside>}

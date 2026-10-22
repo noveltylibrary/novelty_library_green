@@ -53,10 +53,10 @@ export const cleanBadge = (v: unknown): PosterBadge => {
 export type BuiltinKey = 'rankings' | 'taste';
 export interface BuiltinPoster { enabled: boolean; title: string; caption: string; link: string; badge: PosterBadge; from: string; until: string }
 export const BUILTIN_KEYS: BuiltinKey[] = ['rankings', 'taste'];
-export const BUILTIN_LABEL: Record<BuiltinKey, string> = { rankings: 'Live Rankings', taste: 'Taste Match' };
+export const BUILTIN_LABEL: Record<BuiltinKey, string> = { rankings: 'Live Rankings', taste: 'Taste Match SE' };
 export const DEFAULT_BUILTINS: Record<BuiltinKey, BuiltinPoster> = {
   rankings: { enabled: true, title: 'Live Rankings', caption: 'Ranked by readers. Search by genre, language, traits or author.', link: '/live-rankings', badge: 'LIVE', from: '', until: '' },
-  taste: { enabled: true, title: 'Taste Match', caption: 'Tell us your mood and we will match you to your next read.', link: '/taste-match', badge: 'NEWS', from: '', until: '' },
+  taste: { enabled: true, title: 'Taste Match SE', caption: 'Tell us your mood and we will match you to your next read.', link: '/taste-match', badge: 'NEWS', from: '', until: '' },
 };
 export const isBuiltinActive = (b: BuiltinPoster, now = new Date()): boolean => b.enabled && isWithinDates(b.from, b.until, now);
 

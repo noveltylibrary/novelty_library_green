@@ -109,7 +109,7 @@ export function RankingSearch({ books, openBook }: CommonProps) {
         <div>
           <span className="nl-live-kicker">SEARCH THE LIBRARY</span>
           <h2 id="nl-find-title">Find your next read</h2>
-          <p>Search by a specific detail, then add the feeling or story qualities you want. Your extra description helps find wider matches and reflects the Taste Match idea: matching books to your reading taste, not just a single keyword.</p>
+          <p>Search by a specific detail, then add the feeling or story qualities you want. Your extra description helps find wider matches and reflects the Taste Match SE idea: matching books to your reading taste, not just a single keyword.</p>
         </div>
       </header>
 
@@ -130,7 +130,7 @@ export function RankingSearch({ books, openBook }: CommonProps) {
       </div>
 
       <label className="nl-find-field nl-find-wide">
-        <span>More detail <em>· describe your taste for Taste Match</em></span>
+        <span>More detail <em>· describe your taste for Taste Match SE</em></span>
         <input type="text" value={moreQ} onChange={(e) => setMoreQ(e.target.value)} placeholder="Describe the story you want — e.g. a dark, slow-burn mystery with mind games, layered characters, and a haunting atmosphere" autoComplete="off" />
       </label>
 
@@ -143,20 +143,6 @@ export function RankingSearch({ books, openBook }: CommonProps) {
         )}
         {active && <button type="button" className="nl-find-clear" onClick={clear}><X size={14} aria-hidden="true" /> Clear</button>}
       </div>
-
-      {active && picks.length > 0 && (
-        <aside className="nl-taste-dna" aria-label="Your match profile">
-          <span className="nl-taste-dna-kicker"><Fingerprint size={14} aria-hidden="true" /> YOUR MATCH PROFILE</span>
-          <h3>{profile.headline}</h3>
-          {(profile.genres.length > 0 || profile.traits.length > 0) && <p>Leaning towards {profile.genres.length ? profile.genres.join(' and ') : 'a mix of genres'}{profile.traits.length ? `, with ${profile.traits.slice(0, 3).join(', ')} running through it` : ''}.</p>}
-          <div className="nl-taste-dna-chips">
-            {profile.loved && <span>Because you loved {profile.loved.title}</span>}
-            {language && <span>{language}</span>}
-            {verdicts.map((v) => <span key={v}>{VERDICTS.find((x) => x.value === v)?.label ?? v}</span>)}
-            {profile.traits.map((t) => <span key={t}>{t}</span>)}
-          </div>
-        </aside>
-      )}
 
       <div className="nl-find-results" aria-live="polite">
         {!active && <p className="nl-find-hint">Start typing above. Results appear as you type, with the reason each book matched.</p>}
@@ -192,7 +178,7 @@ export function RankingSearch({ books, openBook }: CommonProps) {
           openBook={openBook}
         />
         {norm(deferredMore) && <ResultGroup
-          title="Taste Match suggestions"
+          title="Taste Match SE suggestions"
           hint="Taste Match SE weighs your description against the clues available in each review and explains why certain books rise to the top. Scores are relative matches, not probabilities."
           matches={tasteMatches}
           byId={byId}
@@ -351,6 +337,20 @@ export function TasteMatchPanel({ books, openBook }: CommonProps) {
         <button type="button" onClick={surprise} disabled={!books.length}><Dices size={16} aria-hidden="true" /> Surprise me</button>
         <span>{active ? 'Picks one great read that fits your choices.' : 'Picks a Perfection or Go for it review at random.'}</span>
       </div>
+
+      {active && picks.length > 0 && (
+        <aside className="nl-taste-dna" aria-label="Your match profile">
+          <span className="nl-taste-dna-kicker"><Fingerprint size={14} aria-hidden="true" /> YOUR MATCH PROFILE</span>
+          <h3>{profile.headline}</h3>
+          {(profile.genres.length > 0 || profile.traits.length > 0) && <p>Leaning towards {profile.genres.length ? profile.genres.join(' and ') : 'a mix of genres'}{profile.traits.length ? `, with ${profile.traits.slice(0, 3).join(', ')} running through it` : ''}.</p>}
+          <div className="nl-taste-dna-chips">
+            {profile.loved && <span>Because you loved {profile.loved.title}</span>}
+            {language && <span>{language}</span>}
+            {verdicts.map((v) => <span key={v}>{VERDICTS.find((x) => x.value === v)?.label ?? v}</span>)}
+            {profile.traits.map((t) => <span key={t}>{t}</span>)}
+          </div>
+        </aside>
+      )}
 
       <div className="nl-find-results" aria-live="polite">
         {!active && <p className="nl-find-hint">Describe your ideal read, choose a mood, pick a book you loved, or filter by language or verdict to see your matches.</p>}

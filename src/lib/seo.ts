@@ -31,7 +31,7 @@ function describe(route: Route): { title: string; description?: string; noindex:
     case 'profile': return { title: route.username ? `${humanize(route.username)} — Reader Profile | ${SITE}` : `Your Profile | ${SITE}`, noindex };
     case 'analytics': return { title: `Reading Analytics | ${SITE}`, noindex };
     case 'live-rankings': return { title: `Live Book Rankings | ${SITE}`, noindex };
-    case 'taste-match': return { title: `Taste Match | ${SITE}`, noindex };
+    case 'taste-match': return { title: `Taste Match SE | ${SITE}`, noindex };
     case 'review-guidelines': return { title: `Review Guidelines | ${SITE}`, noindex };
     case 'about': return { title: `Explore | ${SITE}`, noindex };
     case 'privacy': return { title: `Privacy Policy | ${SITE}`, noindex };

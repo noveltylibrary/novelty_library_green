@@ -35,6 +35,9 @@ export function AboutPage({ navigate }: AboutPageProps) {
   const ordered = sections.filter((x) => x.active).sort((x, y) => x.sort_order - y.sort_order);
   const howIdx = ordered.findIndex((x) => x.layout === 'steps' || x.slug === 'how-it-works' || /how it works/i.test(x.title));
   const afterId = ordered.length ? ordered[howIdx >= 0 ? howIdx : ordered.length - 1].id : '';
+  // "Why share your review" moves to sit right below "How we rate".
+  const whyRaw = ordered.find((x) => x.slug === 'why-share' || /why share your review/i.test(x.title));
+  const why = whyRaw && whyRaw.id !== afterId ? whyRaw : undefined;
 
   // Plain-text copy saved with the old editor still shows, until sections are saved in the new editor.
   if (loaded && source === 'default' && legacy) return <><EditablePageOverride page={legacy} navigate={navigate} /><div className="container-prose mx-auto pb-12"><TasteMatchExplainer navigate={navigate} /></div></>;
@@ -50,7 +53,7 @@ export function AboutPage({ navigate }: AboutPageProps) {
       </nav>
       <div className="max-w-4xl mx-auto" aria-busy={!loaded}>
         {loaded
-          ? ordered.map((s) => (
+          ? ordered.filter((s) => s.id !== why?.id).map((s) => (
             <div key={s.id}>
               <AboutSectionBlock section={s} email={supportEmail} navigate={navigate} />
               <AdSenseAdSlot className="my-10" />
@@ -58,6 +61,7 @@ export function AboutPage({ navigate }: AboutPageProps) {
                 <>
                   <HowWeRate navigate={navigate} />
                   <AdSenseAdSlot className="my-12" />
+                  {why && <><AboutSectionBlock section={why} email={supportEmail} navigate={navigate} /><AdSenseAdSlot className="my-10" /></>}
                   <div className="nl-about-roadmap-gap"><RoadmapTable scrollTarget /></div>
                   <TasteMatchExplainer navigate={navigate} />
                   <AdSenseAdSlot className="my-10" />

@@ -75,7 +75,7 @@ export function TasteMatchEmblem() {
   const g = TM_GEO;
   const orbit: [number, number, number, string][] = [[24, 3.2, 3.4, '#f4be54'], [40, 24.6, 2.4, '#8b5cf6'], [9, 40, 2.8, '#38c7d7'], [3.5, 14, 1.9, '#f08fa8'], [26, 45, 2.1, '#f4be54']];
   return (
-    <svg className="tm-emblem" viewBox="-2 -2 52 52" role="img" aria-label="Taste Match: a thoughtful mind, a searching lens and a spark">
+    <svg className="tm-emblem" viewBox="-2 -2 52 52" role="img" aria-label="Taste Match SE: a thoughtful mind, a searching lens and a spark">
       <defs>
         <linearGradient id={`${id}b`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#0ea5b7" /><stop offset="1" stopColor="#6d5ce7" /></linearGradient>
         <linearGradient id={`${id}f`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#a8fbf4" /><stop offset="1" stopColor="#c7c9ff" /></linearGradient>

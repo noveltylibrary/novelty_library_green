@@ -104,8 +104,8 @@ export function TasteMatchPage({ navigate }: { navigate: (path: string) => void 
           </ul>}
         </section>
         {loading && <div className="nl-live-loading"><LoaderCircle size={20} className="nl-live-spin" /> Finding the published library…</div>}
-        {!loading && failed && <div className="nl-live-state"><strong>Taste Match couldn't load the library.</strong><span>Please try again in a moment.</span><button type="button" onClick={() => window.location.reload()}>Retry</button></div>}
-        {!loading && !failed && books.length === 0 && <div className="nl-live-state"><strong>No published reviews are available yet.</strong><span>Taste Match will recommend books as reviews enter the public library.</span></div>}
+        {!loading && failed && <div className="nl-live-state"><strong>Taste Match SE couldn't load the library.</strong><span>Please try again in a moment.</span><button type="button" onClick={() => window.location.reload()}>Retry</button></div>}
+        {!loading && !failed && books.length === 0 && <div className="nl-live-state"><strong>No published reviews are available yet.</strong><span>Taste Match SE will recommend books as reviews enter the public library.</span></div>}
         {!loading && !failed && books.length > 0 && <TasteMatchPanel books={books} openBook={(review) => navigate(`/review/${encodeURIComponent(bookSlug(review))}`)} />}
       </div>
     </div>

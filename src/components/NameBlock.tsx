@@ -60,8 +60,10 @@ function restScale(rest: string): number {
  * `major="last"` (authors, who are usually known by surname, e.g. Dostoyevsky): given names small first, surname large.
  * A leading title (Sir, Madam, Dr…) is always small. `size` is the full-size pixel font of a short large part.
  */
-export function NameBlock({ name, size, color = '#fff', restColor = 'rgba(255,255,255,.82)', shadow, className = 'font-serif', style, major = 'first' }: {
+export function NameBlock({ name, size, color = '#fff', restColor = 'rgba(255,255,255,.82)', shadow, className = 'font-serif', style, major = 'first', stacked = false }: {
   name: string; size: number; color?: string; restColor?: string; shadow?: string; className?: string; style?: CSSProperties; major?: 'first' | 'last';
+  /** Two rows instead of two columns: title + given names on one small line, the big name on the line below. */
+  stacked?: boolean;
 }) {
   const clean = sanitizeUserText(name, 120);
   const parsed = parseName(clean);
@@ -70,6 +72,16 @@ export function NameBlock({ name, size, color = '#fff', restColor = 'rgba(255,25
   const smallText = major === 'last' ? sn.given : parsed.rest;
   const bigSize = Math.max(14, size * firstNameScale(bigText));
   const smallSize = Math.max(11, Math.min(size * restScale(smallText), bigSize * 0.62));
+  if (stacked) {
+    const lead = [parsed.title, major === 'last' ? sn.given : parsed.rest].filter(Boolean).join(' ');
+    const leadSize = Math.max(14, Math.min(size * 0.42, bigSize * 0.5));
+    return (
+      <div className={className} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: Math.max(2, bigSize * 0.04), minWidth: 0, maxWidth: '100%', ...style }}>
+        {lead && <span style={{ fontSize: leadSize, fontWeight: 600, letterSpacing: '.03em', lineHeight: 1.15, color: restColor, textShadow: shadow, maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead}</span>}
+        <h2 style={{ margin: 0, fontSize: bigSize, fontWeight: 700, lineHeight: 1.08, color, textShadow: shadow, maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bigText}</h2>
+      </div>
+    );
+  }
   const title = parsed.title && (
     <span key="t" style={{ flex: '0 0 auto', fontSize: Math.max(11, Math.min(size * 0.34, bigSize * 0.4)), fontWeight: 600, letterSpacing: '.04em', lineHeight: 1.1, color: restColor, textShadow: shadow, opacity: .85, alignSelf: 'flex-end', paddingBottom: '.18em' }}>{parsed.title}</span>
   );

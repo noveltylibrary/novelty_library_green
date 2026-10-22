@@ -11,7 +11,7 @@ type AdminTab = 'control' | 'notifications' | 'taste';
 const TABS: { key: AdminTab; label: string; path: string; Icon: ComponentType<{ className?: string }> }[] = [
   { key: 'control', label: 'Control', path: '/admin/admins', Icon: ListChecks },
   { key: 'notifications', label: 'Notifications', path: '/admin/notifications', Icon: Bell },
-  { key: 'taste', label: 'Taste Match', path: '/admin/taste', Icon: TasteMatchIcon },
+  { key: 'taste', label: 'Taste Match SE', path: '/admin/taste', Icon: TasteMatchIcon },
 ];
 
 interface AdminManageAdminsPageProps {
@@ -121,7 +121,7 @@ export function AdminManageAdminsPage({ navigate, tab = 'control' }: AdminManage
           <h1 className="font-serif text-3xl font-semibold tracking-tight" style={{ color: 'var(--color-text)' }}>Control Settings</h1>
         </div>
         <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
-          Control admin access and contacts, notify your readers, and see how Taste Match works. Announcements, the roadmap and the Submit freeze live in WebApp Pages Moderation.
+          Control admin access and contacts, notify your readers, and see how Taste Match SE works. Announcements, the roadmap and the Submit freeze live in WebApp Pages Moderation.
         </p>
         <div className="mt-5 inline-flex flex-wrap items-center gap-1 rounded-xl p-1" role="tablist" aria-label="Control Settings sections" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }}>
           {TABS.map(({ key, label, path, Icon }) => (

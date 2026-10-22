@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from 'react';
+import { Fragment, useState, type ComponentType } from 'react';
 import { BookOpen, Users, Heart, PenTool, ArrowRight, ChevronDown, Globe2, ShieldCheck, Languages, Star, Library, Compass, Feather, BarChart3, Trophy, FileText, Newspaper, Instagram } from 'lucide-react';
 import type { AboutSection } from '@/lib/aboutSections';
 import { BLOG_URL, INSTAGRAM_URL } from '@/lib/links';
@@ -38,6 +38,30 @@ function Faq({ section, email }: { section: AboutSection; email: string }) {
   </div>;
 }
 
+/** "How it works": connected circles; only the clicked step opens its entry in the box below. */
+function StepsTabs({ section }: { section: AboutSection }) {
+  const [active, setActive] = useState(0);
+  const items = section.items;
+  const cur = items[Math.min(active, Math.max(0, items.length - 1))];
+  return <div className="mb-16">
+    <Heading title={section.title} subtitle={section.subtitle} />
+    <div className="nl-steps" role="tablist" aria-label={section.title}>
+      {items.map((it, i) => <Fragment key={`${it.title}-${i}`}>
+        {i > 0 && <span className={`nl-steps-line ${i <= active ? 'is-done' : ''}`} aria-hidden="true" />}
+        <button type="button" role="tab" id={`nl-step-tab-${i}`} aria-selected={active === i} aria-controls="nl-step-panel" onClick={() => setActive(i)} className={`nl-steps-node ${active === i ? 'is-on' : ''} ${i < active ? 'is-past' : ''}`}>
+          <span className="nl-steps-dot">{i + 1}</span>
+          <span className="nl-steps-label">{it.title}</span>
+        </button>
+      </Fragment>)}
+    </div>
+    {cur && <div key={active} id="nl-step-panel" role="tabpanel" aria-labelledby={`nl-step-tab-${active}`} className="surface-card nl-steps-box animate-fade-up">
+      <span className="nl-steps-kicker">STEP {active + 1}</span>
+      <h4 className="font-serif text-lg font-semibold mb-1" style={{ color: 'var(--color-text)' }}>{cur.title}</h4>
+      <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{cur.desc}</p>
+    </div>}
+  </div>;
+}
+
 export function AboutSectionBlock({ section, email, navigate }: { section: AboutSection; email: string; navigate: (path: string) => void }) {
   switch (section.layout) {
     case 'hero':
@@ -60,10 +84,11 @@ export function AboutSectionBlock({ section, email, navigate }: { section: About
     case 'pillars':
       return <div className="mb-16">
         <Heading title={section.title} subtitle={section.subtitle} />
-        <div className="space-y-6">
-          {section.items.map((it, i) => { const Icon = ICONS[it.icon || 'book'] || BookOpen; return <div key={`${it.title}-${i}`} className="surface-card p-6 flex gap-4 animate-fade-up nl-about-card" style={{ animationDelay: `${i * 100}ms` }}>
-            <div className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center" style={{ background: 'rgba(0, 151, 178, 0.1)' }}><Icon className="w-6 h-6" style={{ color: 'var(--color-teal-dark)' }} /></div>
-            <div className="min-w-0"><h3 className="font-serif text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>{it.title}</h3><p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{it.desc}</p></div>
+        <div className="nl-pillars">
+          {section.items.map((it, i) => { const Icon = ICONS[it.icon || 'book'] || BookOpen; return <div key={`${it.title}-${i}`} className="surface-card nl-pillar animate-fade-up nl-about-card" style={{ animationDelay: `${i * 100}ms` }}>
+            <div className="nl-orb" style={{ ['--i' as string]: i }} aria-hidden="true"><span className="nl-orb-ring" /><span className="nl-orb-ring is-2" /><Icon className="nl-orb-icon w-7 h-7" /></div>
+            <h3 className="font-serif text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>{it.title}</h3>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{it.desc}</p>
           </div>; })}
         </div>
       </div>;
@@ -85,15 +110,7 @@ export function AboutSectionBlock({ section, email, navigate }: { section: About
       </div>;
 
     case 'steps':
-      return <div className="mb-16">
-        <Heading title={section.title} subtitle={section.subtitle} />
-        <div className="space-y-4">
-          {section.items.map((it, i) => <div key={`${it.title}-${i}`} className="flex items-start gap-4 p-5 surface-card nl-about-card">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full gradient-teal text-white flex items-center justify-center text-sm font-bold">{i + 1}</div>
-            <div className="min-w-0"><h4 className="font-medium mb-1" style={{ color: 'var(--color-text)' }}>{it.title}</h4><p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{it.desc}</p></div>
-          </div>)}
-        </div>
-      </div>;
+      return <StepsTabs section={section} />;
 
     case 'faq':
       return <Faq section={section} email={email} />;

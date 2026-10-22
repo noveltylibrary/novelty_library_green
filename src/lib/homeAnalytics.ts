@@ -85,3 +85,29 @@ export function useCountUp(target: number, decimals = 0, duration = 1200): numbe
   const f = Math.pow(10, decimals);
   return Math.round(value * f) / f;
 }
+
+/** One rounding rule for the trust score everywhere (8.95 -> 9.0; plain toFixed would give 8.9). */
+export const formatTrust = (n: number): string => (Math.round((n + Number.EPSILON) * 10) / 10).toFixed(1);
+
+/** Loads home_analytics and keeps it fresh: refetches every minute, when the tab becomes visible and when the network returns. */
+export function useLiveHomeAnalytics(intervalMs = 60_000): { data: HomeAnalytics | null; failed: boolean } {
+  const [data, setData] = useState<HomeAnalytics | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    let have = false;
+    const load = () => {
+      fetchHomeAnalytics()
+        .then((d) => { if (alive) { have = true; setData(d); setFailed(false); } })
+        .catch(() => { if (alive && !have) setFailed(true); });
+    };
+    load();
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') load(); }, intervalMs);
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', load);
+    window.addEventListener('focus', load);
+    return () => { alive = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('online', load); window.removeEventListener('focus', load); };
+  }, [intervalMs]);
+  return { data, failed };
+}
