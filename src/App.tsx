@@ -65,9 +65,9 @@ function AppContent() {
   useEffect(() => { warmBlogPosts(); }, []);
 
   const currentRouteName = route.name;
-  const adsRestrictedRoute =
-    ['submit', 'account', 'profile', 'auth', 'analytics', 'notifications'].includes(currentRouteName) ||
-    currentRouteName.startsWith('admin');
+  // Ads are limited to fully loaded, substantive individual review pages. All other routes
+  // (including home, discovery tools, listings, profiles, forms, guidelines and admin) stay ad-free.
+  const adsRestrictedRoute = currentRouteName !== 'review';
 
   // Restricted pages must not display ads, including Auto Ads injected while the visitor
   // was on a public route. The attribute also hides any late Google-injected ad markup.

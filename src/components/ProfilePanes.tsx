@@ -28,11 +28,10 @@ export function buildReadingPane({ questions, rawAnswers, vis, publishedCount, r
       shelfNodes.push(<ShelfTable key={kind} kind={kind} value={rawAnswers[sq.key]}/>);
     }
   }
-  // Reading Challenge sits directly under Currently Reading. Visitors see it only when the reader set a goal and left it public;
-  // the owner always sees it (with the default goal until they choose one).
+  // Keep the Reading Goal visible in both the owner's profile and the public profile.
+  // Both views use the same shared pane; only owner-only editing controls differ.
   const savedChallenge=readChallenge(rawAnswers);
-  const showChallenge=isOwn||(!!savedChallenge&&savedChallenge.show);
-  const challengeNode=showChallenge?<ReadingChallengeWidget key="rc" challenge={savedChallenge??{goal:DEFAULT_GOAL,tier:'custom',show:true,extra:0}} read={readThisYear+(savedChallenge?.extra??0)} isOwn={isOwn} isDefault={!savedChallenge}/>:null;
+  const challengeNode=<ReadingChallengeWidget key="rc" challenge={savedChallenge??{goal:DEFAULT_GOAL,tier:'custom',show:true,extra:0}} read={readThisYear+(savedChallenge?.extra??0)} isOwn={isOwn} isDefault={!savedChallenge}/>;
   const hasReadingContent=!!currentReadingNode||!!challengeNode||shelfNodes.length>0;
   const readingPane=hasReadingContent?<div className="space-y-5">{currentReadingNode}{challengeNode}{shelfNodes.length>0&&<div className={`grid grid-cols-1 ${shelfNodes.length>1?'sm:grid-cols-2':''} gap-5 items-start`}>{shelfNodes}</div>}</div>:<TabEmpty icon={<BookMarked aria-hidden="true"/>} text="Nothing on this reader's shelf yet."/>;
 

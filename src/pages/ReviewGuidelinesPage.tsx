@@ -3,7 +3,6 @@ import { ArrowLeft, ChevronDown, X, ZoomIn } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { fetchReviewGuidelineSections, withNlRating, type ReviewGuidelineSection } from '@/lib/reviewGuidelines';
 import { GUIDE_CSS } from '@/components/ReviewGuidelinesModal';
-import AdSenseAdSlot from '@/components/AdSenseAdSlot';
 import { RatingGuideCard, RATING_GUIDE_CSS } from '@/components/RatingGuideCard';
 import { useOverlayHistory } from '@/lib/overlayHistory';
 
@@ -102,7 +101,6 @@ const PAGE_CSS = `
   /* Ad strip inside each dropdown: collapses to one slim line when there is no ad */
   .ng-ad { display: flex; justify-content: center; padding: 6px 22px 14px; background: rgba(255,255,255,.66); }
   .dark .novelty-guide-outer-wrapper .ng-ad { background: rgba(3,20,27,.44); }
-  .ng-ad .adsense-slot { margin: 0 auto; }
 
   @media (prefers-reduced-motion: reduce) {
     .ng-header-frame, .ng-header-frame::before, .ng-sheen::after, .ng-sparkles span, .ng-glow::before, .ng-figure figcaption::before, .novelty-section[open] .novelty-content { animation: none !important; }
@@ -168,11 +166,9 @@ function Reveal({ children, delay = 0, className = '' }: { children: ReactNode; 
 }
 
 function GuideSection({ section, index, navigate, showRating, onZoom }: { section: ReviewGuidelineSection; index: number; navigate: (path: string) => void; showRating: boolean; onZoom: (img: GuideImage) => void }) {
-  // The ad is only requested once the dropdown has been opened, and lives inside it.
-  const [everOpen, setEverOpen] = useState(index === 0);
-  const [open, setOpen] = useState(index === 0);
+  // Instructional sections stay free of ad placements.
   const imgs = sectionImages(section);
-  return <details className="novelty-section" id={`guide-section-${section.id}`} open={index === 0} onToggle={(e) => { const o = (e.currentTarget as HTMLDetailsElement).open; setOpen(o); if (o) setEverOpen(true); }}>
+  return <details className="novelty-section" id={`guide-section-${section.id}`} open={index === 0}>
     <summary><span style={{ display:'flex', alignItems:'center', gap:10 }}><span>{section.title}</span></span><svg className="arrow-icon" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg></summary>
     <div className="novelty-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(section.content_html, { ADD_ATTR: ['target', 'rel'], FORBID_TAGS: ['script','iframe','object','embed'] }) }} />
     {index === 0 && <div className="novelty-content" style={{ paddingTop: 0 }}><div className="rounded-3xl p-5" style={{background:'linear-gradient(135deg,rgba(8,145,178,.12),rgba(34,211,238,.06))',border:'1px solid rgba(8,145,178,.24)'}}>
@@ -188,7 +184,6 @@ function GuideSection({ section, index, navigate, showRating, onZoom }: { sectio
         <figcaption>{img.caption}</figcaption>
       </figure></Reveal>)}
     </div>}
-    {everOpen && <div className="ng-ad"><AdSenseAdSlot active={open} /></div>}
   </details>;
 }
 

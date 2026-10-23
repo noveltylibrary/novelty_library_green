@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CoverImg } from '@/components/CoverImg';
 import { ArrowLeft, ArrowRight, Activity, BarChart3, BookOpen, ChevronLeft, ChevronRight, LoaderCircle, TrendingUp, Trophy } from 'lucide-react';
-import { AdSenseAdSlot } from '@/components/AdSenseAdSlot';
 import type { Review } from '@/types/review';
 import { fetchReviews } from '@/lib/reviews';
 import { supabase } from '@/lib/supabase';
@@ -194,7 +193,6 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
   const [books, setBooks] = useState<RankedBook[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [showSideAds, setShowSideAds] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -203,16 +201,6 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
       .catch(() => { if (alive) setError(true); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, []);
-
-  // Ad rails are desktop-only. The main content is rendered first, and no ad slot
-  // is mounted or requested on phone-sized viewports.
-  useEffect(() => {
-    const media = window.matchMedia('(min-width: 1440px)');
-    const update = () => setShowSideAds(media.matches);
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
   }, []);
 
   const byNl = useMemo(() => books.filter((book) => book.nlRating != null).sort((a, b) => (b.nlRating ?? -1) - (a.nlRating ?? -1) || b.review.rw_rating - a.review.rw_rating || sortTitle(a, b)), [books]);
@@ -277,8 +265,6 @@ export function LiveRankingsPage({ navigate }: { navigate: (path: string) => voi
             </nav>
         <p className="nl-live-footnote">Explore published reviews ranked by NL Rating or R/W stars. Use the search above to find books by genre, language, traits or author. For personalized recommendations, open Taste Match SE.</p>
       </div>
-      {showSideAds && <aside className="nl-live-ad-rail nl-live-ad-rail-left" aria-label="Advertisement"><AdSenseAdSlot className="nl-live-rail-ad-slot" active={showSideAds} /></aside>}
-      {showSideAds && <aside className="nl-live-ad-rail nl-live-ad-rail-right" aria-label="Advertisement"><AdSenseAdSlot className="nl-live-rail-ad-slot" active={showSideAds} /></aside>}
       </div>
     </div>
   );

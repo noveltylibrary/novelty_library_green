@@ -2,7 +2,6 @@ import { useSupportEmail } from '@/lib/siteSettings';
 import { useEditableOverride } from '@/components/EditablePageOverride';
 import { useAboutSections } from '@/lib/aboutSections';
 import { AboutSectionBlock } from '@/components/AboutSectionsView';
-import AdSenseAdSlot from '@/components/AdSenseAdSlot';
 import { HowWeRate } from '@/components/HowWeRate';
 import { RoadmapTable } from '@/components/RoadmapTable';
 
@@ -11,7 +10,7 @@ interface AboutTabProps {
 }
 
 /**
- * Explore → About tab: the editorial manifesto and platform background.
+ * Explore → About tab: the editorial manifesto and platform background. This content page is ad-free.
  * The Rankings, Analytics and Taste Match explanations live in the Discovery tab (see DiscoveryTab).
  * The page frame (top padding, back/home bar, tabs) is provided by ExplorePage.
  */
@@ -45,14 +44,11 @@ export function AboutTab({ navigate }: AboutTabProps) {
         ? ordered.filter((s) => s.id !== why?.id).map((s) => (
           <div key={s.id}>
             <AboutSectionBlock section={s} email={supportEmail} navigate={navigate} />
-            <AdSenseAdSlot className="my-10" />
             {s.id === afterId && (
               <>
                 <HowWeRate navigate={navigate} />
-                <AdSenseAdSlot className="my-12" />
-                {why && <><AboutSectionBlock section={why} email={supportEmail} navigate={navigate} /><AdSenseAdSlot className="my-10" /></>}
+                {why && <AboutSectionBlock section={why} email={supportEmail} navigate={navigate} />}
                 <div className="nl-about-roadmap-gap"><RoadmapTable scrollTarget /></div>
-                <AdSenseAdSlot className="my-10" />
               </>
             )}
           </div>

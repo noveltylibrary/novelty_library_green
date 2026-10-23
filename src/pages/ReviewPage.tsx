@@ -363,7 +363,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
 
             <ReadNext current={review} navigate={navigate} />
 
-            <AdSenseAdSlot className="mt-8 mb-8" />
+            {review.is_published && review.review_text.trim().length >= 600 && <AdSenseAdSlot contentReady className="mt-8 mb-8" />}
 
             {/* Rating definitions */}
             <section className="mt-8 p-4 rounded-xl" style={{ background: 'var(--color-paper)', border: '1px solid var(--color-border)' }} aria-labelledby="nl-rating-defs-h">

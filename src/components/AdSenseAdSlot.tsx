@@ -3,6 +3,8 @@ import { useCookieConsent } from '@/lib/cookieConsent';
 
 interface AdSenseAdSlotProps {
   className?: string;
+  /** Must be explicitly true only on a public page with substantial, loaded publisher content. Defaults to false. */
+  contentReady?: boolean;
   /** When false the ad is not requested yet (e.g. inside a closed dropdown). Default true. */
   active?: boolean;
 }
@@ -48,7 +50,7 @@ function loadAdSenseScript(): Promise<void> {
  * Cookie choice drives the ad type: "Accept all" = personalised, "Essential only" = non-personalised.
  * Renders nothing until the reader has chosen a cookie option.
  */
-export function AdSenseAdSlot({ className = '', active = true }: AdSenseAdSlotProps) {
+export function AdSenseAdSlot({ className = '', contentReady = false, active = true }: AdSenseAdSlotProps) {
   const consent = useCookieConsent();
   const [state, setState] = useState<SlotState>('loading');
   const insRef = useRef<HTMLModElement>(null);
@@ -56,7 +58,7 @@ export function AdSenseAdSlot({ className = '', active = true }: AdSenseAdSlotPr
   const enabled = !!CLIENT && !!SLOT;
 
   useEffect(() => {
-    if (!enabled || !consent || !active || pushed.current) return;
+    if (!enabled || !consent || !active || !contentReady || pushed.current) return;
     const ins = insRef.current;
     if (!ins) return;
     let cancelled = false;
@@ -81,9 +83,9 @@ export function AdSenseAdSlot({ className = '', active = true }: AdSenseAdSlotPr
     }).catch(() => { if (!cancelled) setState('empty'); });
 
     return () => { cancelled = true; observer.disconnect(); window.clearTimeout(timeout); };
-  }, [enabled, consent, active]);
+  }, [enabled, consent, active, contentReady]);
 
-  if (!enabled || !consent || !active) return null;
+  if (!enabled || !consent || !active || !contentReady) return null;
 
   return (
     <div className={`adsense-slot ${className}`} data-state={state} aria-label="Advertisement">

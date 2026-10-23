@@ -4,7 +4,6 @@ import type { Review } from '@/types/review';
 import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import { loadReviewCached, fetchReviews } from '@/lib/reviews';
 import { CommunityReviewCard, type CommunityReviewCardData } from '@/components/CommunityReviewCard';
-import { AdSenseAdSlot } from '@/components/AdSenseAdSlot';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { useAuth } from '@/lib/auth';
 import { VERDICTS, normalizeVerdict } from '@/lib/verdict';
@@ -19,10 +18,9 @@ const SORTS: { value: SortKey; label: string }[] = [
   { value: 'liked', label: 'Most liked' },
   { value: 'title', label: 'Title A–Z' },
 ];
-/** First batch, and the size of every "Load more" batch. An ad block follows every 8th review shown. */
+/** First batch and the size of every "Load more" batch. */
 const FIRST_BATCH = 16;
 const BATCH = 8;
-const AD_EVERY = 8;
 /** Below this many matches, a Taste Match SE card is offered under the list. */
 const FALLBACK_BELOW = 16;
 
@@ -311,7 +309,6 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
                   onRate={() => void openFeedback(item)}
                   onReview={() => void openFeedback(item)}
                 />
-                {(i + 1) % AD_EVERY === 0 && <div className="col-span-full"><AdSenseAdSlot /></div>}
               </Fragment>
             ))}
           </div>

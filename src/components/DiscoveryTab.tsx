@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { ArrowRight, BarChart3, Globe2, Heart, Languages, Library, ShieldCheck, Star, Trophy, Users, Layers, Filter, Sparkles } from 'lucide-react';
-import AdSenseAdSlot from '@/components/AdSenseAdSlot';
 import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import { TasteMatchPreview } from '@/components/TasteMatchPreview';
 import { RankingsIcon, AnalyticsIcon } from '@/components/ExploreIcons';
@@ -20,8 +19,7 @@ function Points({ items }: { items: Point[] }) {
 }
 
 /**
- * Explore → Discovery tab (default). Three engine cards in a fixed order, with an ad block between cards 2 and 3
- * and another at the bottom of the scroll, just above the page footer.
+ * Explore → Discovery tab (default). Interactive discovery tools are ad-free.
  */
 export function DiscoveryTab({ navigate }: DiscoveryTabProps) {
   return (
@@ -73,9 +71,6 @@ export function DiscoveryTab({ navigate }: DiscoveryTabProps) {
         <button type="button" className="nl-disc-jump" onClick={() => navigate('/analytics')}><BarChart3 aria-hidden="true" size={16} /><span>Open Analytics</span><ArrowRight aria-hidden="true" size={16} /></button>
       </article>
 
-      {/* Ad Block 1 — between Card 2 and Card 3 */}
-      <div className="nl-disc-ad" data-slot="discovery-ad-1"><AdSenseAdSlot className="my-10" /></div>
-
       {/* Card 3 — Taste Match SE */}
       <article className="surface-card nl-disc-card animate-fade-up" data-accent="taste" id="discovery-taste-match" aria-labelledby="nl-disc-taste-title" style={{ animationDelay: '80ms' }}>
         <header className="nl-disc-head">
@@ -97,8 +92,6 @@ export function DiscoveryTab({ navigate }: DiscoveryTabProps) {
         <button type="button" className="nl-disc-jump" onClick={() => navigate('/taste-match')}><Globe2 aria-hidden="true" size={16} /><span>Explore Taste Match SE</span><ArrowRight aria-hidden="true" size={16} /></button>
       </article>
 
-      {/* Ad Block 2 — bottom of the Discovery scroll, before the page footer */}
-      <div className="nl-disc-ad" data-slot="discovery-ad-2"><AdSenseAdSlot className="mt-10 mb-2" /></div>
     </div>
   );
 }

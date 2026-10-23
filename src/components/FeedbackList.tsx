@@ -1,5 +1,4 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { AdSenseAdSlot } from '@/components/AdSenseAdSlot';
 import { CornerDownRight, Loader2, MessageCircle, Pencil, Send, Star, Trash2 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { formatShortDate } from '@/lib/format';
@@ -93,7 +92,7 @@ export function FeedbackList({ entries, currentUserId, user = null, profile = nu
 
   return (
     <ul className="space-y-3">
-      {entries.map((e, idx) => {
+      {entries.map((e) => {
         const mine = e.user_id === currentUserId;
         const thread = byFeedback.get(e.id) ?? [];
         const roots = thread.filter((r) => !r.parent_id);
@@ -155,8 +154,6 @@ export function FeedbackList({ entries, currentUserId, user = null, profile = nu
               </div>
             )}
           </li>
-          {/* An ad after every third reader review (never after the last one). */}
-          {(idx + 1) % 3 === 0 && idx < entries.length - 1 && <li className="list-none"><AdSenseAdSlot className="my-3" /></li>}
           </Fragment>
         );
       })}

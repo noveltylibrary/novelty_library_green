@@ -1,3 +1,10 @@
+## 2.42.0 — AdSense content-safety update
+
+- Frontend-only: ads are limited to published individual reviews with substantial loaded text; removed risky placements from interactive, listing, utility, and user-generated-content surfaces.
+- Shared ad component now requires an explicit content-ready signal.
+- Homepage now surfaces up to three published community reviews; privacy copy explains the narrower ad placement rules.
+- No backend, Supabase, database, or API changes.
+
 # v2.30 — Explore page: About / Discovery tabs
 
 - Explore now has two tabs: **About** (manifesto and platform background) and **Discovery ⚡** (default), at `/explore/about` and `/explore`. The old `/about` link still opens About.

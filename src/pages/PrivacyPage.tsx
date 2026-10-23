@@ -142,7 +142,7 @@ export function PrivacyPage({ navigate }: PrivacyPageProps) {
             <section>
               <h2 className="font-serif text-xl font-semibold mb-2">Cookies, Advertising &amp; Local Storage</h2>
               <p>
-                Novelty Library may show Google AdSense advertisements on public pages. Ads load only after you accept the cookie notice. Google and its partners may use cookies to serve and measure ads; you can decline, in which case non-personalized or no ads are shown. Ads, affiliate or buy links never change which books are shown or how they rank. We also keep small items in your browser (for example your theme, a cached copy of site content and your cookie choice) so pages load faster; you can clear them in your browser settings.
+                Novelty Library limits Google AdSense placements to eligible individual published review pages with substantial review text; interactive tools, listings, profiles, forms, and other utility pages are kept ad-free. An ad request is made only after you choose a cookie option. Google and its partners may use cookies to serve and measure ads; choosing essential-only consent requests non-personalized ads, while no ad request is made before a choice is recorded. Ads, affiliate or buy links never change which books are shown or how they rank. We also keep small items in your browser (for example your theme, a cached copy of site content and your cookie choice) so pages load faster; you can clear them in your browser settings.
               </p>
             </section>
 
