@@ -368,3 +368,23 @@ export function getTmaiMetricReadiness(books: SearchBook[]): { total: number; wi
   }
   return { total: TMAI40_METRICS.length, withCatalogSupport: supported.size, metadataOnly: TMAI40_METRICS.filter((spec) => spec.metadataOnly).length };
 }
+
+
+/**
+ * Conservative, local proofreading helper. It fixes common mechanical issues only; it does not
+ * invent review opinions or rewrite the reviewer's voice. User explicitly chooses when to apply it.
+ */
+export function proofreadAndPolishReview(input: string): { text: string; changes: string[] } {
+  let text = input;
+  const changes: string[] = [];
+  const apply = (next: string, label: string) => { if (next !== text) { text = next; if (!changes.includes(label)) changes.push(label); } };
+  apply(text.replace(/[ \t]+([,.;:!?])/g, '$1'), 'Removed spaces before punctuation');
+  apply(text.replace(/([,;:!?])(?=\S)/g, '$1 '), 'Added missing spaces after punctuation');
+  apply(text.replace(/\.{4,}/g, '...'), 'Normalized repeated full stops');
+  apply(text.replace(/([!?])\1{2,}/g, '$1$1'), 'Reduced repeated punctuation');
+  apply(text.replace(/\bi\b/g, 'I'), 'Capitalized “I”');
+  apply(text.replace(/(^|[.!?]\s+)([a-z])/g, (_m, prefix: string, letter: string) => prefix + letter.toUpperCase()), 'Capitalized sentence beginnings');
+  apply(text.replace(/\s{2,}/g, ' '), 'Removed extra spaces');
+  apply(text.replace(/\s+([.!?])/g, '$1'), 'Cleaned sentence punctuation');
+  return { text: text.trim(), changes };
+}

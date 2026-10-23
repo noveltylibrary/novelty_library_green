@@ -78,7 +78,7 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
   const [verdictFilter, setVerdictFilter] = useState<string>('');
   const [authorQ, setAuthorQ] = useState('');
   const [reviewerQ, setReviewerQ] = useState('');
-  const [suggestFor, setSuggestFor] = useState<'author' | 'reviewer' | null>(null);
+  const [suggestFor, setSuggestFor] = useState<'author' | null>(null);
   const [visible, setVisible] = useState(FIRST_BATCH);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef<HTMLElement | null>(null);
@@ -128,7 +128,7 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
     [reviews],
   );
 
-  // Reviewer name (display name) by review id: the Instagram handle alone is often empty, so names are searchable and suggested too.
+  // Reviewer identity can be filtered only by manually entered text; never expose reviewer suggestions or identity chips.
   const reviewerNameById = useMemo(() => new Map(reviews.map((r) => [r.id, (r.reviewer_name || '').trim()])), [reviews]);
 
   const filtersActive = !!(selectedGenre || search.trim() || verdictFilter || authorQ.trim() || reviewerQ.trim());
@@ -165,22 +165,13 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
   useEffect(() => { setVisible(FIRST_BATCH); }, [selectedGenre, search, verdictFilter, authorQ, reviewerQ, sort]);
 
   const authors = useMemo(() => Array.from(new Set(communityItems.map((i) => i.author).filter(Boolean))).sort(), [communityItems]);
-  // Every distinct reviewer: display names and Instagram handles, de-duplicated case-insensitively.
-  const reviewers = useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const r of reviews) for (const v of [r.reviewer_name, r.reviewer_handle]) {
-      const t = (v || '').trim();
-      if (t && !seen.has(t.toLowerCase())) seen.set(t.toLowerCase(), t);
-    }
-    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
-  }, [reviews]);
   const suggestions = useMemo(() => {
-    const list = suggestFor === 'author' ? authors : suggestFor === 'reviewer' ? reviewers : [];
-    const q = (suggestFor === 'author' ? authorQ : reviewerQ).trim().toLowerCase().replace(/^@/, '');
+    const list = suggestFor === 'author' ? authors : [];
+    const q = authorQ.trim().toLowerCase().replace(/^@/, '');
     const starts = list.filter((x) => x.toLowerCase().replace(/^@/, '').startsWith(q));
     const rest = q ? list.filter((x) => !starts.includes(x) && x.toLowerCase().includes(q)) : [];
     return [...starts, ...rest].filter((x) => x.toLowerCase().replace(/^@/, '') !== q).slice(0, 12);
-  }, [suggestFor, authors, reviewers, authorQ, reviewerQ]);
+  }, [suggestFor, authors, authorQ]);
   // Sort counts as active only when it is not the default; the search box is always visible, so it is not counted here.
   const activeFilterCount = [sort !== 'newest', !!verdictFilter, !!selectedGenre, !!authorQ.trim(), !!reviewerQ.trim()].filter(Boolean).length;
   // The dropdown closes on an outside click or Escape.
@@ -257,14 +248,14 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
                 <input type="text" value={authorQ} maxLength={80} onFocus={() => setSuggestFor('author')} onChange={(e) => { setAuthorQ(e.target.value); setSuggestFor('author'); }} placeholder="Type an author" autoComplete="off" />
               </label>
               <label><span>Reviewer</span>
-                <input type="text" value={reviewerQ} maxLength={80} onFocus={() => setSuggestFor('reviewer')} onChange={(e) => { setReviewerQ(e.target.value); setSuggestFor('reviewer'); }} placeholder="Type a reviewer" autoComplete="off" />
+                <input type="text" value={reviewerQ} maxLength={80} onChange={(e) => setReviewerQ(e.target.value)} placeholder="Search reviewer text" aria-label="Filter reviews by reviewer text" autoComplete="off" />
               </label>
             </div>
             {suggestFor && suggestions.length > 0 && (
-              <div className="nl-rv-suggest" role="listbox" aria-label={suggestFor === 'author' ? 'Author suggestions' : 'Reviewer suggestions'}>
+              <div className="nl-rv-suggest" role="listbox" aria-label="Author suggestions">
                 {suggestions.map((name) => (
                   <button key={name} type="button" role="option" aria-selected="false" onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => { if (suggestFor === 'author') setAuthorQ(name); else setReviewerQ(name); setSuggestFor(null); }}>{name}</button>
+                    onClick={() => { setAuthorQ(name); setSuggestFor(null); }}>{name}</button>
                 ))}
               </div>
             )}
@@ -315,7 +306,7 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
 
           {filteredCommunity.length > visible && (
             <div className="nl-rv-more">
-              <button type="button" className="nl-action-btn" onClick={() => setVisible((v) => v + BATCH)}>
+              <button type="button" className="nl-action-btn nl-rv-load-more" onClick={() => setVisible((v) => v + BATCH)}>
                 Load more <span>({filteredCommunity.length - visible} left)</span>
               </button>
             </div>

@@ -28,10 +28,14 @@ export function buildReadingPane({ questions, rawAnswers, vis, publishedCount, r
       shelfNodes.push(<ShelfTable key={kind} kind={kind} value={rawAnswers[sq.key]}/>);
     }
   }
-  // Keep the Reading Goal visible in both the owner's profile and the public profile.
-  // Both views use the same shared pane; only owner-only editing controls differ.
+  // The eye control in Edit Profile is the public-visibility switch for this widget.
+  // Owners can always see their own challenge (including while hidden); visitors only
+  // receive/render it when the saved challenge explicitly allows public visibility.
   const savedChallenge=readChallenge(rawAnswers);
-  const challengeNode=<ReadingChallengeWidget key="rc" challenge={savedChallenge??{goal:DEFAULT_GOAL,tier:'custom',show:true,extra:0}} read={readThisYear+(savedChallenge?.extra??0)} isOwn={isOwn} isDefault={!savedChallenge}/>;
+  const challengeIsPublic = savedChallenge?.show !== false;
+  const challengeNode = (isOwn || challengeIsPublic)
+    ? <ReadingChallengeWidget key="rc" challenge={savedChallenge??{goal:DEFAULT_GOAL,tier:'custom',show:true,extra:0}} read={readThisYear+(savedChallenge?.extra??0)} isOwn={isOwn} isDefault={!savedChallenge}/>
+    : null;
   const hasReadingContent=!!currentReadingNode||!!challengeNode||shelfNodes.length>0;
   const readingPane=hasReadingContent?<div className="space-y-5">{currentReadingNode}{challengeNode}{shelfNodes.length>0&&<div className={`grid grid-cols-1 ${shelfNodes.length>1?'sm:grid-cols-2':''} gap-5 items-start`}>{shelfNodes}</div>}</div>:<TabEmpty icon={<BookMarked aria-hidden="true"/>} text="Nothing on this reader's shelf yet."/>;
 

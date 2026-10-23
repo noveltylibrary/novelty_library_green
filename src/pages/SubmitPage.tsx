@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ArrowLeft, Send, Star, PenTool, Search, Upload,
   Save, Lock, Eye, Edit3, Download, AlertCircle, X,
-  Clock, BookOpen, ClipboardCheck, Heart, Plus, Trash2, FileText, ChevronRight
+  Clock, BookOpen, ClipboardCheck, Heart, Plus, Trash2, FileText, ChevronRight, Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useSubmitFreeze } from '@/lib/submitFreeze';
@@ -14,6 +14,7 @@ import { submitReview, searchOpenLibrary, uploadCoverImage, saveDraft, loadDraft
 import { getErrorMessage } from '@/lib/format';
 import type { Review } from '@/types/review';
 import { useOverlayHistory } from '@/lib/overlayHistory';
+import { proofreadAndPolishReview } from '@/lib/tmai40Engine';
 
 interface SubmitPageProps {
   navigate: (path: string) => void;
@@ -1680,6 +1681,7 @@ function VerdictField({ value, onChange, showError }: { value: Verdict | ''; onC
 }
 
 function ReviewTextField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [polishNote, setPolishNote] = useState('');
   const chars = value.length;
   const words = value.trim() ? value.trim().split(/\s+/).length : 0;
   const readSeconds = Math.max(1, Math.ceil((words / 240) * 60));
@@ -1687,6 +1689,13 @@ function ReviewTextField({ value, onChange }: { value: string; onChange: (value:
     <div>
       <div className="flex items-center justify-between gap-3 mb-2">
         <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Your Review *</label>
+      </div>
+      <div className="mb-2 rounded-xl border p-3" style={{ borderColor: 'var(--color-border, rgba(100,116,139,.28))', background: 'var(--color-paper)' }}>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="min-w-0"><p className="text-sm font-semibold">Review Helper <span className="text-xs font-normal" style={{ color: 'var(--color-text-muted)' }}>· Taste Match</span></p><p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Optional, local proofreading. Your review changes only when you choose to apply it.</p></div>
+          <button type="button" onClick={() => { const result = proofreadAndPolishReview(value); if (result.text !== value) { onChange(result.text); setPolishNote(result.changes.join(' · ')); } else setPolishNote(value.trim() ? 'No obvious mechanical fixes found.' : 'Write or paste your review first.'); }} className="btn-ghost !w-auto inline-flex items-center gap-2"><Sparkles className="w-4 h-4" /> Proofread &amp; Polish</button>
+        </div>
+        {polishNote && <p className="text-xs mt-2" role="status" style={{ color: 'var(--color-text-muted)' }}>{polishNote}</p>}
       </div>
       <textarea
         required

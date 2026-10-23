@@ -4,6 +4,23 @@ import { fetchReviews } from '@/lib/reviews';
 import { supabase } from '@/lib/supabase';
 import { cleanTraits, type SearchBook } from '@/lib/rankingSearch';
 
+/** Browser-only Open Library lookup for title/author/year/cover metadata. */
+export interface OpenLibraryBookMetadata { title: string; author: string; publishYear: number | null; coverUrl: string | null; isbn: string | null; key: string | null; }
+const openLibraryCache = new Map<string, OpenLibraryBookMetadata[]>();
+export async function lookupOpenLibraryBook(query: string, signal?: AbortSignal): Promise<OpenLibraryBookMetadata[]> {
+  const q = query.trim();
+  if (q.length < 3) return [];
+  const key = q.toLocaleLowerCase();
+  if (openLibraryCache.has(key)) return openLibraryCache.get(key)!;
+  const response = await fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(q)}&limit=5&fields=key,title,author_name,first_publish_year,cover_i,isbn`, { signal });
+  if (!response.ok) throw new Error('Open Library lookup failed');
+  const data = await response.json() as { docs?: Array<{key?:string;title?:string;author_name?:string[];first_publish_year?:number;cover_i?:number;isbn?:string[]}> };
+  const results = (data.docs ?? []).map((book) => ({ title: book.title ?? '', author: book.author_name?.[0] ?? '', publishYear: book.first_publish_year ?? null, coverUrl: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : null, isbn: book.isbn?.[0] ?? null, key: book.key ?? null })).filter((book) => book.title);
+  openLibraryCache.set(key, results);
+  return results;
+}
+
+
 let listPromise: Promise<Review[]> | null = null;
 let listAt = 0;
 /** One shared fetch of the published reviews, re-used across pages for a few minutes. */

@@ -56,21 +56,27 @@ export function countReadInYear(reviews: { review_date?: string | null }[], year
 
 export interface Pace { pct: number; tone: 'done' | 'ahead' | 'on' | 'behind' | 'start'; text: string }
 
-/** Friendly pacing line from books read, the goal and today's date. */
+/** Friendly, explicitly personalized pacing line from this reader's count, goal and today's date. */
 export function paceFor(read: number, goal: number, now: Date = new Date()): Pace {
-  const pct = goal > 0 ? Math.min(100, Math.round((read / goal) * 100)) : 0;
-  const left = Math.max(0, goal - read);
-  if (left === 0) return { pct: 100, tone: 'done', text: read > goal ? `Goal beaten by ${read - goal} ${read - goal === 1 ? 'book' : 'books'}. Wonderful reading year.` : 'Goal reached. Wonderful reading year.' };
+  const safeGoal = Math.max(1, Math.floor(goal || DEFAULT_GOAL));
+  const safeRead = Math.max(0, Math.floor(read || 0));
+  const pct = Math.min(100, Math.round((safeRead / safeGoal) * 100));
+  const left = Math.max(0, safeGoal - safeRead);
+  const books = (n: number) => `${n} ${n === 1 ? 'book' : 'books'}`;
+  if (left === 0) {
+    return { pct: 100, tone: 'done', text: safeRead > safeGoal
+      ? `Your goal was ${books(safeGoal)} and you've logged ${books(safeRead)}—${books(safeRead - safeGoal)} over your personal target. Wonderful reading year.`
+      : `You've reached your personal goal of ${books(safeGoal)}. Wonderful reading year.` };
+  }
   const start = new Date(now.getFullYear(), 0, 1).getTime();
   const end = new Date(now.getFullYear() + 1, 0, 1).getTime();
   const elapsed = Math.min(1, Math.max(0, (now.getTime() - start) / (end - start)));
-  const expected = goal * elapsed;
-  const diff = read - expected;
+  const expected = safeGoal * elapsed;
+  const diff = safeRead - expected;
   const monthsLeft = Math.max(1, 12 - now.getMonth() - (now.getDate() > 15 ? 1 : 0));
   const perMonth = Math.ceil(left / monthsLeft);
-  const books = (n: number) => `${n} ${n === 1 ? 'book' : 'books'}`;
-  if (read === 0 && elapsed < 0.04) return { pct, tone: 'start', text: `A fresh year. ${books(left)} to go, about ${perMonth} a month.` };
-  if (diff >= 1) return { pct, tone: 'ahead', text: `Ahead of pace by ${books(Math.floor(diff))}. ${books(left)} to go.` };
-  if (diff > -1) return { pct, tone: 'on', text: `Right on pace. ${books(left)} to go, about ${perMonth} a month.` };
-  return { pct, tone: 'behind', text: `${books(Math.ceil(-diff))} behind pace. ${books(left)} to go, about ${perMonth} a month catches you up.` };
+  if (safeRead === 0 && elapsed < 0.04) return { pct, tone: 'start', text: `Your personal target is ${books(safeGoal)} this year. Log each book you finish; you have ${books(left)} to go, about ${perMonth} a month.` };
+  if (diff >= 1) return { pct, tone: 'ahead', text: `Your goal is ${books(safeGoal)} and you've logged ${books(safeRead)}—you're about ${books(Math.floor(diff))} ahead of this year's pace. ${books(left)} left to reach your goal.` };
+  if (diff > -1) return { pct, tone: 'on', text: `You're on pace for your personal goal of ${books(safeGoal)}. You've logged ${books(safeRead)}; ${books(left)} left, about ${perMonth} a month to finish by year-end.` };
+  return { pct, tone: 'behind', text: `Your goal is ${books(safeGoal)} and you've logged ${books(safeRead)} so far. You're about ${books(Math.ceil(-diff))} below the pace for this point in the year; ${books(left)} left, around ${perMonth} a month to reach your goal by year-end.` };
 }

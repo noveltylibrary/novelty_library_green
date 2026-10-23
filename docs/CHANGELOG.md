@@ -1,9 +1,25 @@
-## 2.42.0 — AdSense content-safety update
+## 2.45.0 — Mobile navigation polish
+- Enlarged Taste Match SE bottom shortcuts into a readable full-width three-button row on phones.
+- Kept homepage Submit Nominations and Reviews actions in one two-column row on narrow phones.
+- Frontend CSS only; no backend changes.
 
+## 2.43.0 — Privacy refinements
+
+- Removed reviewer autocomplete suggestions from Community Reviews; reviewer filtering is plain text only. Author suggestions remain unchanged.
+- Hid detailed reading-goal pace commentary from public profiles; it remains visible to the profile owner.
+- Frontend-only; no backend or Supabase changes.
+
+## 2.42.0 — AdSense content-safety update
 - Frontend-only: ads are limited to published individual reviews with substantial loaded text; removed risky placements from interactive, listing, utility, and user-generated-content surfaces.
 - Shared ad component now requires an explicit content-ready signal.
 - Homepage now surfaces up to three published community reviews; privacy copy explains the narrower ad placement rules.
 - No backend, Supabase, database, or API changes.
+
+## 2.41.0 — Discovery, Reviews and Reading Goal clarity
+- Taste Match SE steps are interactive nodes with SVG icons and slider controls.
+- Removed the redundant Discovery eyebrow and improved the icon-led introduction.
+- Distinguished Reviews “Load more” from the shortcut buttons.
+- Reading Challenge pacing copy now explicitly describes the reader’s personal goal and progress.
 
 # v2.30 — Explore page: About / Discovery tabs
 
@@ -505,3 +521,19 @@ Signed-in users can still read `community_reviews.email` through the API; closin
 - Settings (notification categories + content preferences) saved per account in `user_settings` and enforced by a gate on `notifications`; falls back to the old sign-in-record storage until the SQL is run.
 - New-device and new-country sign-in alerts (shown once each) and an Accounts -> Login devices list.
 - My Reviews list synced to the account (NL_SQL_220); share sheet, Archive/My Reviews popup, frosted Accounts & Settings, About on own profile.
+
+## 2.44.0 — Reading Goal visibility fix
+- Fixed the Edit Profile eye toggle so hiding Reading Goal actually hides the Reading Challenge widget from public profiles.
+- The owner retains access to their own widget. No backend/schema/API changes.
+
+
+## 2.46.0 — Minimal Reviews Load More button
+- Removed the teal gradient, heavy shadow, hover movement, and animated effects from the Reviews page Load more button.
+- Kept a simple text label with a subtle border, in both light and dark themes.
+- No backend, database, or API changes.
+
+
+## 2.47.0 — Open Library metadata lookup and optional Review Helper
+- Added browser-side Open Library title lookup utility with author, first publication year, cover, ISBN and work key metadata; results are cached in memory for the current session.
+- Added optional Review Helper / Taste Match proofreading control in the submission composer. It applies conservative local mechanical corrections only when the user clicks it; it does not auto-edit submissions or call an AI service.
+- No database schema, Supabase SQL, backend functions or API changes.
