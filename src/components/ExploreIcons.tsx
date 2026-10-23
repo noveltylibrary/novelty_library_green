@@ -24,8 +24,9 @@ export function ZapIcon({ size = 18, ...props }: IconProps) {
 export function AboutTabIcon({ size = 18, ...props }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" {...base(size)} {...props}>
-      <path d="M12 6.6C10.3 5.3 8 4.9 4.5 5.1v12.5c3.5-.2 5.8.2 7.5 1.4 1.7-1.2 4-1.6 7.5-1.4V5.1c-3.5-.2-5.8.2-7.5 1.5Z" fill="currentColor" fillOpacity=".12" />
-      <path d="M12 6.6V19" />
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5.2" />
+      <path d="M12 7.8h.01" />
     </svg>
   );
 }
