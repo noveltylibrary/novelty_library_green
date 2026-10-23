@@ -1,5 +1,5 @@
-import { Fragment, useState, useEffect, useMemo } from 'react';
-import { Search, ArrowUp, Users, Trophy, PenTool, BarChart3, SlidersHorizontal, X, ArrowRight } from 'lucide-react';
+import { Fragment, useState, useEffect, useMemo, useRef } from 'react';
+import { Search, ArrowUp, Users, Trophy, PenTool, BarChart3, SlidersHorizontal, X, ArrowRight, ChevronDown } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { TasteMatchIcon } from '@/components/TasteMatchIcon';
 import { loadReviewCached, fetchReviews } from '@/lib/reviews';
@@ -81,6 +81,8 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
   const [authorQ, setAuthorQ] = useState('');
   const [reviewerQ, setReviewerQ] = useState('');
   const [visible, setVisible] = useState(FIRST_BATCH);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterRef = useRef<HTMLElement | null>(null);
 
   const { user, profile } = useAuth();
   const engagement = useEngagement();
@@ -161,6 +163,16 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
 
   const authors = useMemo(() => Array.from(new Set(communityItems.map((i) => i.author).filter(Boolean))).sort(), [communityItems]);
   const reviewers = useMemo(() => Array.from(new Set(communityItems.map((i) => i.reviewer).filter(Boolean))).sort(), [communityItems]);
+  // Sort counts as active only when it is not the default; the search box is always visible, so it is not counted here.
+  const activeFilterCount = [sort !== 'newest', !!verdictFilter, !!selectedGenre, !!authorQ.trim(), !!reviewerQ.trim()].filter(Boolean).length;
+  // The dropdown closes on an outside click or Escape.
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const onDown = (e: MouseEvent | TouchEvent) => { if (filterRef.current && !filterRef.current.contains(e.target as Node)) setFiltersOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFiltersOpen(false); };
+    document.addEventListener('mousedown', onDown); document.addEventListener('touchstart', onDown); document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('touchstart', onDown); document.removeEventListener('keydown', onKey); };
+  }, [filtersOpen]);
   const clearFilters = () => { setSelectedGenre(null); setSearch(''); setVerdictFilter(''); setAuthorQ(''); setReviewerQ(''); setSort('newest'); };
 
   const genres = useMemo(() => {
@@ -192,37 +204,49 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
         </div>
       </header>
 
-      <section className="nl-rv-filter" aria-label="Sort and filter reviews">
-        <div className="nl-rv-search">
-          <Search aria-hidden="true" className="w-4 h-4" />
-          <input type="text" value={search} maxLength={120} onChange={(e) => setSearch(e.target.value)} placeholder="Search the full reviews…" aria-label="Search community reviews" />
+      <section className="nl-rv-filter" aria-label="Search, sort and filter reviews" ref={filterRef}>
+        <div className="nl-rv-bar">
+          <div className="nl-rv-search">
+            <Search aria-hidden="true" className="w-4 h-4" />
+            <input type="text" value={search} maxLength={120} onChange={(e) => setSearch(e.target.value)} placeholder="Search the full reviews…" aria-label="Search community reviews" />
+          </div>
+          <button type="button" className="nl-rv-toggle" aria-expanded={filtersOpen} aria-controls="nl-rv-panel" onClick={() => setFiltersOpen((o) => !o)}>
+            <SlidersHorizontal aria-hidden="true" />
+            <span className="nl-rv-toggle-label">Sort &amp; filter</span>
+            {activeFilterCount > 0 && <span className="nl-rv-count" aria-label={`${activeFilterCount} active`}>{activeFilterCount}</span>}
+            <ChevronDown aria-hidden="true" className="nl-rv-chev" />
+          </button>
         </div>
-        <div className="nl-rv-grid">
-          <label><span><SlidersHorizontal aria-hidden="true" className="w-3 h-3" /> Sort</span>
-            <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>{SORTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
-          </label>
-          <label><span>Verdict</span>
-            <select value={verdictFilter} onChange={(e) => setVerdictFilter(e.target.value)}>
-              <option value="">Any verdict</option>
-              {VERDICTS.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
-            </select>
-          </label>
-          <label><span>Genre</span>
-            <select value={selectedGenre ?? ''} onChange={(e) => setSelectedGenre(e.target.value || null)}>
-              <option value="">Any genre</option>
-              {genres.map((g) => <option key={g} value={g}>{g}</option>)}
-            </select>
-          </label>
-          <label><span>Author</span>
-            <input type="text" list="nl-rv-authors" value={authorQ} maxLength={80} onChange={(e) => setAuthorQ(e.target.value)} placeholder="Type an author" autoComplete="off" />
-          </label>
-          <label><span>Reviewer</span>
-            <input type="text" list="nl-rv-reviewers" value={reviewerQ} maxLength={80} onChange={(e) => setReviewerQ(e.target.value)} placeholder="Type a reviewer" autoComplete="off" />
-          </label>
-        </div>
+        {filtersOpen && (
+          <div className="nl-rv-panel" id="nl-rv-panel">
+            <div className="nl-rv-grid">
+              <label><span><SlidersHorizontal aria-hidden="true" className="w-3 h-3" /> Sort</span>
+                <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>{SORTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+              </label>
+              <label><span>Verdict</span>
+                <select value={verdictFilter} onChange={(e) => setVerdictFilter(e.target.value)}>
+                  <option value="">Any verdict</option>
+                  {VERDICTS.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
+                </select>
+              </label>
+              <label><span>Genre</span>
+                <select value={selectedGenre ?? ''} onChange={(e) => setSelectedGenre(e.target.value || null)}>
+                  <option value="">Any genre</option>
+                  {genres.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </label>
+              <label><span>Author</span>
+                <input type="text" list="nl-rv-authors" value={authorQ} maxLength={80} onChange={(e) => setAuthorQ(e.target.value)} placeholder="Type an author" autoComplete="off" />
+              </label>
+              <label><span>Reviewer</span>
+                <input type="text" list="nl-rv-reviewers" value={reviewerQ} maxLength={80} onChange={(e) => setReviewerQ(e.target.value)} placeholder="Type a reviewer" autoComplete="off" />
+              </label>
+            </div>
+          </div>
+        )}
         <datalist id="nl-rv-authors">{authors.slice(0, 300).map((a) => <option key={a} value={a} />)}</datalist>
         <datalist id="nl-rv-reviewers">{reviewers.slice(0, 300).map((r) => <option key={r} value={r} />)}</datalist>
-        <div className="nl-rv-meta">
+        <div className="nl-rv-line">
           <span aria-live="polite">{loading ? 'Loading…' : `${filteredCommunity.length} ${filteredCommunity.length === 1 ? 'review' : 'reviews'}`}</span>
           {filtersActive && <button type="button" onClick={clearFilters}><X aria-hidden="true" className="w-3 h-3" /> Clear all</button>}
         </div>
