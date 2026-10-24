@@ -1,4 +1,6 @@
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react';
+import { LatestReviewsRail } from '@/components/EmptyStateFeed';
+import { useMuteFilter } from '@/lib/userPrefs';
 import { Search, ArrowUp, Users, Trophy, PenTool, BarChart3, SlidersHorizontal, X, ArrowRight, ChevronDown } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { TasteMatchIcon } from '@/components/TasteMatchIcon';
@@ -82,6 +84,8 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
   const [visible, setVisible] = useState(FIRST_BATCH);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef<HTMLElement | null>(null);
+  const authorInputRef = useRef<HTMLInputElement | null>(null);
+  const suggestRef = useRef<HTMLDivElement | null>(null);
 
   const { user, profile } = useAuth();
   const engagement = useEngagement();
@@ -133,8 +137,9 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
 
   const filtersActive = !!(selectedGenre || search.trim() || verdictFilter || authorQ.trim() || reviewerQ.trim());
 
+  const isMuted = useMuteFilter();
   const filteredCommunity = useMemo(() => {
-    let result = communityItems;
+    let result = communityItems.filter((item) => !isMuted(item.title, item.author, item.genre, item.reviewText));
     if (selectedGenre) result = result.filter((item) => item.genre === selectedGenre);
     if (verdictFilter) result = result.filter((item) => normalizeVerdict(item.verdict) === verdictFilter);
     if (authorQ.trim()) { const q = authorQ.trim().toLowerCase(); result = result.filter((item) => item.author.toLowerCase().includes(q)); }
@@ -159,7 +164,7 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
     else if (sort === 'title') sorted.sort((x, y) => x.title.localeCompare(y.title));
     return sorted;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [communityItems, reviewerNameById, selectedGenre, search, verdictFilter, authorQ, reviewerQ, sort, sort === 'liked' ? engagement.stats : null]);
+  }, [communityItems, isMuted, reviewerNameById, selectedGenre, search, verdictFilter, authorQ, reviewerQ, sort, sort === 'liked' ? engagement.stats : null]);
 
   // A new filter or sort always starts again from the first batch.
   useEffect(() => { setVisible(FIRST_BATCH); }, [selectedGenre, search, verdictFilter, authorQ, reviewerQ, sort]);
@@ -182,6 +187,18 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
     document.addEventListener('mousedown', onDown); document.addEventListener('touchstart', onDown); document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('touchstart', onDown); document.removeEventListener('keydown', onKey); };
   }, [filtersOpen]);
+  // The author suggestions close when you click or tap anywhere else (even inside the filter panel), press Escape, or tab away.
+  useEffect(() => {
+    if (!suggestFor) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const t = e.target as Node;
+      if (authorInputRef.current?.contains(t) || suggestRef.current?.contains(t)) return;
+      setSuggestFor(null);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSuggestFor(null); };
+    document.addEventListener('mousedown', onDown); document.addEventListener('touchstart', onDown); document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('touchstart', onDown); document.removeEventListener('keydown', onKey); };
+  }, [suggestFor]);
   const clearFilters = () => { setSelectedGenre(null); setSearch(''); setVerdictFilter(''); setAuthorQ(''); setReviewerQ(''); setSort('newest'); };
 
   const genres = useMemo(() => {
@@ -245,14 +262,14 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
                 </select>
               </label>
               <label><span>Author</span>
-                <input type="text" value={authorQ} maxLength={80} onFocus={() => setSuggestFor('author')} onChange={(e) => { setAuthorQ(e.target.value); setSuggestFor('author'); }} placeholder="Type an author" autoComplete="off" />
+                <input ref={authorInputRef} type="text" value={authorQ} maxLength={80} onFocus={() => setSuggestFor('author')} onBlur={(e) => { if (!suggestRef.current?.contains(e.relatedTarget as Node | null)) setSuggestFor(null); }} onChange={(e) => { setAuthorQ(e.target.value); setSuggestFor('author'); }} placeholder="Type an author" autoComplete="off" />
               </label>
               <label><span>Reviewer</span>
                 <input type="text" value={reviewerQ} maxLength={80} onChange={(e) => setReviewerQ(e.target.value)} placeholder="Search reviewer text" aria-label="Filter reviews by reviewer text" autoComplete="off" />
               </label>
             </div>
             {suggestFor && suggestions.length > 0 && (
-              <div className="nl-rv-suggest" role="listbox" aria-label="Author suggestions">
+              <div ref={suggestRef} className="nl-rv-suggest" role="listbox" aria-label="Author suggestions">
                 {suggestions.map((name) => (
                   <button key={name} type="button" role="option" aria-selected="false" onMouseDown={(e) => e.preventDefault()}
                     onClick={() => { setAuthorQ(name); setSuggestFor(null); }}>{name}</button>
@@ -313,6 +330,8 @@ export function ReviewsPage({ navigate }: ReviewsPageProps) {
           )}
         </>
       )}
+
+      {!loading && filtersActive && filteredCommunity.length === 0 && <LatestReviewsRail heading="Latest reviews instead" />}
 
       {!loading && filtersActive && filteredCommunity.length < FALLBACK_BELOW && (
         <aside className="nl-rv-tm" aria-label="Taste Match SE suggestion">

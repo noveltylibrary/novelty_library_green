@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BookOpen, PenTool, BarChart3, Trophy, Newspaper, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ComponentType } from 'react';
+import { ChessKnightIcon } from '@/components/ExploreIcons';
 import { BLOG_URL } from '@/lib/links';
 
-type AnimationKey = 'book' | 'write' | 'beat' | 'rise' | 'flip' | 'none';
+type AnimationKey = 'book' | 'write' | 'beat' | 'rise' | 'flip' | 'knight' | 'none';
 type CardProps = { icon: ComponentType<{ className?: string }>; title: string; animation: AnimationKey } & ({ onClick: () => void; href?: undefined } | { href: string; onClick?: undefined });
 
 function NavCard({ icon: Icon, title, animation, onClick, href }: CardProps) {
@@ -21,7 +22,7 @@ function NavCard({ icon: Icon, title, animation, onClick, href }: CardProps) {
 }
 
 /**
- * Home shortcuts in a swipeable row: four are in view, the last one (Blog) is one swipe / arrow away. Taste Match SE lives in the Featured banner above.
+ * Home shortcuts in a swipeable row: four are in view, the rest (Enigma GameSpace, Analytics, Blog) are a swipe / arrow away. Taste Match SE lives in the Featured banner above.
  * Same layout on phones and desktop; desktop also gets arrow buttons.
  */
 export function HomeActionGrid({ navigate }: { navigate: (path: string) => void }) {
@@ -54,6 +55,7 @@ export function HomeActionGrid({ navigate }: { navigate: (path: string) => void 
         <NavCard animation="book" icon={BookOpen} title="Reviews" onClick={() => navigate('/reviews')} />
         <NavCard animation="beat" icon={Trophy} title="Rankings" onClick={() => navigate('/live-rankings')} />
         <NavCard animation="write" icon={PenTool} title="Submit" onClick={() => navigate('/submit')} />
+        <NavCard animation="knight" icon={ChessKnightIcon} title="Enigma GameSpace" onClick={() => navigate('/explore/enigma')} />
         <NavCard animation="rise" icon={BarChart3} title="Analytics" onClick={() => navigate('/analytics')} />
         <NavCard animation="none" icon={Newspaper} title="Blog" href={BLOG_URL} />
       </section>

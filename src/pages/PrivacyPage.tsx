@@ -133,6 +133,23 @@ export function PrivacyPage({ navigate }: PrivacyPageProps) {
             </section>
 
             <section>
+              <h2 className="font-serif text-xl font-semibold mb-2">Account Details &amp; Taste Match SE Controls</h2>
+              <p>
+                Your email address and phone number are never shown on your profile or shared with other readers, advertisers or third parties.
+                They are stored only to confirm that your account is genuine, to protect it from misuse, and to help you recover access.
+              </p>
+              <p className="mt-3">
+                Taste Match SE can use information from your account to give you better, more personal matches: your profile answers (personal and reading),
+                the reviews you submitted or saved, the interests you manage, and basic device and browser information such as touch or mouse, the time of day and browser language.
+                This information is taken only for a better experience. It is not shared with anyone and is kept solely with Novelty Library.
+                Everything starts switched on, and under Accounts &amp; Settings → Content preferences → Taste Match you can switch off any source. Your choices apply to your account only.
+              </p>
+              <p className="mt-3">
+                Words and phrases you mute under Content preferences are saved to your account and used only to hide matching reviews from you.
+              </p>
+            </section>
+
+            <section>
               <h2 className="font-serif text-xl font-semibold mb-2">Profiles, Uploaded Images &amp; Visibility</h2>
               <p>
                 Profile details are shown on your public profile only where you have left them visible; each profile question, picture and reading list has its own visibility switch that you can change at any time. Your email address is never shown publicly. Images you upload (such as profile pictures or a book cover) are stored on our storage service and are publicly viewable by link while they are in use, so please upload only images you have the right to share.

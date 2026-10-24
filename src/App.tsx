@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from '@/lib/auth';
 import { ThemeProvider } from '@/lib/theme';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { EmptyStateFeed } from '@/components/EmptyStateFeed';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { SplashIntro } from '@/components/SplashIntro';
 import { HomePage } from '@/pages/HomePage';
@@ -124,7 +125,7 @@ function AppContent() {
         {route.name === 'blog-review' && <BlogReviewPage id={route.id} navigate={navigate} />}
         {route.name === 'submit' && <SubmitPage navigate={navigate} />}
         {route.name === 'review-guidelines' && <ReviewGuidelinesPage navigate={navigate} />}
-        {route.name === 'about' && <ExplorePage tab={route.tab} navigate={navigate} />}
+        {route.name === 'about' && <ExplorePage tab={route.tab} game={route.game} navigate={navigate} />}
         {route.name === 'privacy' && <PrivacyPage navigate={navigate} />}
         {route.name === 'terms' && <TermsPage navigate={navigate} />}
         {route.name === 'cookies' && <CookiesPage navigate={navigate} />}
@@ -147,7 +148,7 @@ function AppContent() {
         {route.name === 'reviewer' && <ReviewerPage uid={route.uid} navigate={navigate} />}
         {route.name === 'saved' && <SavedPage navigate={navigate} />}
         {route.name === 'genre' && <GenrePage genre={route.genre} navigate={navigate} />}
-        {route.name === 'not-found' && <div className="pt-32 pb-24 container-prose text-center"><h1 className="font-serif text-4xl font-semibold mb-3">Page not found</h1><p className="mb-6" style={{ color: 'var(--color-text-muted)' }}>That page doesn’t exist or has moved.</p><button type="button" className="btn-primary !w-auto" onClick={() => navigate('/')}>Back to Home</button><p className="mt-4"><a href="/reviews" className="underline">Browse all reviews</a></p></div>}
+        {route.name === 'not-found' && <EmptyStateFeed title="Page not found" message="That page doesn’t exist or has moved. Browse the full review feed, or start from the latest reviews below." navigate={navigate} />}
       </main>
       <Footer navigate={navigate} />
       <InstallPrompt />

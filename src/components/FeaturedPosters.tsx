@@ -129,9 +129,10 @@ export function FeaturedPosters({ navigate, config }: FeaturedPostersProps) {
               </>
             );
             const cls = `nl-feat-card${i === active ? ' is-active' : ''}`;
-            return p.link
-              ? <a key={p.id} href={p.link} target={/^https?:/i.test(p.link) ? '_blank' : undefined} rel="noopener noreferrer" className={cls} onClick={(e) => open(e, p)} aria-label={p.title || 'Open featured poster'}>{body}</a>
-              : <div key={p.id} className={cls}>{body}</div>;
+            const card = p.link
+              ? <a href={p.link} target={/^https?:/i.test(p.link) ? '_blank' : undefined} rel="noopener noreferrer" className={cls} onClick={(e) => open(e, p)} aria-label={p.title || 'Open featured poster'}>{body}</a>
+              : <div className={cls}>{body}</div>;
+            return <div key={p.id} className={`nl-feat-slot${i === active ? ' is-active' : ''}`}><div className="nl-feat-ring">{card}</div></div>;
           })}
         </div>
         {posters.length > 1 && <button type="button" className="nl-feat-arrow nl-feat-arrow--next" onClick={() => goTo((active + 1) % posters.length)} aria-label="Next poster"><ChevronRight className="w-5 h-5" /></button>}

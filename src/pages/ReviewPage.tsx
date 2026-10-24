@@ -21,6 +21,9 @@ import { ReadNext } from '@/components/ReadNext';
 import { authorPath, readingMinutes } from '@/lib/readerTools';
 import { useAuth } from '@/lib/auth';
 import { reviewerPath, reviewNoOf, useReviewerIndex } from '@/lib/reviewers';
+import { instagramProfileUrl } from '@/lib/links';
+import { EmptyStateFeed } from '@/components/EmptyStateFeed';
+import { usePageNoIndex } from '@/lib/seo';
 import { computeNlRating, deleteFeedback, fetchFeedback, saveFeedback, useEngagement, type FeedbackEntry, type FeedbackInput } from '@/lib/engagement';
 import { sanitizeUserText, safeExternalUrl } from '@/lib/sanitize';
 import { parseSeriesName } from '@/lib/series';
@@ -35,6 +38,7 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
   const [review, setReview] = useState<Review | null>(() => peekReview(slug));
   const [loading, setLoading] = useState(() => !peekReview(slug));
   const [error, setError] = useState<string | null>(null);
+  usePageNoIndex(!loading && (!!error || !review), slug);
 
   const { user, profile } = useAuth();
   const reviewerRows = useReviewerIndex();
@@ -184,14 +188,11 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
 
   if (error || !review) {
     return (
-      <div className="pt-32 container-prose text-center">
-        <p className="text-lg mb-4" style={{ color: 'var(--color-text-muted)' }}>
-          {error ? 'Something went wrong.' : 'Review not found.'}
-        </p>
-        <button onClick={() => navigate('/reviews')} className="btn-ghost">
-          <ArrowLeft className="w-4 h-4" /> Back to Reviews
-        </button>
-      </div>
+      <EmptyStateFeed
+        title={error ? 'This review could not be loaded' : 'Review not found'}
+        message={error ? 'Something went wrong while opening it. Please try again in a moment, or read one of the latest reviews below.' : 'This review may have been renamed or removed. Browse the full feed, or read one of the latest reviews below.'}
+        navigate={navigate}
+      />
     );
   }
 
@@ -322,8 +323,9 @@ export function ReviewPage({ slug, navigate }: ReviewPageProps) {
               )}
               {(review.reviewer_handle || review.novelty_username) && (
                 <span className="flex items-center gap-2">
-                  {review.reviewer_handle && <Instagram className="w-4 h-4 shrink-0" />}
-                  {review.reviewer_handle && <span style={{ color: 'var(--color-cyan-dark)' }}>{sanitizeUserText(review.reviewer_handle, 80)}</span>}
+                  {review.reviewer_handle && (instagramProfileUrl(review.reviewer_handle)
+                    ? <a href={instagramProfileUrl(review.reviewer_handle) as string} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:underline" style={{ color: 'var(--color-cyan-dark)' }} aria-label={`${sanitizeUserText(review.reviewer_handle, 80)} on Instagram (opens in a new tab)`}><Instagram className="w-4 h-4 shrink-0" aria-hidden="true" />{sanitizeUserText(review.reviewer_handle, 80)}</a>
+                    : <><Instagram className="w-4 h-4 shrink-0" /><span style={{ color: 'var(--color-cyan-dark)' }}>{sanitizeUserText(review.reviewer_handle, 80)}</span></>)}
                   {review.novelty_username && (
                     <button type="button" onClick={() => navigate(`/profile/@${encodeURIComponent(review.novelty_username!.replace(/^@/, ''))}`)} className="inline-flex items-center gap-1.5 font-semibold hover:underline" style={{ color: 'var(--color-teal-dark)' }}>
                       <span className="nl-handle-box" aria-hidden="true">NL</span>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import { soundFx } from '@/lib/soundFx';
 import { notifCategoryOf, useUserPrefs } from '@/lib/userPrefs';
 
 export interface NotificationItem {
@@ -47,7 +48,8 @@ export async function markAllNotificationsRead(): Promise<number> {
 /* ---- Shared unread count: the bell, the menu and the notifications page all read the same number. ---- */
 let unread = 0;
 const unreadListeners = new Set<(n: number) => void>();
-function setUnread(n: number) { unread = Math.max(0, n); unreadListeners.forEach((fn) => fn(unread)); }
+let primed = false;
+function setUnread(n: number) { if (primed && n > unread) soundFx.play('ping'); primed = true; unread = Math.max(0, n); unreadListeners.forEach((fn) => fn(unread)); }
 function adjustUnread(d: number) { setUnread(unread + d); }
 /** Call when the reader has seen their notifications: the badge disappears everywhere at once. */
 export const clearUnreadBadge = () => setUnread(0);

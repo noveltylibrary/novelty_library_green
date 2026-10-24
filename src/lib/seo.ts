@@ -62,6 +62,15 @@ export function setPageMeta(meta: { title?: string; description?: string; image?
   if (meta.image) { setMeta('property', 'og:image', meta.image); setMeta('name', 'twitter:image', meta.image); }
 }
 
+let routeNoIndex = false;
+let pageNoIndex = false;
+function applyRobots() { setMeta('name', 'robots', routeNoIndex || pageNoIndex ? 'noindex, nofollow' : 'index, follow'); }
+
+/** A page that has nothing to show yet (loading, unavailable, not found) asks search engines and ad crawlers to skip it. */
+export function usePageNoIndex(on: boolean, scope = '') {
+  useEffect(() => { pageNoIndex = on; applyRobots(); }, [on, scope]);
+}
+
 /** Keeps <title>, description, canonical, Open Graph URL and robots in step with the current clean path. */
 export function useSeo(route: Route) {
   const key = JSON.stringify(route);
@@ -72,8 +81,10 @@ export function useSeo(route: Route) {
     setMeta('property', 'og:url', url);
     setMeta('property', 'og:type', route.name === 'review' ? 'article' : 'website');
     setMeta('property', 'og:site_name', SITE);
-    setMeta('name', 'robots', noindex ? 'noindex, nofollow' : 'index, follow');
+    routeNoIndex = noindex;
+    applyRobots();
     setCanonical(url);
+    return () => { pageNoIndex = false; }; // a new route starts indexable; its page may ask for noindex again
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 }

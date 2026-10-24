@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CoverImg } from '@/components/CoverImg';
 import { BookOpen } from 'lucide-react';
 import type { Review } from '@/types/review';
+import { useMuteFilter } from '@/lib/userPrefs';
 import { usePublished, reviewSlug as slugOf } from '@/lib/readerTools';
 import { cleanTraits, type SearchBook } from '@/lib/rankingSearch';
 import { rankTmai40 } from '@/lib/tmai40Engine';
@@ -18,7 +19,9 @@ const toBook = (r: Review): SearchBook => ({
 
 /** "More like this": same preference-aware TMAI-40 engine as Taste Match, with NL community scores. */
 export function SimilarReviews({ current, navigate }: { current: Review; navigate: (path: string) => void }) {
-  const all = usePublished();
+  const everything = usePublished();
+  const isMuted = useMuteFilter();
+  const all = useMemo(() => everything.filter((r) => !isMuted(r.title, r.author, r.genre, r.traits, r.review_text)), [everything, isMuted]);
   const [ratingTotals, setRatingTotals] = useState<Record<string, RatingTotal>>({});
   const [ratingsReady, setRatingsReady] = useState(false);
 

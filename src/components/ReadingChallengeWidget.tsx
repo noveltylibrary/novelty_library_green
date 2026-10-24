@@ -3,7 +3,7 @@ import { Trophy } from 'lucide-react';
 import { paceFor, type ReadingChallenge } from '@/lib/readingChallenge';
 
 /** Reading challenge progress; detailed pace feedback is private to the profile owner. */
-export function ReadingChallengeWidget({ challenge, read, isOwn = false, isDefault = false }: { challenge: ReadingChallenge; read: number; isOwn?: boolean; isDefault?: boolean }) {
+export function ReadingChallengeWidget({ challenge, read, isOwn = false }: { challenge: ReadingChallenge; read: number; isOwn?: boolean }) {
   const now = new Date();
   const pace = paceFor(read, challenge.goal, now);
   // Fill from 0 so the bar animates in on first paint and on every change.
@@ -21,7 +21,7 @@ export function ReadingChallengeWidget({ challenge, read, isOwn = false, isDefau
       <div className="nl-rc-bar" role="progressbar" aria-valuemin={0} aria-valuemax={challenge.goal} aria-valuenow={Math.min(read, challenge.goal)} aria-label="Reading challenge progress">
         <span className="nl-rc-fill" style={{ width: `${fill}%` }} />
       </div>
-      {isOwn && <p className="nl-rc-sub">{pace.text}{isDefault ? ' This uses the default goal; personalize it any time in Edit profile › Reading goals.' : ''}</p>}
+      {isOwn && <p className="nl-rc-sub">{pace.text}{!challenge.show ? ' Only you can see this; the eye is off, so it is hidden from your public profile.' : ''}</p>}
     </section>
   );
 }

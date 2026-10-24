@@ -1,8 +1,9 @@
+import { soundFx } from '@/lib/soundFx';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ArrowLeft, Send, Star, PenTool, Search, Upload,
   Save, Lock, Eye, Edit3, Download, AlertCircle, X,
-  Clock, BookOpen, ClipboardCheck, Heart, Plus, Trash2, FileText, ChevronRight, Sparkles
+  Clock, BookOpen, Heart, Plus, Trash2, FileText, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useSubmitFreeze } from '@/lib/submitFreeze';
@@ -14,7 +15,10 @@ import { submitReview, searchOpenLibrary, uploadCoverImage, saveDraft, loadDraft
 import { getErrorMessage } from '@/lib/format';
 import type { Review } from '@/types/review';
 import { useOverlayHistory } from '@/lib/overlayHistory';
-import { proofreadAndPolishReview } from '@/lib/tmai40Engine';
+import { BookVerifyCard } from '@/components/BookVerifyCard';
+import { checkFoul } from '@/lib/foulCheck';
+import { ReviewHelperPanel } from '@/components/ReviewHelperPanel';
+import { guessBookFromText } from '@/lib/bookVerify';
 
 interface SubmitPageProps {
   navigate: (path: string) => void;
@@ -241,7 +245,6 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [recoveryAvailable, setRecoveryAvailable] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
-  const [qualityTips, setQualityTips] = useState<string[]>([]);
 
   // Post-submit edit window
   const [submittedReview, setSubmittedReview] = useState<Review | null>(null);
@@ -336,6 +339,12 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
     setOlQuery('');
   };
 
+  const applyOpenLibraryCover = (url: string) => {
+    update('cover_image_url', url);
+    setCoverPreview(url);
+    setCoverSource('open-library');
+  };
+
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
@@ -384,7 +393,6 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
     if (source === 'open-library' || source === 'uploaded' || source === 'url') setCoverSource(source);
     else if (nextForm.cover_storage_path) setCoverSource('uploaded');
     else if (nextForm.cover_image_url) setCoverSource('url');
-    setQualityTips(reviewQualityTips(nextForm.review_text));
   };
 
 
@@ -495,7 +503,6 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
   }, [form.title]);
 
   useEffect(() => {
-    setQualityTips(reviewQualityTips(form.review_text));
   }, [form.review_text]);
 
   const handleSubmit = async (e?: React.FormEvent, skipVerdictCheck = false) => {
@@ -556,6 +563,12 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
 
     if (form.review_text.trim().length > 2000) {
       setError('Your review must be 2000 characters or fewer.');
+      return;
+    }
+
+    const foul = [...checkFoul(form.review_text), ...checkFoul(form.title), ...checkFoul(form.author)].filter((h) => h.severity === 'strong');
+    if (foul.length) {
+      setError(`Taste Match found foul language (${[...new Set(foul.map((h) => `“${h.found}”`))].slice(0, 3).join(', ')}). Please reword it or use “Mask flagged words” in Review Helper, then submit again.`);
       return;
     }
 
@@ -647,6 +660,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
       } catch { /* storage unavailable */ }
       setRecoveryAvailable(false);
       setSubmittedReview(review);
+      soundFx.play('chime');
       setEditTimeLeft(300);
       setSuccess(true);
     } catch (err) {
@@ -1020,6 +1034,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
                 fileInputRef={fileInputRef}
                 onCoverUpload={handleCoverUpload}
                 onCoverUrlChange={(value) => setCoverSource(value.trim() ? 'url' : null)}
+                onUseOpenLibraryCover={applyOpenLibraryCover}
                 syncAutofill={syncAutofill}
                 error={error}
               />
@@ -1275,6 +1290,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
             fileInputRef={fileInputRef}
             onCoverUpload={handleCoverUpload}
             onCoverUrlChange={(value) => setCoverSource(value.trim() ? 'url' : null)}
+            onUseOpenLibraryCover={applyOpenLibraryCover}
             syncAutofill={syncAutofill}
             error={error}
           />
@@ -1283,23 +1299,6 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
             <div className="advisory-banner">
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#b7791f' }} />
               <p className="text-xs" style={{ color: 'var(--color-text)' }}>{duplicateWarning}</p>
-            </div>
-          )}
-
-          {form.review_text.trim() && (
-            <div className="quality-helper">
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <div className="flex items-center gap-2">
-                  <ClipboardCheck className="w-4 h-4" style={{ color: 'var(--color-teal-dark)' }} />
-                  <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Review quality helper</span>
-                </div>
-                <span className="text-xs font-semibold" style={{ color: form.review_text.trim().length >= 100 ? 'var(--color-teal-dark)' : '#ef4444' }}>
-                  {form.review_text.trim().split(/\s+/).filter(Boolean).length} words
-                </span>
-              </div>
-              <ul className="space-y-1.5">
-                {qualityTips.map((tip) => <li key={tip} className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>• {tip}</li>)}
-              </ul>
             </div>
           )}
 
@@ -1463,7 +1462,7 @@ export function SubmitPage({ navigate }: SubmitPageProps) {
 }
 
 function SubmitFormFields({
-  form, update, coverPreview, coverSource, fileInputRef, onCoverUpload, onCoverUrlChange, syncAutofill, error,
+  form, update, coverPreview, coverSource, fileInputRef, onCoverUpload, onCoverUrlChange, onUseOpenLibraryCover, syncAutofill, error,
 }: {
   form: FormState;
   error?: string | null;
@@ -1473,6 +1472,7 @@ function SubmitFormFields({
   fileInputRef: React.RefObject<HTMLInputElement>;
   onCoverUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onCoverUrlChange: (value: string) => void;
+  onUseOpenLibraryCover: (url: string) => void;
   syncAutofill: (field: keyof FormState) => (e: React.AnimationEvent<HTMLInputElement>) => void;
 }) {
   return (
@@ -1531,6 +1531,13 @@ function SubmitFormFields({
           <input required type="text" maxLength={100} value={form.author} onChange={(e) => update('author', e.target.value)} onAnimationStart={syncAutofill('author')} placeholder="Sarah J. Maas" className="input-field" />
         </div>
       </div>
+      <BookVerifyCard
+        title={form.title}
+        author={form.author}
+        hasCover={Boolean(form.cover_image_url.trim())}
+        onUseDetails={(t, a) => { update('title', t); update('author', a); }}
+        onUseCover={onUseOpenLibraryCover}
+      />
 
       {/* Genre + Language (compulsory) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1575,7 +1582,16 @@ function SubmitFormFields({
       <VerdictField value={form.verdict} onChange={(value) => update('verdict', value)} showError={Boolean(error) && !normalizeVerdict(form.verdict)} />
 
       {/* Review text */}
-      <ReviewTextField value={form.review_text} onChange={(value) => update('review_text', value)} />
+      <ReviewTextField
+        value={form.review_text}
+        onChange={(value) => update('review_text', value)}
+        onImportedText={(text) => {
+          // A pasted/imported review often opens with "Title by Author": fill only empty fields, then Open Library checks them.
+          const guess = guessBookFromText(text);
+          if (guess.title && !form.title.trim()) update('title', guess.title);
+          if (guess.author && !form.author.trim()) update('author', guess.author);
+        }}
+      />
 
       {/* Ratings */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1680,8 +1696,8 @@ function VerdictField({ value, onChange, showError }: { value: Verdict | ''; onC
   );
 }
 
-function ReviewTextField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const [polishNote, setPolishNote] = useState('');
+function ReviewTextField({ value, onChange, onImportedText }: { value: string; onChange: (value: string) => void; onImportedText?: (text: string) => void }) {
+  const [undoText, setUndoText] = useState<string | null>(null);
   const chars = value.length;
   const words = value.trim() ? value.trim().split(/\s+/).length : 0;
   const readSeconds = Math.max(1, Math.ceil((words / 240) * 60));
@@ -1690,20 +1706,14 @@ function ReviewTextField({ value, onChange }: { value: string; onChange: (value:
       <div className="flex items-center justify-between gap-3 mb-2">
         <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Your Review *</label>
       </div>
-      <div className="mb-2 rounded-xl border p-3" style={{ borderColor: 'var(--color-border, rgba(100,116,139,.28))', background: 'var(--color-paper)' }}>
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="min-w-0"><p className="text-sm font-semibold">Review Helper <span className="text-xs font-normal" style={{ color: 'var(--color-text-muted)' }}>· Taste Match</span></p><p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Optional, local proofreading. Your review changes only when you choose to apply it.</p></div>
-          <button type="button" onClick={() => { const result = proofreadAndPolishReview(value); if (result.text !== value) { onChange(result.text); setPolishNote(result.changes.join(' · ')); } else setPolishNote(value.trim() ? 'No obvious mechanical fixes found.' : 'Write or paste your review first.'); }} className="btn-ghost !w-auto inline-flex items-center gap-2"><Sparkles className="w-4 h-4" /> Proofread &amp; Polish</button>
-        </div>
-        {polishNote && <p className="text-xs mt-2" role="status" style={{ color: 'var(--color-text-muted)' }}>{polishNote}</p>}
-      </div>
       <textarea
         required
         minLength={100}
         maxLength={2000}
         rows={7}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => { setUndoText(null); onChange(e.target.value); }}
+        onPaste={(e) => { const text = e.clipboardData.getData('text'); if (text.length >= 120 && onImportedText) onImportedText(text); }}
         placeholder="What broke your brain about this book? A few honest lines is enough."
         className="input-field resize-y leading-relaxed"
       />
@@ -1711,6 +1721,7 @@ function ReviewTextField({ value, onChange }: { value: string; onChange: (value:
         <span>~{readSeconds} sec read</span>
         <span className={chars >= 100 ? 'review-char-ok' : 'review-char-error'}>{chars} / 100–2000 characters</span>
       </div>
+      <ReviewHelperPanel value={value} onChange={onChange} undoText={undoText} setUndoText={setUndoText} tips={reviewQualityTips(value)} words={words} />
     </div>
   );
 }

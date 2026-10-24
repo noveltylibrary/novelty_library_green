@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Calendar, ExternalLink, Globe, Tag, Library } from 'lucide-react';
+import { EmptyStateFeed } from '@/components/EmptyStateFeed';
+import { usePageNoIndex } from '@/lib/seo';
 import { fetchBlogPosts, peekBlogPosts, blogPostDate, reviewParagraphs, upscaleBloggerImage, type BlogPost } from '@/lib/blog';
 
 interface BlogReviewPageProps {
@@ -11,6 +13,7 @@ export function BlogReviewPage({ id, navigate }: BlogReviewPageProps) {
   const initial = peekBlogPosts()?.find((item) => item.id === id) || null;
   const [post, setPost] = useState<BlogPost | null>(initial);
   const [loading, setLoading] = useState(!initial);
+  usePageNoIndex(!loading && !post, id);
 
   useEffect(() => {
     const hit = peekBlogPosts()?.find((item) => item.id === id) || null;
@@ -40,12 +43,7 @@ export function BlogReviewPage({ id, navigate }: BlogReviewPageProps) {
 
   if (!post) {
     return (
-      <div className="pt-32 pb-20 container-prose text-center">
-        <p className="text-lg mb-5" style={{ color: 'var(--color-text-muted)' }}>Review not found in the blog archive.</p>
-        <button onClick={() => navigate('/reviews')} className="btn-ghost">
-          <ArrowLeft className="w-4 h-4" /> Back to Reviews
-        </button>
-      </div>
+      <EmptyStateFeed title="Review not found in the blog archive" message="We could not find that post. Browse the full review feed, or read one of the latest reviews below." navigate={navigate} />
     );
   }
 

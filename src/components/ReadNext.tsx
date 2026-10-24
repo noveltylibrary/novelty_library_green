@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useMuteFilter } from '@/lib/userPrefs';
 import { ArrowLeft, ArrowRight, UserRound } from 'lucide-react';
 import type { Review } from '@/types/review';
 import { authorKey, authorPath, reviewPath, usePublished } from '@/lib/readerTools';
@@ -8,7 +9,9 @@ const byNewest = (a: Review, b: Review) => (b.published_at || '').localeCompare(
 
 /** Review page: previous / next review in the same genre, and a way into the author's page. */
 export function ReadNext({ current, navigate }: { current: Review; navigate: (path: string) => void }) {
-  const all = usePublished();
+  const everything = usePublished();
+  const isMuted = useMuteFilter();
+  const all = useMemo(() => everything.filter((r) => !isMuted(r.title, r.author, r.genre, r.traits, r.review_text)), [everything, isMuted]);
   const { prev, next, authorCount } = useMemo(() => {
     const genre = (current.genre || '').trim().toLowerCase();
     const sameGenre = genre ? all.filter((r) => (r.genre || '').trim().toLowerCase() === genre).sort(byNewest) : [];

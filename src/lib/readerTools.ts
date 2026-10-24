@@ -4,18 +4,47 @@ import { fetchReviews } from '@/lib/reviews';
 import { supabase } from '@/lib/supabase';
 import { cleanTraits, type SearchBook } from '@/lib/rankingSearch';
 
-/** Browser-only Open Library lookup for title/author/year/cover metadata. */
-export interface OpenLibraryBookMetadata { title: string; author: string; publishYear: number | null; coverUrl: string | null; isbn: string | null; key: string | null; }
+/** Browser-only Open Library lookup for title/author/year/cover metadata (public API at openlibrary.org, no key). */
+export interface OpenLibraryBookMetadata {
+  title: string;
+  /** First credited author. */
+  author: string;
+  /** Every credited author, so a typed co-author or translator still matches. */
+  authors: string[];
+  publishYear: number | null;
+  /** Medium cover (thumbnail). */
+  coverUrl: string | null;
+  /** Large cover, the size the submit form stores. */
+  coverLargeUrl: string | null;
+  isbn: string | null;
+  key: string | null;
+}
+type OlDoc = { key?: string; title?: string; author_name?: string[]; first_publish_year?: number; cover_i?: number; isbn?: string[] };
 const openLibraryCache = new Map<string, OpenLibraryBookMetadata[]>();
-export async function lookupOpenLibraryBook(query: string, signal?: AbortSignal): Promise<OpenLibraryBookMetadata[]> {
+
+/** Looks a book up by title, narrowed by author when one is given. Throws on network errors so callers can tell "offline" from "no match". */
+export async function lookupOpenLibraryBook(query: string, signal?: AbortSignal, author?: string): Promise<OpenLibraryBookMetadata[]> {
   const q = query.trim();
   if (q.length < 3) return [];
-  const key = q.toLocaleLowerCase();
-  if (openLibraryCache.has(key)) return openLibraryCache.get(key)!;
-  const response = await fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(q)}&limit=5&fields=key,title,author_name,first_publish_year,cover_i,isbn`, { signal });
+  const who = (author ?? '').trim();
+  const key = `${q.toLocaleLowerCase()}|${who.toLocaleLowerCase()}`;
+  const cached = openLibraryCache.get(key);
+  if (cached) return cached;
+  const params = new URLSearchParams({ title: q, limit: '8', fields: 'key,title,author_name,first_publish_year,cover_i,isbn' });
+  if (who.length >= 3) params.set('author', who);
+  const response = await fetch(`https://openlibrary.org/search.json?${params.toString()}`, { signal });
   if (!response.ok) throw new Error('Open Library lookup failed');
-  const data = await response.json() as { docs?: Array<{key?:string;title?:string;author_name?:string[];first_publish_year?:number;cover_i?:number;isbn?:string[]}> };
-  const results = (data.docs ?? []).map((book) => ({ title: book.title ?? '', author: book.author_name?.[0] ?? '', publishYear: book.first_publish_year ?? null, coverUrl: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : null, isbn: book.isbn?.[0] ?? null, key: book.key ?? null })).filter((book) => book.title);
+  const data = await response.json() as { docs?: OlDoc[] };
+  const results = (data.docs ?? []).filter((book) => book.title).map((book) => ({
+    title: book.title ?? '',
+    author: book.author_name?.[0] ?? '',
+    authors: (book.author_name ?? []).slice(0, 6),
+    publishYear: book.first_publish_year ?? null,
+    coverUrl: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : null,
+    coverLargeUrl: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg` : null,
+    isbn: book.isbn?.[0] ?? null,
+    key: book.key ?? null,
+  }));
   openLibraryCache.set(key, results);
   return results;
 }

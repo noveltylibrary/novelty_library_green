@@ -28,6 +28,7 @@ import { getCaptchaToken } from '@/lib/captcha';
 import { updateProfile } from '@/lib/reviews';
 import { fetchProfileQuestions, type ProfileQuestion } from '@/lib/profileQuestions';
 import { ProfileQuestionAnswer, answerText } from '@/components/ProfileQuestionAnswer';
+import { readingCountError, trackFill, type CountKey } from '@/lib/readingCounts';
 
 interface OnboardingModalProps {
   splashComplete: boolean;
@@ -117,6 +118,7 @@ export function OnboardingModal({ splashComplete, navigate, suppressOnPublicRout
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState(false);
   const [step, setStep] = useState(1);
+  const [fillOrder, setFillOrder] = useState<CountKey[]>([]);
   const [authMode, setAuthMode] = useState<AuthMode>('signup');
   const [data, setData] = useState<OnboardingData>(() => ({ ...EMPTY }));
   const [questions, setQuestions] = useState<ProfileQuestion[]>([]);
@@ -323,8 +325,10 @@ export function OnboardingModal({ splashComplete, navigate, suppressOnPublicRout
     }
   };
 
+  const countErr = readingCountError({ month: data.booksThisMonth, total: data.totalBooksRead }, fillOrder);
   const completeReadingJourney = async () => {
     if (!user) { setStepError('Please sign in to continue.'); return; }
+    if (countErr) { setStepError(countErr.message); return; }
     setSaving(true);
     setStepError('');
     try {
@@ -565,10 +569,12 @@ export function OnboardingModal({ splashComplete, navigate, suppressOnPublicRout
                         <input value={data.readingSince} onChange={(e) => patch({ readingSince: e.target.value.replace(/\D/g, '').slice(0, 4) })} placeholder="2024" inputMode="numeric" className="input-field" />
                       </Field>
                       <Field label="Books Read This Month" icon={<BookOpen className="h-4 w-4" />} hint="Optional">
-                        <input value={data.booksThisMonth} onChange={(e) => patch({ booksThisMonth: e.target.value.replace(/\D/g, '') })} placeholder="4" inputMode="numeric" className="input-field" />
+                        <input value={data.booksThisMonth} onChange={(e) => { const v = e.target.value.replace(/\D/g, ''); patch({ booksThisMonth: v }); setFillOrder((o) => trackFill(o, 'month', v)); }} placeholder="4" inputMode="numeric" className="input-field" />
+                        {countErr?.key === 'month' && <p className="field-error" role="alert">{countErr.message}</p>}
                       </Field>
                       <Field label="Total Books Read" icon={<BookOpen className="h-4 w-4" />} hint="Estimated · Optional">
-                        <input value={data.totalBooksRead} onChange={(e) => patch({ totalBooksRead: e.target.value.replace(/\D/g, '') })} placeholder="102" inputMode="numeric" className="input-field" />
+                        <input value={data.totalBooksRead} onChange={(e) => { const v = e.target.value.replace(/\D/g, ''); patch({ totalBooksRead: v }); setFillOrder((o) => trackFill(o, 'total', v)); }} placeholder="102" inputMode="numeric" className="input-field" />
+                        {countErr?.key === 'total' && <p className="field-error" role="alert">{countErr.message}</p>}
                       </Field>
                       <Field label="Favorite Book" icon={<BookOpen className="h-4 w-4" />} hint="Optional">
                         <input value={data.favoriteBook} onChange={(e) => patch({ favoriteBook: e.target.value })} placeholder="The book you’d reread tomorrow" className="input-field" />

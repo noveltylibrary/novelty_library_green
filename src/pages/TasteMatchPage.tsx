@@ -5,6 +5,7 @@ import { useOverlayHistory } from '@/lib/overlayHistory';
 import { TasteMatchPanel, type FinderBook } from '@/components/RankingFinder';
 import { TasteMatchEmblem } from '@/components/TasteMatchIcon';
 import { fetchReviews } from '@/lib/reviews';
+import { useMuteFilter } from '@/lib/userPrefs';
 import { supabase } from '@/lib/supabase';
 import { computeNlRating, type EngagementStats } from '@/lib/engagement';
 import type { Review } from '@/types/review';
@@ -48,7 +49,10 @@ function bookSlug(review: Review): string {
 }
 
 export function TasteMatchPage({ navigate }: { navigate: (path: string) => void }) {
-  const [books, setBooks] = useState<FinderBook[]>([]);
+  const [allBooks, setBooks] = useState<FinderBook[]>([]);
+  const isMuted = useMuteFilter();
+  // Muted words and phrases (Account → Content preferences) keep matching reviews out of every pick.
+  const books = useMemo(() => allBooks.filter((b) => !isMuted(b.review.title, b.review.author, b.review.genre, b.review.traits, b.review.review_text)), [allBooks, isMuted]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);

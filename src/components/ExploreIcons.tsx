@@ -57,3 +57,16 @@ export function AnalyticsIcon({ size = 46, ...props }: IconProps) {
     </svg>
   );
 }
+
+/** Enigma mark: a chess knight in currentColor (teal on cards, white on the active tab). */
+export function ChessKnightIcon({ size = 18, ...props }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" {...base(size)} strokeWidth={1.6} {...props}>
+      <path d="M5.5 21.5h13" />
+      <path d="M7 21.5c0-.9.2-1.6.5-2.3h9c.3.7.5 1.4.5 2.3" />
+      <path d="M7.6 19.2c.3-3.2 1.3-4.9 3.2-6.7-2.3.5-4.5-.3-5.4-2.4-.3-.8-.1-1.7.6-2.5l3.6-4.1-.1-2.3 2.2 1.2c4.6.7 7.6 4.4 7.6 9.2 0 2.7-.4 5.1-.6 7.6" fill="currentColor" fillOpacity=".18" />
+      <circle cx="12.9" cy="8.6" r=".7" fill="currentColor" stroke="none" />
+      <path d="M6.3 10.2l1.7-.3M14.6 5.6c2.3 1.5 3.5 3.8 3.6 6.5" />
+    </svg>
+  );
+}

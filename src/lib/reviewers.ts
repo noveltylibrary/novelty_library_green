@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { summarizeReviews, type PeopleStats } from '@/lib/authors';
 import type { Review } from '@/types/review';
+import { cleanInstagramHandle } from '@/lib/links';
 
 /** One row per published review from public_reviewer_index() (NL_SQL_200). Never contains an e-mail address. */
 export interface ReviewerIndexRow {
@@ -40,8 +41,21 @@ export interface ReviewerProfile extends PeopleStats {
   name: string;
   username: string | null;
   hasAccount: boolean;
+  /** Instagram handle the reviewer chose to show on their public reviews (already filtered by the public view); '' when none. */
+  instagram: string;
   reviews: Review[];
 }
+
+/** Most common Instagram handle across a reviewer's public reviews. */
+export function instagramOf(reviews: Review[]): string {
+  const tally = new Map<string, number>();
+  for (const r of reviews) { const h = cleanInstagramHandle(r.reviewer_handle); if (h) tally.set(h, (tally.get(h) ?? 0) + 1); }
+  return [...tally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+}
+
+/** Follow key for a reviewer: reuses the author-follow storage, with a prefix so it can never clash with an author name. */
+export const reviewerFollowKey = (p: { uid?: string | null; username?: string | null }): string =>
+  p.uid ? `reviewer:${p.uid}` : `reviewer-user:${(p.username || '').replace(/^@/, '').toLowerCase()}`;
 
 /** Public path: account holders go to their @username profile, everyone else to /reviewer/<id>. */
 export const reviewerPath = (p: { uid: string; username: string | null; hasAccount: boolean }): string =>
@@ -64,7 +78,7 @@ export function buildReviewerProfiles(all: Review[], rows: ReviewerIndexRow[]): 
   return [...groups.entries()].map(([uid, { row, reviews }]) => {
     const sorted = [...reviews].sort((a, b) => (b.rw_rating || 0) - (a.rw_rating || 0));
     const name = (row.reviewer_name || sorted.find((r) => r.reviewer_name)?.reviewer_name || row.novelty_username || 'Novelty Reader').trim();
-    return { uid, name, username: row.novelty_username, hasAccount: row.has_account, reviews: sorted, ...summarizeReviews(sorted) };
+    return { uid, name, username: row.novelty_username, hasAccount: row.has_account, instagram: instagramOf(sorted), reviews: sorted, ...summarizeReviews(sorted) };
   });
 }
 

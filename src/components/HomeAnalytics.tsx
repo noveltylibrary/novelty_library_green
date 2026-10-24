@@ -215,11 +215,9 @@ export function HomeAnalytics({ navigate, published, data, failed }: Props) {
             <div className="nl-an-sequence-icon"><MessageCircle className="h-4 w-4" /></div>
             <div className="nl-an-sequence-copy w-full">
               <span>COMMUNITY ACTIVITY</span>
-              <div className="grid grid-cols-3 gap-3 mt-2">
-                <div><strong className="!text-xl">{data?.community_likes ?? 0}</strong><small>likes</small></div>
-                <div><strong className="!text-xl">{data?.community_reader_reviews ?? 0}</strong><small>reader reviews</small></div>
-                <div><strong className="!text-xl">{readerRatingAvg === null ? '—' : readerRatingAvg.toFixed(1)}</strong><small>reader avg / 10</small></div>
-              </div>
+              <strong>{readerRatingAvg === null ? '—' : `${readerRatingAvg.toFixed(1)}/10`}</strong>
+              <small>NL average rating</small>
+              <div className="nl-trust-bar"><i style={{ width: `${Math.min(100, Math.max(0, (readerRatingAvg ?? 0) * 10))}%` }} /></div>
             </div>
           </div>
 

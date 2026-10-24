@@ -1,6 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { closeAllOverlays, overlayDepth } from '@/lib/overlayHistory';
 
+/** Explore tabs, left → right. Discovery is the default (/explore). */
+export type ExploreTab = 'about' | 'discovery' | 'enigma';
+export type EnigmaGame = 'lexiword' | 'hanglex';
+
 export type Route =
   | { name: 'home' }
   | { name: 'reviews' }
@@ -11,7 +15,7 @@ export type Route =
   | { name: 'blog-review'; id: string }
   | { name: 'submit' }
   | { name: 'review-guidelines' }
-  | { name: 'about'; tab: 'about' | 'discovery' }
+  | { name: 'about'; tab: ExploreTab; game?: EnigmaGame }
   | { name: 'privacy' }
   | { name: 'terms' }
   | { name: 'cookies' }
@@ -79,9 +83,14 @@ function parsePathUnsafe(): Route {
   if (parts[0] === 'blog-review' && parts[1]) return { name: 'blog-review', id: decodeURIComponent(parts.slice(1).join('/')) };
   if (parts[0] === 'submit') return { name: 'submit' };
   if (parts[0] === 'review-guidelines') return { name: 'review-guidelines' };
-  // Explore has two tabs. /explore opens Discovery (the default); /explore/about and the old /about link open About.
+  // Explore has three tabs. /explore opens Discovery (the default); /explore/about and the old /about link open About;
+  // /explore/enigma is the Enigma hub and /explore/enigma/<game> opens one game.
   if (parts[0] === 'about') return { name: 'about', tab: 'about' };
-  if (parts[0] === 'explore') return { name: 'about', tab: parts[1] === 'about' ? 'about' : 'discovery' };
+  if (parts[0] === 'explore') {
+    if (parts[1] === 'about') return { name: 'about', tab: 'about' };
+    if (parts[1] === 'enigma') return { name: 'about', tab: 'enigma', game: parts[2] === 'lexiword' || parts[2] === 'hanglex' ? parts[2] : undefined };
+    return { name: 'about', tab: 'discovery' };
+  }
   if (parts[0] === 'privacy') return { name: 'privacy' };
   if (parts[0] === 'terms') return { name: 'terms' };
   if (parts[0] === 'cookies') return { name: 'cookies' };

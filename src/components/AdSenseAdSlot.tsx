@@ -9,13 +9,25 @@ interface AdSenseAdSlotProps {
   active?: boolean;
 }
 
-type SlotState = 'loading' | 'filled' | 'empty';
+type SlotState = 'loading' | 'filled' | 'empty' | 'blocked';
 
 // Set both in Vercel → Settings → Environment Variables (then redeploy):
 //   VITE_ADSENSE_CLIENT = optional override; defaults to the publisher ID below
 //   VITE_ADSENSE_SLOT   = optional override; defaults to the "Novelty Library WebApp" ad unit below
 const CLIENT = String(import.meta.env.VITE_ADSENSE_CLIENT || '').trim() || 'ca-pub-4287486804733527';
 const SLOT = String(import.meta.env.VITE_ADSENSE_SLOT || '').trim() || '7417970298';
+
+/**
+ * Last check before asking Google for an ad: the page must really be showing a review body (600+ characters, visible)
+ * on a /review/ address. Loading states, "not found" screens and empty shells never qualify, so AdSense cannot be
+ * served on a screen without publisher content.
+ */
+function pageShowsPublisherContent(): boolean {
+  if (typeof document === 'undefined' || !/\/review\//.test(window.location.pathname)) return false;
+  if (document.documentElement.dataset.nlAdsRestricted === 'true') return false;
+  const body = document.querySelector<HTMLElement>('.prose-content');
+  return !!body && body.offsetParent !== null && (body.textContent || '').trim().length >= 600;
+}
 
 type AdsWindow = Window & { adsbygoogle?: unknown[] & { requestNonPersonalizedAds?: number } };
 
@@ -61,6 +73,7 @@ export function AdSenseAdSlot({ className = '', contentReady = false, active = t
     if (!enabled || !consent || !active || !contentReady || pushed.current) return;
     const ins = insRef.current;
     if (!ins) return;
+    if (!pageShowsPublisherContent()) { setState('blocked'); return; }
     let cancelled = false;
     let timeout = 0;
 
@@ -85,7 +98,7 @@ export function AdSenseAdSlot({ className = '', contentReady = false, active = t
     return () => { cancelled = true; observer.disconnect(); window.clearTimeout(timeout); };
   }, [enabled, consent, active, contentReady]);
 
-  if (!enabled || !consent || !active || !contentReady) return null;
+  if (!enabled || !consent || !active || !contentReady || state === 'blocked') return null;
 
   return (
     <div className={`adsense-slot ${className}`} data-state={state} aria-label="Advertisement">

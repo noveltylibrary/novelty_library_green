@@ -136,6 +136,19 @@ export function TermsPage({ navigate }: TermsPageProps) {
             </section>
 
             <section>
+              <h2 className="font-serif text-xl font-semibold mb-2">Account Details &amp; Taste Match SE</h2>
+              <p>
+                Your email address and phone number are never shown on your profile or shared with other readers, advertisers or third parties;
+                they are kept only to confirm your account is genuine, protect it from misuse and help you recover access.
+              </p>
+              <p className="mt-3">
+                By using Taste Match SE you understand that it may use your profile answers, the reviews you submitted or saved, your managed interests, and device and browser information
+                to improve your matches. This information is used only for your better experience, is not shared with anyone and is kept solely with Novelty Library.
+                You can switch any of these sources off under Accounts &amp; Settings → Content preferences → Taste Match; the choice applies to your account only.
+              </p>
+            </section>
+
+            <section>
               <h2 className="font-serif text-xl font-semibold mb-2">Right to Modify</h2>
               <p>
                 We may update these terms periodically to reflect platform improvements. Continued use of Novelty Library

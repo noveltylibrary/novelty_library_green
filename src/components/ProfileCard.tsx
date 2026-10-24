@@ -14,6 +14,12 @@ export type ProfileCardData = {
   username: string | null;
   /** Followers count shown beside @username (omit to hide). */
   followerCount?: number | null;
+  /** Small label after "Novelty Library ·" above the name. Defaults to "Reader"; reviewers pass "Reviewer". */
+  roleLabel?: string;
+  /** Replaces the "@username" pill (e.g. "Reviewer ID 3F9A2C10" for a reviewer who has no account). */
+  handleLabel?: string | null;
+  /** Extra tags (genres, languages…) added after the question-based tags. */
+  extraTags?: { label: string; tone?: 'neutral' | 'language' | 'genre' }[];
   avatarUrl: string | null;
   headerImageUrl: string | null;
   /** Portrait banner (1336 x 2048) used only by the SuperBlitz card; stored in profile_answers.__superblitz_banner. */
@@ -675,6 +681,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
     { label: age, tone: 'neutral' },
     { label: languages.join(', '), tone: 'language' },
     { label: genres.join(', '), tone: 'genre' },
+    ...(data.extraTags ?? []).map((t): { label: string; tone: 'neutral' | 'language' | 'genre' } => ({ label: t.label, tone: t.tone ?? 'neutral' })),
   ].filter(t => !!t.label);
   const fixedTags = fixedTagList;
   const details = (fixedTags.length > 0 || answerQuestions.length) ? <div className={metaMv.className} style={{ ...metaMv.style, minWidth: 0, display: 'flex', flexDirection: 'column', gap: s(8) }}>
@@ -742,7 +749,7 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
 
       <div className={heroMv.className} style={{ ...heroMv.style, position: 'absolute', left: 45, width: 579, top: 178, display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
         <NameBlock name={data.name || 'Novelty Reader'} size={40} color={C.ink} restColor={C.soft} style={{ flex: '1 1 auto', maxHeight: 84, overflow: 'hidden' }} />
-        <p style={{ flexShrink: 0, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 15, fontWeight: 700, padding: '3px 11px', borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader', 80)}</p>
+        <p style={{ flexShrink: 0, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 15, fontWeight: 700, padding: '3px 11px', borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>{data.handleLabel ? sanitizeUserText(data.handleLabel, 80) : `@${sanitizeUserText(data.username || 'reader', 80)}`}</p>
       </div>
 
       <div data-fit style={{ position: 'absolute', left: 45, width: 579, top: 240, height: 530, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: s(11) }}>
@@ -788,9 +795,9 @@ function CardCanvas({ canvasRef, data, width: w, height: h, superBlitz = false, 
             {!still && onAvatarUpload && <button type="button" onClick={(e) => { e.stopPropagation(); onAvatarUpload(); }} title="Change profile picture" aria-label="Change profile picture" className="nl-pc-cam" style={{ width: ui(26), height: ui(26), left: avatar * .80 - ui(13), top: avatar * .80 - ui(13) }}><Camera width={ui(13)} height={ui(13)} /></button>}
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ fontSize: s(10), letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: s(5) }}>Novelty Library · Reader</p>
+            <p style={{ fontSize: s(10), letterSpacing: '.18em', textTransform: 'uppercase', fontWeight: 800, color: C.mint, marginBottom: s(5) }}>Novelty Library · {sanitizeUserText(data.roleLabel || 'Reader', 24)}</p>
             <NameBlock name={data.name || 'Novelty Reader'} size={s(isWide ? 54 : 48)} color={C.ink} restColor={C.soft} shadow="0 4px 22px rgba(0,25,35,.5)" />
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: s(6), marginTop: s(6) }}><p style={{ display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: s(17), fontWeight: 700, padding: `${s(4)}px ${s(11)}px`, borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>@{sanitizeUserText(data.username || 'reader',80)}</p></div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: s(6), marginTop: s(6) }}><p style={{ display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: s(17), fontWeight: 700, padding: `${s(4)}px ${s(11)}px`, borderRadius: 999, background: C.glassStrong, border: `1px solid ${C.line}`, color: C.mint }}>{data.handleLabel ? sanitizeUserText(data.handleLabel, 80) : `@${sanitizeUserText(data.username || 'reader', 80)}`}</p></div>
           </div>
         </div>
         {isWide ? <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', gap: s(7) }}>{details}</div> : details}

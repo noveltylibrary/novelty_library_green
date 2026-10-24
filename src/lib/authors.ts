@@ -101,6 +101,7 @@ export function useAuthorFollow(key: string, navigate: (path: string) => void) {
     if (!user) { navigate('/auth'); return; }
     setBusy(true);
     try { await setAuthorFollow(key, !following); await refresh(); }
+    catch { setServerOk(false); local.toggle(key); } // the server refused this key: keep Follow working in this browser
     finally { setBusy(false); }
   }, [busy, serverOk, user, key, following, local, navigate, refresh]);
 

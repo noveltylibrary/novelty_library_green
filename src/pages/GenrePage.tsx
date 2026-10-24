@@ -6,6 +6,8 @@ import { reviewPath, usePublished } from '@/lib/readerTools';
 import { VerdictBanner } from '@/components/VerdictBanner';
 import { normalizeVerdict } from '@/lib/verdict';
 import { sanitizeUserText } from '@/lib/sanitize';
+import { EmptyStateFeed } from '@/components/EmptyStateFeed';
+import { usePageNoIndex } from '@/lib/seo';
 
 export const genreKey = (s: string): string => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 export const genrePath = (name: string): string => `/genre/${encodeURIComponent(name.trim())}`;
@@ -56,6 +58,16 @@ export function GenrePage({ genre, navigate }: { genre: string; navigate: (path:
   }, [books, label]);
 
   const others = genres.filter((g) => g.key !== key).slice(0, 18);
+  const emptyGenre = !!key && all.length > 0 && books.length === 0;
+  usePageNoIndex(emptyGenre, key);
+
+  if (emptyGenre) {
+    return (
+      <EmptyStateFeed title={`No reviews in “${sanitizeUserText(genre, 60)}” yet`} message="We have not published a review in that genre yet. Try one of these genres, or browse the full feed." navigate={navigate}>
+        {others.length > 0 && <div className="nl-genre-chips">{others.map((g) => <button key={g.key} type="button" onClick={() => navigate(genrePath(g.label))}>{sanitizeUserText(g.label, 40)} <small>{g.count}</small></button>)}</div>}
+      </EmptyStateFeed>
+    );
+  }
 
   return (
     <div className="pt-24 pb-20 container-prose animate-fade-in">

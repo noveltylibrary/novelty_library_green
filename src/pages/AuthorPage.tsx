@@ -9,6 +9,8 @@ import { summarizeReviews, useAuthorFollow } from '@/lib/authors';
 import { useAuth } from '@/lib/auth';
 import { REPORT_REASONS, createGrievance, type ReportReason } from '@/lib/moderation';
 import { useOverlayHistory } from '@/lib/overlayHistory';
+import { EmptyStateFeed } from '@/components/EmptyStateFeed';
+import { usePageNoIndex } from '@/lib/seo';
 
 /** Author page: the purple-and-gold card (with follow / replay / report / share above it) and the About note below it. */
 export function AuthorPage({ name, navigate }: { name: string; navigate: (path: string) => void }) {
@@ -47,12 +49,15 @@ export function AuthorPage({ name, navigate }: { name: string; navigate: (path: 
     finally { setBusy(false); }
   };
 
+  const noAuthor = all.length > 0 && books.length === 0;
+  usePageNoIndex(noAuthor, key);
+  if (noAuthor) return <EmptyStateFeed title={`No published reviews of “${sanitizeUserText(name, 80)}” yet`} message="That author has no published review on Novelty Library yet. Browse every author, or read the latest reviews below." navigate={navigate} />;
+
   return (
     <div className="pt-24 pb-20 container-prose animate-fade-in">
       <button type="button" onClick={() => { if (window.history.length > 1) window.history.back(); else navigate('/reviews'); }} className="nl-qv-link inline-flex items-center gap-1.5 mb-4"><ArrowLeft className="w-4 h-4" aria-hidden="true" /> Back</button>
 
       {!all.length && <p className="nl-find-hint">Loading author…</p>}
-      {all.length > 0 && books.length === 0 && <p className="nl-find-hint">No published reviews of this author yet.</p>}
 
       {books.length > 0 && (
         <section className="nl-people-section" aria-label={`${display} profile card`}>

@@ -6,6 +6,8 @@ import { RwStarRating } from '@/components/RwStarRating';
 import { fetchFollowStats, fetchConnections, fetchActiveStories, type FollowStats, type ConnectionProfile, type Story } from '@/lib/social';
 import { FollowStatsBar, ConnectionsModal, type ConnKind } from '@/components/ConnectionsBar';
 import { ProfileHighlights } from '@/components/ProfileHighlights';
+import { StoryIcon } from '@/components/StoryIcon';
+import { readingCountError, trackFill, type CountKey } from '@/lib/readingCounts';
 import { ProfileTabs, PublishedPanel } from '@/components/ProfileTabs';
 import { buildReadingPane, buildQuestionsPane } from '@/components/ProfilePanes';
 import { CHALLENGE_KEY, DEFAULT_GOAL, MAX_EXTRA, MAX_GOAL, TIER_PRESETS, clampGoal, countReadInYear, packChallenge, readChallenge } from '@/lib/readingChallenge';
@@ -43,6 +45,7 @@ export function ProfilePage({ navigate }: ProfilePageProps) {
   const [followStats,setFollowStats]=useState<FollowStats>({followers:0,following:0,is_following:false}); const [connKind,setConnKind]=useState<ConnKind|null>(null);
   const publicFormat: FormatKey = asFormatKey((answers as Record<string,unknown>).__public_view) || '4:5';
   const setPublicView=async(f:FormatKey)=>{ if(!user) return; const next={...answers,__public_view:f}; setAnswers(next); try{ await updateProfile(user.id,{profile_answers:next}); }catch(err){ setError(err instanceof Error?err.message:'Could not save the public view.'); } };
+  const [fillOrder,setFillOrder]=useState<CountKey[]>([]);
   const avatarInputRef=useRef<HTMLInputElement>(null); const headerInputRef=useRef<HTMLInputElement>(null); const sbBannerInputRef=useRef<HTMLInputElement>(null);
 
   useEffect(()=>{ if(!profile) return; setName(profile.name||''); setFavoriteBook(profile.favorite_book||''); setBooksReadThisMonth(profile.books_read_this_month==null?'':String(profile.books_read_this_month)); setTotalBooksRead(profile.total_books_read==null?'':String(profile.total_books_read)); setReadingSince(profile.reading_since==null?'':String(profile.reading_since)); setFavoriteAuthor(profile.favorite_author||''); setFavoriteGenre(profile.favorite_genre||''); setAvatarUrl(profile.avatar_url||''); setHeaderUrl(profile.header_image_url||''); setSocialLinks((profile.social_links||[]).slice(0,3)); setInstagram(cleanInstagram(profile.instagram_id)); setAnswers(profile.profile_answers||{}); setHideFollowers(!!profile.hide_followers); setHideFollowing(!!profile.hide_following); setVisibility({...DEFAULT_VIS,...coreVisDefaults(core),...(profile.profile_visibility||{})}); },[profile]);
@@ -84,10 +87,19 @@ export function ProfilePage({ navigate }: ProfilePageProps) {
   // Once the admin converted the built-in reading fields they are real questions: they follow the question's own
   // active / profile-card settings, and are no longer rendered a second time as fixed card rows.
   const legacyValues: Record<LegacyProfileFieldKey, string> = { reading_since: readingSince, books_read_this_month: booksReadThisMonth, total_books_read: totalBooksRead, favorite_book: favoriteBook, favorite_author: favoriteAuthor, favorite_genre: favoriteGenre };
-  const legacySetters: Record<LegacyProfileFieldKey, (v: string) => void> = { reading_since: v => setReadingSince(String(v).replace(/\D/g,'').slice(0,4)), books_read_this_month: setBooksReadThisMonth, total_books_read: setTotalBooksRead, favorite_book: setFavoriteBook, favorite_author: setFavoriteAuthor, favorite_genre: setFavoriteGenre };
+  const legacySetters: Record<LegacyProfileFieldKey, (v: string) => void> = { reading_since: v => setReadingSince(String(v).replace(/\D/g,'').slice(0,4)), books_read_this_month: v => { setBooksReadThisMonth(v); setFillOrder(o => trackFill(o,'month',String(v))); }, total_books_read: v => { setTotalBooksRead(v); setFillOrder(o => trackFill(o,'total',String(v))); }, favorite_book: setFavoriteBook, favorite_author: setFavoriteAuthor, favorite_genre: setFavoriteGenre };
+  // Book counts must agree: this month <= this year <= total. The field filled in second gets the error.
+  const annualQ = questions.find(x => x.active !== false && !isLegacyProfileFieldKey(x.key) && (x.type === 'number' || x.type === 'short_text') && /(year|annual)/i.test(`${x.question} ${x.key}`) && /(book|read)/i.test(`${x.question} ${x.key}`) && !/since|favou?rite|goal|challenge/i.test(`${x.question} ${x.key}`));
+  const annualValue = annualQ ? String(answers[annualQ.key] ?? '') : '';
+  const countErr = readingCountError({ month: booksReadThisMonth, total: totalBooksRead, year: annualValue }, fillOrder);
+  const countErrFor = (q: ProfileQuestion): string | null => {
+    if (!countErr) return null;
+    const key: CountKey | null = q.key === 'books_read_this_month' ? 'month' : q.key === 'total_books_read' ? 'total' : annualQ && q.key === annualQ.key ? 'year' : null;
+    return key === countErr.key ? countErr.message : null;
+  };
   const cardIds = new Set(eligibleCardQuestions.filter(x => !findAboutQuestion([x])).map(x => x.id));
   const whereOf = (q: ProfileQuestion): 'card' | 'feed' => cardIds.has(q.id) ? 'card' : 'feed';
-  const renderQuestion = (q: ProfileQuestion) => {
+  const renderQuestionBase = (q: ProfileQuestion) => {
     if (isLegacyProfileFieldKey(q.key)) {
       const lk: LegacyProfileFieldKey = q.key;
       return <QuestionField where={whereOf(q)} key={q.id} question={q} value={legacyValues[lk]} userId={user!.id} visible={visibility[lk] ?? q.public_default} onVisibility={()=>toggleVisibility(lk)} onChange={value=>legacySetters[lk](String(value ?? ''))}/>;
@@ -99,7 +111,12 @@ export function ProfilePage({ navigate }: ProfilePageProps) {
       const kind = shelfKindOf(q.key)!;
       return <div key={q.id} className="min-w-0 sm:col-span-2 lg:col-span-3"><PrivacyField where="feed" label={q.question} visible={visibility[`question:${q.key}`] ?? q.public_default} onToggle={()=>toggleVisibility(`question:${q.key}`)}><ShelfEditor kind={kind} value={answers[q.key]} onChange={value=>setAnswers(v=>({...v,[q.key]:value}))}/></PrivacyField></div>;
     }
-    return <QuestionField where={whereOf(q)} key={q.id} question={q} value={answers[q.key]} userId={user!.id} visible={visibility[`question:${q.key}`] ?? q.public_default} onVisibility={()=>toggleVisibility(`question:${q.key}`)} onChange={value=>setAnswers(v=>({...v,[q.key]:value}))}/>;
+    return <QuestionField where={whereOf(q)} key={q.id} question={q} value={answers[q.key]} userId={user!.id} visible={visibility[`question:${q.key}`] ?? q.public_default} onVisibility={()=>toggleVisibility(`question:${q.key}`)} onChange={value=>{ setAnswers(v=>({...v,[q.key]:value})); if(annualQ && q.key===annualQ.key) setFillOrder(o=>trackFill(o,'year',String(value ?? ''))); }}/>;
+  };
+  const renderQuestion = (q: ProfileQuestion) => {
+    const node = renderQuestionBase(q);
+    const err = countErrFor(q);
+    return err ? <div key={q.id} className="min-w-0 space-y-1.5">{node}<p className="field-error" role="alert">{err}</p></div> : node;
   };
   const questionsShown = bi('profile_questions').active !== false;
   const activeSectionRows = questionSections.filter(s => s.active !== false);
@@ -157,6 +174,7 @@ export function ProfilePage({ navigate }: ProfilePageProps) {
       setError('Book counts must contain whole numbers only.');
       return;
     }
+    if (countErr) { setError(countErr.message); return; }
 
     const cleanLinks = socialLinks
       .filter(link => link.url.trim())
@@ -279,7 +297,7 @@ export function ProfilePage({ navigate }: ProfilePageProps) {
       <div className="nl-profile-main min-w-0"><ProfileCard layout="rows" header={<FollowStatsBar followers={followStats.followers} following={followStats.following} hideFollowers={hideFollowers} hideFollowing={hideFollowing} isOwn onOpen={setConnKind}/>} data={cardData} onFollowersClick={()=>setConnKind('followers')} download initialFormat={publicFormat} publicFormat={publicFormat} onPublicFormatChange={setPublicView} onAvatarUpload={()=>avatarInputRef.current?.click()} onHeaderUpload={()=>headerInputRef.current?.click()} onSuperBlitzBannerUpload={()=>sbBannerInputRef.current?.click()} onViewPublicProfile={()=>profile?.novelty_username && navigate(`/profile/@${encodeURIComponent(profile.novelty_username)}`)} /></div>
       <aside className="nl-profile-story-col min-w-0 space-y-4">
         <details className="nl-profile-stories-dropdown">
-          <summary className="nl-profile-stories-summary"><span className="nl-profile-stories-label"><span className="nl-profile-stories-icon"><BookOpen className="w-5 h-5" aria-hidden="true"/></span><span>Stories and Highlights</span></span><ChevronDown className="nl-profile-stories-caret w-5 h-5" aria-hidden="true"/></summary>
+          <summary className="nl-profile-stories-summary"><span className="nl-profile-stories-label"><span className="nl-profile-stories-icon"><StoryIcon size={22}/></span><span>Stories and Highlights</span></span><ChevronDown className="nl-profile-stories-caret w-5 h-5" aria-hidden="true"/></summary>
           <div className="nl-profile-stories-content space-y-5">
             <div className="surface-card p-5 sm:p-6 nl-story-composer">
               <p className="text-xs uppercase tracking-[.18em] font-semibold" style={{color:'var(--color-teal-dark)'}}>24-hour story</p>
@@ -383,25 +401,25 @@ function SectionSheet({item,onClose,onSubmit,footer,children}:{item:HubItem;onCl
 
 function ChallengeEditor({auto,value,onChange}:{auto:number;value:ReturnType<typeof readChallenge>;onChange:(c:NonNullable<ReturnType<typeof readChallenge>>)=>void}){
   const cur=value??{goal:DEFAULT_GOAL,tier:'custom' as const,show:true,extra:0};
-  const [text,setText]=useState(String(cur.goal));
+  const [text,setText]=useState(value?String(cur.goal):'');
   const [readText,setReadText]=useState(String(auto+cur.extra));
   const year=new Date().getFullYear();
   const total=auto+cur.extra;
   const setTotal=(n:number)=>{ const t=Math.min(auto+MAX_EXTRA,Math.max(auto,Math.floor(n)||0)); setReadText(String(t)); onChange({...cur,extra:t-auto}); };
   const pickTier=(goal:number,tier:typeof cur.tier)=>{ setText(String(goal)); onChange({...cur,goal,tier}); };
   return <div className="nl-rc-edit">
-    <div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2"><Trophy className="w-4 h-4" style={{color:'var(--color-teal-dark)'}} aria-hidden="true"/><span className="text-xs font-bold uppercase tracking-wider" style={{color:'var(--color-teal-dark)'}}>Reading goal</span></div><div className="flex items-center gap-1.5 shrink-0"><WhereTag where="feed"/><PrivacyEye visible={cur.show} onToggle={()=>onChange({...cur,show:!cur.show})}/></div></div>
+    <div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2"><Trophy className="w-4 h-4" style={{color:'var(--color-teal-dark)'}} aria-hidden="true"/><span className="text-xs font-bold uppercase tracking-wider" style={{color:'var(--color-teal-dark)'}}>Reading goal</span></div><div className="flex items-center gap-1.5 shrink-0"><WhereTag where="feed"/><PrivacyEye visible={cur.show} onToggle={()=>{ if(value) onChange({...cur,show:!cur.show}); }}/></div></div>
     <p className="text-sm" style={{color:'var(--color-text-muted)'}}>How many books do you want to finish in {year}?</p>
     <div className="nl-rc-tiers" role="group" aria-label="Challenge level">
       {TIER_PRESETS.map(t=><button key={t.tier} type="button" className="nl-rc-tier" aria-pressed={cur.tier===t.tier} onClick={()=>pickTier(t.goal,t.tier)}><b>{t.goal}</b><span>{t.label}</span></button>)}
     </div>
     <label className="nl-rc-custom"><span className="label !mb-0">Custom goal</span>
-      <input type="number" inputMode="numeric" min={1} max={MAX_GOAL} value={text} className="input-field" aria-label="Custom yearly reading goal"
+      <input type="number" inputMode="numeric" min={1} max={MAX_GOAL} value={text} className="input-field" aria-label="Custom yearly reading goal" placeholder="e.g. 20"
         onChange={e=>{ const v=e.target.value.replace(/\D/g,'').slice(0,3); setText(v); if(v) onChange({...cur,goal:clampGoal(v),tier:'custom'}); }}
-        onBlur={()=>setText(String(cur.goal))}/>
+        onBlur={()=>setText(value?String(cur.goal):'')}/>
       <span className="text-sm" style={{color:'var(--color-text-muted)'}}>books</span>
     </label>
-    <div>
+    {value&&<div>
       <span className="label">Books read in {year}</span>
       <div className="nl-rc-step" role="group" aria-label="Books read this year">
         <button type="button" onClick={()=>setTotal(total-1)} disabled={total<=auto} aria-label="One book fewer"><Minus className="w-4 h-4"/></button>
@@ -411,7 +429,7 @@ function ChallengeEditor({auto,value,onChange}:{auto:number;value:ReturnType<typ
         <button type="button" onClick={()=>setTotal(total+1)} aria-label="One book more"><Plus className="w-4 h-4"/></button>
       </div>
       <p className="text-xs mt-1.5" style={{color:'var(--color-text-muted)'}}>{auto} counted automatically from your published reviews whose Date of review is in {year}. Add books you read but reviewed later or not at all; the number can go up freely but never below {auto}.</p>
-    </div>
-    {!value&&<p className="text-xs" style={{color:'var(--color-text-muted)'}}>Not saved yet. Press Save to start your challenge.</p>}
+    </div>}
+    {!value&&<p className="text-xs" style={{color:'var(--color-text-muted)'}}>No goal yet, so nothing is shown on your profile. Pick a level or type a goal, then press Save.</p>}
   </div>;
 }

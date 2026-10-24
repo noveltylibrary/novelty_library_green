@@ -1,3 +1,37 @@
+## 2.57.0 — Back button on profile pages
+- Reader/reviewer profile pages (`/profile/@name`, including the reviewer-card fallback) now have the same "← Back" link as author pages. Frontend-only.
+
+## 2.56.0 — Empty-state screens never blank
+- New `EmptyStateFeed` / `LatestReviewsRail`: every missing-item screen (unknown page, review, blog post, genre, author, reviewer, @username) shows a clear message, a "Browse all N reviews" button, quick links (Reviews, Authors, Reviewers, Genres, Live Rankings) and a carousel of the latest reviews with real text excerpts. Reviews page with zero filter matches shows the same carousel.
+- Those screens are marked noindex while empty. No ad slots on them. Frontend-only; no SQL.
+
+## 2.55.0 — Reviewer profile cards + ad content guard
+- Reviewers get the same teal/cyan reader profile card as members (Follow, Replay, Report, Share, followers bar, published shelf, Instagram pill). Used for `/reviewer/<id>` and for any `@username` whose reader profile is not public, so a reviewer link no longer ends on "Profile not found".
+- The Instagram handle beside a reviewer's name on a review page now links to that Instagram profile (new tab). Handles still appear only when the reviewer chose to show them.
+- Follow on a reviewer reuses the author-follow storage with a `reviewer:<id>` key (no new SQL). If the server refuses the key, Follow keeps working in this browser.
+- AdSense: the ad slot now checks the page really shows a 600+ character review body on a `/review/` address before asking Google for an ad; otherwise it renders nothing. Reviewer / profile pages that are loading or unavailable are marked noindex.
+- Frontend-only; no SQL, no Supabase, `index.html` or `vercel.json` changes.
+
+## 2.52.0 — One Review Helper with foul-language check
+- Submit: the two helpers are merged into one Review Helper · Taste Match panel under the review box (live foul-language alert with "Mask flagged words", writing tips + word count, Polish + Undo).
+- Submit is blocked for strong foul words in review, title or author until reworded. Frontend-only; runs on device.
+
+## 2.51.0 — Polish upgrade, Account settings, Sounds, Home posters
+- Review Helper / Taste Match Polish now corrects misspelt and half-typed words (lazy-loaded offline word list), safe grammar slips, and flags unsure words as tips. Still user-triggered, with Undo.
+- Account → "Account settings" (username, locked email, optional phone, "?" privacy popup) and new Sounds tab (master, Enigma/games, reviews, notifications, volume).
+- Home: 1:1 review posters; Featured: teal/cyan gradient glow ring; Stories icon; month ≤ year ≤ total reading-count checks; author suggestions close on outside click; Community Activity shows NL average rating only.
+- Profile Questions tab: magazine Q&A layout with animated per-question icons (own and public profile).
+- Frontend-only. Phone is stored in auth user_metadata (nl_phone); no SQL.
+
+## 2.50.0 — Submit: Open Library check + Review Helper polish
+- Live title/author check against Open Library, paste detection, and a user-triggered Polish with Undo. Frontend-only.
+
+## 2.49.0 — Enigma personalised
+- LexiWord / HangLex puzzles chosen per reader (never repeated), HangLex single trope clue, teal/cyan restyle, animated hub icons. Frontend-only.
+
+## 2.48.0 — Explore: Enigma tab
+- Third Explore tab (Enigma) with a hub for LexiWord and HangLex; click sounds on tab switches and game buttons; frontend-only, no backend changes.
+
 ## 2.45.0 — Mobile navigation polish
 - Enlarged Taste Match SE bottom shortcuts into a readable full-width three-button row on phones.
 - Kept homepage Submit Nominations and Reviews actions in one two-column row on narrow phones.
